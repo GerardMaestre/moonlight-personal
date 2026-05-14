@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
@@ -29,8 +29,8 @@ fun DashboardScreen(
     state: DashboardState,
     actions: PlatformActions = PreviewPlatformActions,
 ) {
-    MoonlightTheme {
-        Scaffold(
+    // MoonlightTheme is already provided by the Activity
+    Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
@@ -41,9 +41,9 @@ fun DashboardScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = actions::onNavigateBack) {
+                        IconButton(onClick = { actions.onNavigateBack() }) {
                             Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
+                                Icons.Default.ArrowBack,
                                 contentDescription = "Back"
                             )
                         }
@@ -58,7 +58,9 @@ fun DashboardScreen(
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                        titleContentColor = MaterialTheme.colorScheme.onBackground,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                        actionIconContentColor = MaterialTheme.colorScheme.onBackground
                     )
                 )
             },
@@ -156,7 +158,6 @@ fun DashboardScreen(
             )
         }
     }
-}
 
 @Composable
 private fun SectionHeader(
