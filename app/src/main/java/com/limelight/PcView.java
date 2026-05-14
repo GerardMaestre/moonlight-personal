@@ -48,6 +48,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.View.OnClickListener;
+import android.view.animation.AnimationUtils;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -124,6 +125,20 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
     private final static int TEST_NETWORK_ID = 10;
     private final static int GAMESTREAM_EOL_ID = 11;
 
+    private void showDiscoveryLoading() {
+        if (noPcFoundLayout.getVisibility() != View.VISIBLE) {
+            noPcFoundLayout.startAnimation(AnimationUtils.loadAnimation(this, R.anim.slide_in_up_medium));
+            noPcFoundLayout.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void showDiscoveryContent() {
+        if (noPcFoundLayout.getVisibility() == View.VISIBLE) {
+            noPcFoundLayout.startAnimation(AnimationUtils.loadAnimation(this, R.anim.fade_out_fast));
+            noPcFoundLayout.setVisibility(View.INVISIBLE);
+        }
+    }
+
     private void initializeViews() {
         setContentView(R.layout.activity_pc_view);
 
@@ -150,6 +165,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(PcView.this, StreamSettings.class));
+                overridePendingTransition(R.anim.slide_in_up_medium, R.anim.fade_out_fast);
             }
         });
         addComputerButton.setOnClickListener(new OnClickListener() {
@@ -157,6 +173,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
             public void onClick(View v) {
                 Intent i = new Intent(PcView.this, AddComputerManually.class);
                 startActivity(i);
+                overridePendingTransition(R.anim.slide_in_up_medium, R.anim.fade_out_fast);
             }
         });
         helpButton.setOnClickListener(new OnClickListener() {
@@ -169,6 +186,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(PcView.this, CustomRemotePanelActivity.class));
+                overridePendingTransition(R.anim.slide_in_up_medium, R.anim.fade_out_fast);
             }
         });
 
@@ -185,10 +203,10 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
 
         noPcFoundLayout = findViewById(R.id.no_pc_found_layout);
         if (pcGridAdapter.getCount() == 0) {
-            noPcFoundLayout.setVisibility(View.VISIBLE);
+            showDiscoveryLoading();
         }
         else {
-            noPcFoundLayout.setVisibility(View.INVISIBLE);
+            showDiscoveryContent();
         }
         pcGridAdapter.notifyDataSetChanged();
     }
@@ -732,7 +750,8 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
 
                 if (pcGridAdapter.getCount() == 0) {
                     // Show the "Discovery in progress" view
-                    noPcFoundLayout.setVisibility(View.VISIBLE);
+                    showDiscoveryLoading();
+                    noPcFoundLayout.startAnimation(AnimationUtils.loadAnimation(this, R.anim.collapsed_to_expanded));
                 }
 
                 break;
@@ -762,7 +781,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
             pcGridAdapter.addComputer(new ComputerObject(details));
 
             // Remove the "Discovery in progress" view
-            noPcFoundLayout.setVisibility(View.INVISIBLE);
+            showDiscoveryContent();
         }
 
         // Notify the view that the data has changed

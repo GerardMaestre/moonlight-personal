@@ -34,4 +34,8 @@
         <item name="android:windowNoTitle">true</item>
     </style>
 
+    <style name="UnifiedIconButton" parent="?android:attr/borderlessButtonStyle">
+        <item name="android:stateListAnimator">@animator/button_touch_feedback</item>
+    </style>
+
 </resources>

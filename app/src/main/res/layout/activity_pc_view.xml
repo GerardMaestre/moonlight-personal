@@ -32,6 +32,26 @@
                 android:layout_width="75dp"
                 android:layout_height="75dp"
                 android:indeterminate="true"/>
+            <View
+                android:id="@+id/pc_skeleton_title"
+                android:layout_width="180dp"
+                android:layout_height="16dp"
+                android:layout_toRightOf="@+id/pcs_loading"
+                android:layout_toEndOf="@+id/pcs_loading"
+                android:layout_marginLeft="12dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/skeleton_pulse"
+                android:animation="@anim/fade_in_fast" />
+            <View
+                android:id="@+id/pc_skeleton_subtitle"
+                android:layout_width="140dp"
+                android:layout_height="12dp"
+                android:layout_below="@id/pc_skeleton_title"
+                android:layout_alignStart="@id/pc_skeleton_title"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/skeleton_pulse"
+                android:animation="@anim/loading_to_content" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -39,7 +59,8 @@
                 android:layout_toEndOf="@+id/pcs_loading"
                 android:layout_marginLeft="10dp"
                 android:layout_marginStart="10dp"
-                android:layout_centerVertical="true"
+                android:layout_below="@+id/pc_skeleton_subtitle"
+                android:layout_marginTop="12dp"
                 android:textAppearance="?android:attr/textAppearanceLarge"
                 android:gravity="center"
                 android:text="@string/searching_pc"/>
@@ -58,7 +79,7 @@
         android:layout_alignParentTop="true"
         android:src="@drawable/ic_settings"
         android:preferKeepClear="true"
-        style="?android:attr/borderlessButtonStyle"/>
+        style="@style/UnifiedIconButton"/>
 
     <ImageButton
         android:id="@+id/helpButton"
@@ -71,7 +92,7 @@
         android:layout_toEndOf="@+id/settingsButton"
         android:src="@drawable/ic_help"
         android:preferKeepClear="true"
-        style="?android:attr/borderlessButtonStyle"/>
+        style="@style/UnifiedIconButton"/>
 
     <ImageButton
         android:id="@+id/customRemoteButton"
@@ -85,7 +106,7 @@
         android:src="@drawable/ic_remote_panel"
         android:contentDescription="@string/custom_panel_title"
         android:preferKeepClear="true"
-        style="?android:attr/borderlessButtonStyle"/>
+        style="@style/UnifiedIconButton"/>
     
     <ImageButton
         android:id="@+id/manuallyAddPc"
@@ -98,6 +119,6 @@
         android:layout_alignParentRight="true"
         android:src="@drawable/ic_add"
         android:preferKeepClear="true"
-        style="?android:attr/borderlessButtonStyle"/>
+        style="@style/UnifiedIconButton"/>
 
 </RelativeLayout>
