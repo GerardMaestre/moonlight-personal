@@ -21,4 +21,13 @@
     <dimen name="ml_text_body">14sp</dimen>
     <dimen name="ml_text_title">18sp</dimen>
     <dimen name="ml_button_min_height">44dp</dimen>
+
+    <!-- PC view semantic dimensions -->
+    <dimen name="pc_view_outer_padding">20dp</dimen>
+    <dimen name="pc_view_section_spacing">16dp</dimen>
+    <dimen name="pc_view_card_padding">16dp</dimen>
+    <dimen name="pc_view_toolbar_icon_button_size">48dp</dimen>
+    <dimen name="pc_view_toolbar_icon_size">24dp</dimen>
+    <dimen name="pc_view_loading_indicator_size">56dp</dimen>
+    <dimen name="pc_view_loading_text_spacing">12dp</dimen>
 </resources>
