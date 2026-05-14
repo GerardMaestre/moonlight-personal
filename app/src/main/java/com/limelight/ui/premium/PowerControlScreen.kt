@@ -57,8 +57,7 @@ fun PowerControlScreen(
     onSaveConfig: (url: String, user: String, pass: String, deviceId: String) -> Unit,
     onWake: () -> Unit,
     onClearConfig: () -> Unit,
-    onTestConnection: (url: String, user: String, pass: String) -> Unit,
-    onStartImmich: () -> Unit
+    onTestConnection: (url: String, user: String, pass: String) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -104,7 +103,7 @@ fun PowerControlScreen(
             if (state.showConfig) {
                 ConfigSection(state, onSaveConfig, onClearConfig, onTestConnection)
             } else {
-                WakeSection(state, onWake, onStartImmich)
+                WakeSection(state, onWake)
             }
         }
     }
@@ -113,8 +112,7 @@ fun PowerControlScreen(
 @Composable
 private fun WakeSection(
     state: PowerControlState,
-    onWake: () -> Unit,
-    onStartImmich: () -> Unit
+    onWake: () -> Unit
 ) {
     Spacer(modifier = Modifier.height(48.dp))
 
@@ -283,33 +281,6 @@ private fun WakeSection(
     }
 
     Spacer(modifier = Modifier.height(32.dp))
-
-    // Start Immich Button
-    FilledTonalButton(
-        onClick = onStartImmich,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp),
-        colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = MoonlightColors.Cyan.copy(alpha = 0.2f),
-            contentColor = MoonlightColors.Cyan
-        ),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Icon(
-            Icons.Default.CloudSync,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            "ARRANCAR SERVIDOR IMMICH",
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        )
-    }
-
-    Spacer(modifier = Modifier.height(16.dp))
 
     // Security info
     Card(

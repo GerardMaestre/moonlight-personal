@@ -22,6 +22,11 @@ import com.limelight.computers.ComputerManagerService
 import com.limelight.preferences.AddComputerManually
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -206,61 +211,167 @@ class PremiumDashboardActivity : ComponentActivity() {
                                             }
                                         }
                                     }
-                                },
-                                onStartImmich = {
-                                    val config = UpSnapConfig.getInstance(this@PremiumDashboardActivity)
-                                    val upsnapUrl = config.serverUrl ?: ""
-                                    if (upsnapUrl.isEmpty()) {
-                                        powerState.statusMessage = "Error: UpSnap no configurado."
-                                        return@PowerControlScreen
-                                    }
-                                    
-                                    powerState.statusMessage = "Iniciando Immich en el servidor..."
-                                    thread {
-                                        try {
-                                            val uri = java.net.URI(upsnapUrl)
-                                            val scheme = uri.scheme ?: "http"
-                                            val host = uri.host ?: upsnapUrl
-                                            val streamDeckUrl = "$scheme://$host:3000/api/run-script"
-                                            
-                                            val json = org.json.JSONObject()
-                                            json.put("carpeta", "07_Personalizacion")
-                                            json.put("archivo", "fotos.bat")
-                                            
-                                            val mediaType = "application/json; charset=utf-8".toMediaType()
-                                            val body = json.toString().toRequestBody(mediaType)
-                                            
-                                            val request = okhttp3.Request.Builder()
-                                                .url(streamDeckUrl)
-                                                .post(body)
-                                                .addHeader("Authorization", "Bearer CasaGerard")
-                                                .build()
-                                                
-                                            val client = okhttp3.OkHttpClient()
-                                            val response = client.newCall(request).execute()
-                                            
-                                            runOnUiThread {
-                                                if (response.isSuccessful) {
-                                                    powerState.statusMessage = "¡Servidor Immich arrancado correctamente! ✓"
-                                                } else {
-                                                    powerState.statusMessage = "Error al iniciar Immich: HTTP ${response.code}"
-                                                }
-                                            }
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                            runOnUiThread {
-                                                powerState.statusMessage = "Error de red: No se pudo contactar con Stream Deck local (puerto 3000)."
-                                            }
-                                        }
-                                    }
                                 }
                             )
                         }
                         AppScreen.PHOTO_SERVER -> {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Modo: Servidor de Fotos", color = MaterialTheme.colorScheme.onBackground)
-                                Button(onClick = { nav.goBack() }, modifier = Modifier.padding(top = 100.dp)) {
-                                    Text("Volver")
+                            var immichStatus by remember { mutableStateOf<String?>(null) }
+                            
+                            Column(
+                                modifier = Modifier.fillMaxSize().padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = androidx.compose.material.icons.Icons.Default.CloudSync,
+                                    contentDescription = "Immich",
+                                    modifier = Modifier.size(80.dp),
+                                    tint = com.limelight.shared.ui.theme.MoonlightColors.Cyan
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Text(
+                                    "Servidor de Fotos",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    "Arranca el stack de contenedores de Immich en el ordenador remoto sin mostrar ventanas visibles.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(48.dp))
+                                
+                                FilledTonalButton(
+                                    onClick = {
+                                        immichStatus = "Iniciando Immich en el servidor..."
+                                        thread {
+                                            try {
+                                                // IP directa del PC con Stream Deck (Tailscale)
+                                                val streamDeckUrl = "http://100.67.140.39:3000/api/run-script"
+                                                
+                                                val json = org.json.JSONObject()
+                                                json.put("carpeta", "07_Personalizacion")
+                                                json.put("archivo", "fotos.bat")
+                                                
+                                                val mediaType = "application/json; charset=utf-8".toMediaType()
+                                                val body = json.toString().toRequestBody(mediaType)
+                                                
+                                                val request = okhttp3.Request.Builder()
+                                                    .url(streamDeckUrl)
+                                                    .post(body)
+                                                    .addHeader("Authorization", "Bearer CasaGerard")
+                                                    .build()
+                                                    
+                                                val client = okhttp3.OkHttpClient()
+                                                val response = client.newCall(request).execute()
+                                                
+                                                runOnUiThread {
+                                                    if (response.isSuccessful) {
+                                                        immichStatus = "¡Servidor Immich arrancado correctamente! ✓"
+                                                    } else {
+                                                        immichStatus = "Error al iniciar Immich: HTTP ${response.code}"
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                                runOnUiThread {
+                                                    immichStatus = "Error de red: No se pudo contactar con Stream Deck local (puerto 3000)."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = com.limelight.shared.ui.theme.MoonlightColors.Cyan.copy(alpha = 0.2f),
+                                        contentColor = com.limelight.shared.ui.theme.MoonlightColors.Cyan
+                                    ),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                                ) {
+                                    Icon(androidx.compose.material.icons.Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(24.dp))
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                }
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                FilledTonalButton(
+                                    onClick = {
+                                        immichStatus = "Deteniendo Immich en el servidor..."
+                                        thread {
+                                            try {
+                                                val streamDeckUrl = "http://100.67.140.39:3000/api/run-script"
+                                                
+                                                val json = org.json.JSONObject()
+                                                json.put("carpeta", "07_Personalizacion")
+                                                json.put("archivo", "cerrar_fotos.bat")
+                                                
+                                                val mediaType = "application/json; charset=utf-8".toMediaType()
+                                                val body = json.toString().toRequestBody(mediaType)
+                                                
+                                                val request = okhttp3.Request.Builder()
+                                                    .url(streamDeckUrl)
+                                                    .post(body)
+                                                    .addHeader("Authorization", "Bearer CasaGerard")
+                                                    .build()
+                                                    
+                                                val client = okhttp3.OkHttpClient()
+                                                val response = client.newCall(request).execute()
+                                                
+                                                runOnUiThread {
+                                                    if (response.isSuccessful) {
+                                                        immichStatus = "¡Servidor Immich detenido correctamente! ✓"
+                                                    } else {
+                                                        immichStatus = "Error al detener Immich: HTTP ${response.code}"
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                                runOnUiThread {
+                                                    immichStatus = "Error de red: No se pudo contactar con Stream Deck local (puerto 3000)."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = com.limelight.shared.ui.theme.MoonlightColors.Red.copy(alpha = 0.2f),
+                                        contentColor = com.limelight.shared.ui.theme.MoonlightColors.Red
+                                    ),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                                ) {
+                                    Icon(androidx.compose.material.icons.Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(24.dp))
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("APAGAR SERVIDOR IMMICH", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                }
+                                
+                                immichStatus?.let { msg ->
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    val isError = msg.startsWith("Error")
+                                    androidx.compose.material3.Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                                            containerColor = if (isError) com.limelight.shared.ui.theme.MoonlightColors.Red.copy(alpha = 0.1f) else com.limelight.shared.ui.theme.MoonlightColors.Green.copy(alpha = 0.1f)
+                                        )
+                                    ) {
+                                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                if (isError) androidx.compose.material.icons.Icons.Default.Error else androidx.compose.material.icons.Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = if (isError) com.limelight.shared.ui.theme.MoonlightColors.Red else com.limelight.shared.ui.theme.MoonlightColors.Green,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Text(msg, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                                        }
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(48.dp))
+                                TextButton(onClick = { nav.goBack() }) {
+                                    Text("Volver", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
