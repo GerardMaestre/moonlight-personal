@@ -26,6 +26,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
+import android.widget.Button;
+import android.widget.SearchView;
 
 import com.limelight.LimeLog;
 import com.limelight.PcView;
@@ -38,6 +40,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 
 public class StreamSettings extends Activity {
+    static String initialSearchQuery;
     private PreferenceConfiguration previousPrefs;
     private int previousDisplayPixelCount;
 
@@ -50,7 +53,7 @@ public class StreamSettings extends Activity {
             previousDisplayPixelCount = mode.getPhysicalWidth() * mode.getPhysicalHeight();
         }
         getFragmentManager().beginTransaction().replace(
-                R.id.stream_settings, new SettingsFragment()
+                R.id.stream_settings_container, new SettingsFragment()
         ).commitAllowingStateLoss();
     }
 
@@ -65,6 +68,42 @@ public class StreamSettings extends Activity {
         setContentView(R.layout.activity_stream_settings);
 
         UiHelper.notifyNewRootView(this);
+
+        SearchView searchView = findViewById(R.id.settings_search);
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                initialSearchQuery = query;
+                reloadSettings();
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                initialSearchQuery = newText;
+                reloadSettings();
+                return true;
+            }
+        });
+
+        bindSectionButton(R.id.section_streaming, "category_streaming_settings");
+        bindSectionButton(R.id.section_input, "category_input_settings");
+        bindSectionButton(R.id.section_audio, "category_audio_settings");
+        bindSectionButton(R.id.section_ui, "category_ui_settings");
+
+    }
+
+
+
+    private void bindSectionButton(int buttonId, final String categoryKey) {
+        Button button = findViewById(buttonId);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                initialSearchQuery = categoryKey;
+                reloadSettings();
+            }
+        });
     }
 
     @Override
@@ -263,6 +302,43 @@ public class StreamSettings extends Activity {
                     .apply();
         }
 
+
+
+        private boolean matchesFilter(Preference preference, String query) {
+            String q = query.toLowerCase();
+            if (preference.getKey() != null && preference.getKey().toLowerCase().contains(q)) return true;
+            if (preference.getTitle() != null && preference.getTitle().toString().toLowerCase().contains(q)) return true;
+            return preference.getSummary() != null && preference.getSummary().toString().toLowerCase().contains(q);
+        }
+
+        private void applySearchFilter(PreferenceScreen screen, String query) {
+            if (query == null || query.trim().isEmpty()) {
+                return;
+            }
+
+            String normalizedQuery = query.trim().toLowerCase();
+            for (int i = screen.getPreferenceCount() - 1; i >= 0; i--) {
+                Preference pref = screen.getPreference(i);
+                if (!(pref instanceof PreferenceCategory)) {
+                    continue;
+                }
+
+                PreferenceCategory category = (PreferenceCategory) pref;
+                boolean keepCategory = normalizedQuery.equals(category.getKey());
+                for (int j = category.getPreferenceCount() - 1; j >= 0; j--) {
+                    Preference child = category.getPreference(j);
+                    boolean keepChild = keepCategory || matchesFilter(child, normalizedQuery);
+                    if (!keepChild) {
+                        category.removePreference(child);
+                    }
+                }
+
+                if (!keepCategory && category.getPreferenceCount() == 0) {
+                    screen.removePreference(category);
+                }
+            }
+        }
+
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             View view = super.onCreateView(inflater, container, savedInstanceState);
@@ -276,6 +352,8 @@ public class StreamSettings extends Activity {
 
             addPreferencesFromResource(R.xml.preferences);
             PreferenceScreen screen = getPreferenceScreen();
+
+            applySearchFilter(screen, StreamSettings.initialSearchQuery);
 
             // hide on-screen controls category on non touch screen devices
             if (!getActivity().getPackageManager().hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)) {
