@@ -46,24 +46,18 @@ fun DashboardScreen(
                         }
                     },
                     actions = {
+                        IconButton(onClick = actions::onAddPc) {
+                            Icon(Icons.Default.Add, contentDescription = "Add PC")
+                        }
                         IconButton(onClick = actions::onOpenSettings) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings")
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MoonlightColors.Purple
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
                     )
                 )
-            },
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = actions::onAddPc,
-                    containerColor = MoonlightColors.Purple,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add PC")
-                }
             },
             containerColor = MaterialTheme.colorScheme.background
         ) { padding ->

@@ -46,16 +46,18 @@ fun PcCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .height(100.dp) // Fixed height for a sleek look
+            .clip(RoundedCornerShape(28.dp))
             .clickable(enabled = computer.isOnline) { onClick() },
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MoonlightColors.SurfaceVariant
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (computer.isOnline) 8.dp else 2.dp
+            defaultElevation = 0.dp // Flat Apple look
         )
     ) {
-        Box {
+        Box(modifier = Modifier.fillMaxSize()) {
             // Subtle gradient glow for online PCs
             if (computer.isOnline) {
                 Box(
@@ -82,7 +84,7 @@ fun PcCard(
                 // Status indicator circle with icon
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(52.dp)
                         .clip(CircleShape)
                         .background(statusColor.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
@@ -92,20 +94,23 @@ fun PcCard(
                         else Icons.Default.Monitor,
                         contentDescription = null,
                         tint = statusColor,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
                     Text(
                         text = computer.name,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = computer.statusLabel,
                         style = MaterialTheme.typography.bodySmall,

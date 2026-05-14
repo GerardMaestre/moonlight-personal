@@ -22,14 +22,14 @@ object MoonlightColors {
     val Red = Color(0xFFEF5350)
     val Amber = Color(0xFFFFB74D)
 
-    val Background = Color(0xFF0F1115)
-    val Surface = Color(0xFF141922)
-    val SurfaceVariant = Color(0xFF1E2530)
-    val SurfaceElevated = Color(0xFF2D3440)
-    val OnBackground = Color(0xFFE6E1E5)
-    val OnSurface = Color(0xFFE6E1E5)
-    val OnSurfaceVariant = Color(0xFFC2C8D3)
-    val Outline = Color(0xFF8C92A0)
+    val Background = Color(0xFF000000) // Apple Dark Mode uses pure black for backgrounds
+    val Surface = Color(0xFF1C1C1E) // Apple System Gray 6
+    val SurfaceVariant = Color(0xFF2C2C2E) // Apple System Gray 5
+    val SurfaceElevated = Color(0xFF3A3A3C) // Apple System Gray 4
+    val OnBackground = Color(0xFFF2F2F7) // Apple System Gray 1
+    val OnSurface = Color(0xFFF2F2F7)
+    val OnSurfaceVariant = Color(0xFFEBEBF5).copy(alpha = 0.6f) // Apple secondary text
+    val Outline = Color(0xFF8E8E93) // Apple System Gray
 }
 
 private val DarkColorScheme = darkColorScheme(
