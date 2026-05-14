@@ -2,6 +2,7 @@ package com.limelight.utils;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Looper;
 import android.widget.Toast;
 
 import com.limelight.AppView;
@@ -22,9 +23,35 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.security.cert.CertificateEncodingException;
+import java.util.concurrent.CountDownLatch;
 
 public class ServerHelper {
     public static final String CONNECTION_TEST_SERVER = "android.conntest.moonlight-stream.org";
+
+    private static void runOnUiThreadBlocking(Activity activity, Runnable runnable) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            runnable.run();
+            return;
+        }
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    runnable.run();
+                } finally {
+                    latch.countDown();
+                }
+            }
+        });
+
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
 
     public static ComputerDetails.AddressTuple getCurrentAddressFromComputer(ComputerDetails computer) throws IOException {
         if (computer.activeAddress == null) {
@@ -87,15 +114,28 @@ public class ServerHelper {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                SpinnerDialog spinnerDialog = SpinnerDialog.displayDialog(parent,
-                        parent.getResources().getString(R.string.nettest_title_waiting),
-                        parent.getResources().getString(R.string.nettest_text_waiting),
-                        false);
+                final SpinnerDialog[] spinnerDialog = new SpinnerDialog[1];
+                runOnUiThreadBlocking(parent, new Runnable() {
+                    @Override
+                    public void run() {
+                        spinnerDialog[0] = SpinnerDialog.displayDialog(parent,
+                                parent.getResources().getString(R.string.nettest_title_waiting),
+                                parent.getResources().getString(R.string.nettest_text_waiting),
+                                false);
+                    }
+                });
 
                 int ret = MoonBridge.testClientConnectivity(CONNECTION_TEST_SERVER, 443, MoonBridge.ML_PORT_FLAG_ALL);
-                spinnerDialog.dismiss();
+                runOnUiThreadBlocking(parent, new Runnable() {
+                    @Override
+                    public void run() {
+                        if (spinnerDialog[0] != null) {
+                            spinnerDialog[0].dismiss();
+                        }
+                    }
+                });
 
-                String dialogSummary;
+                final String dialogSummary;
                 if (ret == MoonBridge.ML_TEST_RESULT_INCONCLUSIVE) {
                     dialogSummary = parent.getResources().getString(R.string.nettest_text_inconclusive);
                 }
@@ -103,14 +143,19 @@ public class ServerHelper {
                     dialogSummary = parent.getResources().getString(R.string.nettest_text_success);
                 }
                 else {
-                    dialogSummary = parent.getResources().getString(R.string.nettest_text_failure);
-                    dialogSummary += MoonBridge.stringifyPortFlags(ret, "\n");
+                    dialogSummary = parent.getResources().getString(R.string.nettest_text_failure)
+                            + MoonBridge.stringifyPortFlags(ret, "\n");
                 }
 
-                Dialog.displayDialog(parent,
-                        parent.getResources().getString(R.string.nettest_title_done),
-                        dialogSummary,
-                        false);
+                runOnUiThreadBlocking(parent, new Runnable() {
+                    @Override
+                    public void run() {
+                        Dialog.displayDialog(parent,
+                                parent.getResources().getString(R.string.nettest_title_done),
+                                dialogSummary,
+                                false);
+                    }
+                });
             }
         }).start();
     }
@@ -150,10 +195,6 @@ public class ServerHelper {
                 } catch (IOException | XmlPullParserException e) {
                     message = e.getMessage();
                     e.printStackTrace();
-                } finally {
-                    if (onComplete != null) {
-                        onComplete.run();
-                    }
                 }
 
                 final String toastMessage = message;
@@ -161,6 +202,9 @@ public class ServerHelper {
                     @Override
                     public void run() {
                         Toast.makeText(parent, toastMessage, Toast.LENGTH_LONG).show();
+                        if (onComplete != null) {
+                            onComplete.run();
+                        }
                     }
                 });
             }

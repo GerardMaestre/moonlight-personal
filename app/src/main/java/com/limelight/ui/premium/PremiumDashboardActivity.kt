@@ -2,6 +2,7 @@ package com.limelight.ui.premium
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -33,7 +34,19 @@ class PremiumDashboardActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         setContent {
-            val nav = androidx.compose.runtime.remember { AppNavigation() }
+            val nav = remember { AppNavigation() }
+            val powerState = remember { PowerControlState() }
+
+            // Load UpSnap config on first composition
+            LaunchedEffect(Unit) {
+                val config = UpSnapConfig.getInstance(this@PremiumDashboardActivity)
+                powerState.isConfigured = config.isConfigured
+                powerState.serverUrl = config.serverUrl
+                powerState.username = config.getUsername() ?: ""
+                powerState.password = "" // Never pre-fill password for security
+                powerState.deviceId = config.deviceId
+                powerState.isEnabled = config.isEnabled
+            }
 
             MoonlightTheme {
                 // Handle system back button
@@ -94,11 +107,9 @@ class PremiumDashboardActivity : ComponentActivity() {
                                      if (binder != null && computer != null) {
                                          val computerDetails = binder.getComputer(computer.id)
                                          if (computerDetails != null) {
-                                             // Convert GameInfo back to NvApp for ServerHelper
                                              val nvApp = com.limelight.nvstream.http.NvApp().apply {
                                                  setAppId(game.id)
                                                  setAppName(game.name)
-                                                 // Assume other fields if needed
                                              }
                                              com.limelight.utils.ServerHelper.doStart(
                                                  this@PremiumDashboardActivity,
@@ -112,12 +123,91 @@ class PremiumDashboardActivity : ComponentActivity() {
                             )
                         }
                         AppScreen.POWER_CONTROL -> {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Modo: Mi PC (Encender/Apagar)", color = MaterialTheme.colorScheme.onBackground)
-                                Button(onClick = { nav.goBack() }, modifier = Modifier.padding(top = 100.dp)) {
-                                    Text("Volver")
+                            PowerControlScreen(
+                                state = powerState,
+                                onBack = { nav.goBack() },
+                                onSaveConfig = { url, user, pass, deviceId ->
+                                    val config = UpSnapConfig.getInstance(this@PremiumDashboardActivity)
+                                    config.serverUrl = url
+                                    config.deviceId = deviceId
+                                    config.saveCredentials(user, pass)
+                                    config.isEnabled = true
+                                    
+                                    powerState.isConfigured = true
+                                    powerState.serverUrl = url
+                                    powerState.username = user
+                                    powerState.deviceId = deviceId
+                                    powerState.isEnabled = true
+                                    powerState.showConfig = false
+                                    powerState.statusMessage = "Configuración guardada ✓"
+                                },
+                                onWake = {
+                                    val config = UpSnapConfig.getInstance(this@PremiumDashboardActivity)
+                                    if (!config.isConfigured) {
+                                        powerState.statusMessage = "Error: UpSnap no configurado"
+                                        return@PowerControlScreen
+                                    }
+                                    
+                                    powerState.isWaking = true
+                                    powerState.statusMessage = null
+                                    
+                                    thread {
+                                        val username = config.getUsername() ?: ""
+                                        val password = config.getPassword() ?: ""
+                                        val client = UpSnapClient(config.serverUrl, username, password)
+                                        val result = client.wakeDevice(config.deviceId)
+                                        
+                                        runOnUiThread {
+                                            powerState.isWaking = false
+                                            when (result) {
+                                                is UpSnapClient.WakeResult.Success -> {
+                                                    powerState.statusMessage = "Señal WoL enviada correctamente ✓"
+                                                }
+                                                is UpSnapClient.WakeResult.Error -> {
+                                                    powerState.statusMessage = result.message
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                onClearConfig = {
+                                    val config = UpSnapConfig.getInstance(this@PremiumDashboardActivity)
+                                    config.clear()
+                                    powerState.isConfigured = false
+                                    powerState.serverUrl = ""
+                                    powerState.username = ""
+                                    powerState.password = ""
+                                    powerState.deviceId = ""
+                                    powerState.isEnabled = false
+                                    powerState.statusMessage = null
+                                    powerState.showConfig = true
+                                },
+                                onTestConnection = {
+                                    powerState.statusMessage = null
+                                    thread {
+                                        val client = UpSnapClient(
+                                            powerState.serverUrl,
+                                            powerState.username,
+                                            powerState.password
+                                        )
+                                        val devices = client.listDevices()
+                                        
+                                        runOnUiThread {
+                                            if (devices.isNotEmpty()) {
+                                                val names = devices.joinToString(", ") { it.second }
+                                                powerState.statusMessage = "Conexión OK ✓ Dispositivos: $names"
+                                                // Auto-fill device name if matching device found
+                                                val match = devices.find { it.first == powerState.deviceId }
+                                                if (match != null) {
+                                                    powerState.deviceName = match.second
+                                                }
+                                            } else {
+                                                powerState.statusMessage = "Error: No se pudo conectar o autenticar con UpSnap."
+                                            }
+                                        }
+                                    }
                                 }
-                            }
+                            )
                         }
                         AppScreen.PHOTO_SERVER -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

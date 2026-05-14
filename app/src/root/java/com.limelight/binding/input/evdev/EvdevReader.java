@@ -40,6 +40,11 @@ public class EvdevReader {
             return null;
         }
 
+        if (packetLength > EvdevEvent.EVDEV_MAX_EVENT_SIZE) {
+            LimeLog.warning("Oversized read: "+packetLength);
+            return null;
+        }
+
         // Read the rest of the packet
         bb = ByteBuffer.allocate(packetLength).order(ByteOrder.nativeOrder());
         readAll(input, bb);

@@ -66,7 +66,7 @@ public class ComputerManagerService extends Service {
 
     private ConnectivityManager.NetworkCallback networkCallback;
 
-    private DiscoveryService.DiscoveryBinder discoveryBinder;
+    private volatile DiscoveryService.DiscoveryBinder discoveryBinder;
     private final ServiceConnection discoveryServiceConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder binder) {
             synchronized (discoveryServiceConnection) {
@@ -202,7 +202,12 @@ public class ComputerManagerService extends Service {
             ComputerManagerService.this.listener = listener;
 
             // Start mDNS autodiscovery too
-            discoveryBinder.startDiscovery(MDNS_QUERY_PERIOD_MS);
+            DiscoveryService.DiscoveryBinder localDiscoveryBinder = discoveryBinder;
+            if (localDiscoveryBinder != null) {
+                localDiscoveryBinder.startDiscovery(MDNS_QUERY_PERIOD_MS);
+            } else {
+                LimeLog.warning("DiscoveryService not ready for startPolling");
+            }
 
             synchronized (pollingTuples) {
                 for (PollingTuple tuple : pollingTuples) {
@@ -307,9 +312,10 @@ public class ComputerManagerService extends Service {
 
     @Override
     public boolean onUnbind(Intent intent) {
-        if (discoveryBinder != null) {
+        DiscoveryService.DiscoveryBinder localDiscoveryBinder = discoveryBinder;
+        if (localDiscoveryBinder != null) {
             // Stop mDNS autodiscovery
-            discoveryBinder.stopDiscovery();
+            localDiscoveryBinder.stopDiscovery();
         }
 
         // Stop polling
@@ -777,7 +783,13 @@ public class ComputerManagerService extends Service {
     public void onDestroy() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-            connMgr.unregisterNetworkCallback(networkCallback);
+            if (networkCallback != null) {
+                try {
+                    connMgr.unregisterNetworkCallback(networkCallback);
+                } catch (IllegalArgumentException e) {
+                    LimeLog.warning("Network callback was not registered when service stopped");
+                }
+            }
         }
 
         if (discoveryBinder != null) {

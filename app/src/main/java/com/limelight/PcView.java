@@ -68,6 +68,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
     private PcGridAdapter pcGridAdapter;
     private ShortcutHelper shortcutHelper;
     private ComputerManagerService.ComputerManagerBinder managerBinder;
+    private boolean serviceBound;
     private boolean freezeUpdates, runningPolling, inForeground, completeOnCreateCalled;
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder binder) {
@@ -285,8 +286,8 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
         UiHelper.setLocale(this);
 
         // Bind to the computer manager service
-        bindService(new Intent(PcView.this, ComputerManagerService.class), serviceConnection,
-                Service.BIND_AUTO_CREATE);
+        serviceBound = bindService(new Intent(PcView.this, ComputerManagerService.class), serviceConnection,
+            Service.BIND_AUTO_CREATE);
 
         pcGridAdapter = new PcGridAdapter(this, PreferenceConfiguration.readPreferences(this));
 
@@ -342,8 +343,9 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
     public void onDestroy() {
         super.onDestroy();
 
-        if (managerBinder != null) {
+        if (serviceBound) {
             unbindService(serviceConnection);
+            serviceBound = false;
         }
     }
 

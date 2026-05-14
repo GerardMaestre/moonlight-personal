@@ -21,14 +21,14 @@ public class EvdevCaptureProvider extends InputCaptureProvider {
     private final EvdevListener listener;
     private final String libraryPath;
 
-    private boolean shutdown = false;
+    private volatile boolean shutdown = false;
     private InputStream evdevIn;
     private OutputStream evdevOut;
     private Process su;
     private ServerSocket servSock;
     private Socket evdevSock;
     private Activity activity;
-    private boolean started = false;
+    private volatile boolean started = false;
 
     private static final byte UNGRAB_REQUEST = 1;
     private static final byte REGRAB_REQUEST = 2;
@@ -271,7 +271,7 @@ public class EvdevCaptureProvider extends InputCaptureProvider {
     }
 
     @Override
-    public void enableCapture() {
+    public synchronized void enableCapture() {
         if (!started) {
             // Start the handler thread if it's our first time
             // capturing
@@ -285,7 +285,7 @@ public class EvdevCaptureProvider extends InputCaptureProvider {
     }
 
     @Override
-    public void destroy() {
+    public synchronized void destroy() {
         // We need to stop the process in this context otherwise
         // we could get stuck waiting on output from the process
         // in order to terminate it.
