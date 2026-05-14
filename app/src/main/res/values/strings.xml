@@ -173,6 +173,10 @@
 
     <!-- Preferences -->
     <string name="category_basic_settings">Basic Settings</string>
+    <string name="category_streaming_settings">Streaming</string>
+    <string name="category_streaming_host_settings">Streaming (Host)</string>
+    <string name="settings_search_hint">Search settings (name, description, key)</string>
+
     <string name="title_resolution_list">Video resolution</string>
     <string name="summary_resolution_list">Increase to improve image clarity. Decrease for better performance on lower end devices and slower networks.</string>
     <string name="title_native_res_dialog">Native Resolution Warning</string>
