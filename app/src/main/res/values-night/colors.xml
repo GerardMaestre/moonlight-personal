@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ml_primary">#C7B8FF</color>
+    <color name="ml_on_primary">#35008E</color>
+    <color name="ml_primary_container">#4D2AB5</color>
+    <color name="ml_on_primary_container">#EADDFF</color>
+    <color name="ml_secondary">#80DEEA</color>
+    <color name="ml_on_secondary">#00363D</color>
+    <color name="ml_secondary_container">#004F58</color>
+    <color name="ml_on_secondary_container">#B2EBF2</color>
+    <color name="ml_background">#0B0E14</color>
+    <color name="ml_on_background">#E6E1E5</color>
+    <color name="ml_surface">#121722</color>
+    <color name="ml_on_surface">#E6E1E5</color>
+    <color name="ml_surface_variant">#2A3140</color>
+    <color name="ml_on_surface_variant">#C2C8D3</color>
+    <color name="ml_outline">#8C92A0</color>
+    <color name="ml_error">#FFB4AB</color>
+    <color name="ml_on_error">#690005</color>
+    <color name="ml_state_pressed">#29FFFFFF</color>
+    <color name="ml_state_focused">#3DFFFFFF</color>
+    <color name="ml_state_disabled">#61FFFFFF</color>
+    <color name="ml_card_background">#1B2230</color>
+</resources>

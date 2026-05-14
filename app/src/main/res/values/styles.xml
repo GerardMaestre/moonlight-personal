@@ -1,37 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <style name="AppBaseTheme" parent="ThemeTokens" />
 
-    <!--
-        Base application theme, dependent on API level. This theme is replaced
-        by AppBaseTheme from res/values-vXX/styles.xml on newer devices.
-
-    -->
-    <style name="AppBaseTheme" parent="android:Theme">
-        <!--
-            Theme customizations available in newer API levels can go in
-            res/values-vXX/styles.xml, while customizations related to
-            backward-compatibility can go here.
-
-        -->
-    </style>
-
-    <!-- Application theme. -->
     <style name="AppTheme" parent="AppBaseTheme">
-        <!-- All customizations that are NOT specific to a particular API-level can go here. -->
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
 
     <style name="StreamBaseTheme" parent="AppBaseTheme">
-        <!-- Transparent streaming background to avoid extra overdraw -->
         <item name="android:windowBackground">@android:color/transparent</item>
     </style>
 
-    <!-- Stream activity theme -->
     <style name="StreamTheme" parent="StreamBaseTheme">
-        <!-- All customizations that are NOT specific to a particular API-level can go here. -->
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
     </style>
 
+    <style name="Widget.Moonlight.Button" parent="Widget.Material3.Button">
+        <item name="android:minHeight">@dimen/ml_button_min_height</item>
+        <item name="android:paddingStart">@dimen/ml_space_lg</item>
+        <item name="android:paddingEnd">@dimen/ml_space_lg</item>
+        <item name="android:textAppearance">@style/Typography.Moonlight.Body</item>
+        <item name="android:background">@drawable/bg_moonlight_button_stateful</item>
+    </style>
+
+    <style name="Widget.Moonlight.Card" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardCornerRadius">@dimen/ml_radius_md</item>
+        <item name="cardElevation">@dimen/ml_elevation_2</item>
+        <item name="cardBackgroundColor">@color/ml_card_background</item>
+        <item name="contentPadding">@dimen/ml_space_lg</item>
+    </style>
+
+    <style name="Widget.Moonlight.ListItem" parent="@android:style/Widget.ListView">
+        <item name="android:listSelector">@drawable/bg_moonlight_list_item_stateful</item>
+        <item name="android:dividerHeight">@dimen/ml_space_xs</item>
+    </style>
+
+    <style name="Widget.Moonlight.FocusableContainer">
+        <item name="android:background">@drawable/bg_moonlight_focusable_stateful</item>
+        <item name="android:padding">@dimen/ml_space_lg</item>
+    </style>
 </resources>

@@ -1,9 +1,24 @@
 <resources>
-
-    <!-- Default screen margins, per the Android Design guidelines. -->
     <dimen name="activity_horizontal_margin">16dp</dimen>
     <dimen name="activity_vertical_margin">16dp</dimen>
     <dimen name="tv_channel_logo_width">80dp</dimen>
     <dimen name="tv_channel_logo_height">80dp</dimen>
 
+    <dimen name="ml_space_xs">4dp</dimen>
+    <dimen name="ml_space_sm">8dp</dimen>
+    <dimen name="ml_space_md">12dp</dimen>
+    <dimen name="ml_space_lg">16dp</dimen>
+    <dimen name="ml_space_xl">24dp</dimen>
+
+    <dimen name="ml_radius_sm">8dp</dimen>
+    <dimen name="ml_radius_md">12dp</dimen>
+    <dimen name="ml_radius_lg">18dp</dimen>
+
+    <dimen name="ml_elevation_1">2dp</dimen>
+    <dimen name="ml_elevation_2">6dp</dimen>
+    <dimen name="ml_elevation_3">12dp</dimen>
+
+    <dimen name="ml_text_body">14sp</dimen>
+    <dimen name="ml_text_title">18sp</dimen>
+    <dimen name="ml_button_min_height">44dp</dimen>
 </resources>
