@@ -46,6 +46,8 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
         )
     }
 
+    fun getBinder(): ComputerManagerService.ComputerManagerBinder? = managerBinder
+
     override fun onCleared() {
         super.onCleared()
         managerBinder?.stopPolling()

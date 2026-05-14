@@ -3,24 +3,37 @@ package com.limelight.ui.premium
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.limelight.nvstream.http.ComputerDetails
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PremiumDashboard(
+    onBack: () -> Unit,
     onAddPc: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    onPcClick: (ComputerDetails) -> Unit,
+    viewModel: PremiumDashboardViewModel = viewModel()
 ) {
     PremiumMoonlightTheme {
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text("MOONLIGHT PREMIUM") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
                     actions = {
                         IconButton(onClick = onSettings) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings")
@@ -59,12 +72,12 @@ fun PremiumDashboard(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
                 
-                // Example items - later these will be populated from ComputerManager
-                item {
-                    PcCard(name = "Gaming Rig", status = "Ready to stream", isOnline = true, onClick = {})
-                }
-                item {
-                    PcCard(name = "Living Room PC", status = "Offline", isOnline = false, onClick = {})
+                items(viewModel.computers.size) { index ->
+                    val computer = viewModel.computers[index]
+                    PcCard(
+                        computer = computer,
+                        onClick = { onPcClick(computer) }
+                    )
                 }
             }
         }

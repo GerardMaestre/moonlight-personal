@@ -9,7 +9,7 @@
         <item name="colorOnSecondary">@color/ml_on_secondary</item>
         <item name="colorSecondaryContainer">@color/ml_secondary_container</item>
         <item name="colorOnSecondaryContainer">@color/ml_on_secondary_container</item>
-        <item name="colorBackground">@color/ml_background</item>
+        <item name="android:colorBackground">@color/ml_background</item>
         <item name="colorOnBackground">@color/ml_on_background</item>
         <item name="colorSurface">@color/ml_surface</item>
         <item name="colorOnSurface">@color/ml_on_surface</item>

@@ -6,25 +6,29 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.Monitor
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.limelight.nvstream.http.ComputerDetails
 
 @Composable
 fun PcCard(
-    name: String,
-    status: String,
-    isOnline: Boolean,
+    computer: ComputerDetails,
     onClick: () -> Unit
 ) {
+    val isOnline = computer.state == ComputerDetails.State.ONLINE
+    val statusText = when (computer.state) {
+        ComputerDetails.State.ONLINE -> "Ready to stream"
+        ComputerDetails.State.OFFLINE -> "Offline"
+        else -> "Unknown"
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -50,7 +54,7 @@ fun PcCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Computer,
+                    imageVector = Icons.Default.Monitor,
                     contentDescription = null,
                     tint = if (isOnline) Color(0xFF4CAF50) else Color.Gray,
                     modifier = Modifier.size(32.dp)
@@ -61,19 +65,19 @@ fun PcCard(
 
             Column {
                 Text(
-                    text = name,
+                    text = computer.name ?: "Unknown PC",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = status,
+                    text = statusText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1) )
+            Spacer(modifier = Modifier.weight(1f) )
 
             if (isOnline) {
                 Surface(

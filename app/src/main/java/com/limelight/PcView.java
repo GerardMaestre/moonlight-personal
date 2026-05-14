@@ -53,6 +53,7 @@ import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 import android.widget.AdapterView.AdapterContextMenuInfo;
@@ -63,7 +64,7 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 public class PcView extends Activity implements AdapterFragmentCallbacks {
-    private RelativeLayout noPcFoundLayout;
+    private LinearLayout noPcFoundLayout;
     private PcGridAdapter pcGridAdapter;
     private ShortcutHelper shortcutHelper;
     private ComputerManagerService.ComputerManagerBinder managerBinder;
@@ -185,7 +186,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
         customRemoteButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(PcView.this, CustomRemotePanelActivity.class));
+                startActivity(new Intent(PcView.this, com.limelight.ui.premium.PremiumDashboardActivity.class));
                 overridePendingTransition(R.anim.slide_in_up_medium, R.anim.fade_out_fast);
             }
         });

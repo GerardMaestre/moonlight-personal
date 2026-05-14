@@ -166,8 +166,9 @@ public class StreamSettings extends Activity {
 
         private void setValue(String preferenceKey, String value) {
             ListPreference pref = (ListPreference) findPreference(preferenceKey);
-
-            pref.setValue(value);
+            if (pref != null) {
+                pref.setValue(value);
+            }
         }
 
         private void appendPreferenceEntry(ListPreference pref, String newEntryName, String newEntryValue) {
@@ -184,6 +185,9 @@ public class StreamSettings extends Activity {
 
         private void addNativeResolutionEntry(int nativeWidth, int nativeHeight, boolean insetsRemoved, boolean portrait) {
             ListPreference pref = (ListPreference) findPreference(PreferenceConfiguration.RESOLUTION_PREF_STRING);
+            if (pref == null) {
+                return;
+            }
 
             String newName;
 
@@ -235,6 +239,9 @@ public class StreamSettings extends Activity {
             }
 
             ListPreference pref = (ListPreference) findPreference(PreferenceConfiguration.FPS_PREF_STRING);
+            if (pref == null) {
+                return;
+            }
             String fpsValue = Integer.toString(frameRateRounded);
             String fpsName = getResources().getString(R.string.resolution_prefix_native) +
                     " (" + fpsValue + " " + getResources().getString(R.string.fps_suffix_fps) + ")";
@@ -256,6 +263,9 @@ public class StreamSettings extends Activity {
             int matchingCount = 0;
 
             ListPreference pref = (ListPreference) findPreference(preferenceKey);
+            if (pref == null) {
+                return;
+            }
 
             // Count the number of matching entries we'll be removing
             for (CharSequence seq : pref.getEntryValues()) {
@@ -339,6 +349,12 @@ public class StreamSettings extends Activity {
             }
         }
 
+        private void safeRemovePreference(PreferenceGroup group, Preference pref) {
+            if (group != null && pref != null) {
+                group.removePreference(pref);
+            }
+        }
+
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             View view = super.onCreateView(inflater, container, savedInstanceState);
@@ -359,7 +375,7 @@ public class StreamSettings extends Activity {
             if (!getActivity().getPackageManager().hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)) {
                 PreferenceCategory category =
                         (PreferenceCategory) findPreference("category_onscreen_controls");
-                screen.removePreference(category);
+                safeRemovePreference(screen, category);
             }
 
             // Hide remote desktop mouse mode on pre-Oreo (which doesn't have pointer capture)
@@ -368,7 +384,8 @@ public class StreamSettings extends Activity {
                     getActivity().getPackageManager().hasSystemFeature("com.nvidia.feature.shield")) {
                 PreferenceCategory category =
                         (PreferenceCategory) findPreference("category_input_settings");
-                category.removePreference(findPreference("checkbox_absolute_mouse_mode"));
+                Preference pref = findPreference("checkbox_absolute_mouse_mode");
+                safeRemovePreference(category, pref);
             }
 
             // Hide gamepad motion sensor option when running on OSes before Android 12.
@@ -376,7 +393,8 @@ public class StreamSettings extends Activity {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
                 PreferenceCategory category =
                         (PreferenceCategory) findPreference("category_gamepad_settings");
-                category.removePreference(findPreference("checkbox_gamepad_motion_sensors"));
+                Preference pref = findPreference("checkbox_gamepad_motion_sensors");
+                safeRemovePreference(category, pref);
             }
 
             // Hide gamepad motion sensor fallback option if the device has no gyro or accelerometer
@@ -384,15 +402,18 @@ public class StreamSettings extends Activity {
                     !getActivity().getPackageManager().hasSystemFeature(PackageManager.FEATURE_SENSOR_GYROSCOPE)) {
                 PreferenceCategory category =
                         (PreferenceCategory) findPreference("category_gamepad_settings");
-                category.removePreference(findPreference("checkbox_gamepad_motion_fallback"));
+                Preference pref = findPreference("checkbox_gamepad_motion_fallback");
+                safeRemovePreference(category, pref);
             }
 
             // Hide USB driver options on devices without USB host support
             if (!getActivity().getPackageManager().hasSystemFeature(PackageManager.FEATURE_USB_HOST)) {
                 PreferenceCategory category =
                         (PreferenceCategory) findPreference("category_gamepad_settings");
-                category.removePreference(findPreference("checkbox_usb_bind_all"));
-                category.removePreference(findPreference("checkbox_usb_driver"));
+                Preference pref = findPreference("checkbox_usb_bind_all");
+                safeRemovePreference(category, pref);
+                pref = findPreference("checkbox_usb_driver");
+                safeRemovePreference(category, pref);
             }
 
             // Remove PiP mode on devices pre-Oreo, where the feature is not available (some low RAM devices),
@@ -402,31 +423,37 @@ public class StreamSettings extends Activity {
                     getActivity().getPackageManager().hasSystemFeature("com.amazon.software.fireos")) {
                 PreferenceCategory category =
                         (PreferenceCategory) findPreference("category_ui_settings");
-                category.removePreference(findPreference("checkbox_enable_pip"));
+                Preference pref = findPreference("checkbox_enable_pip");
+                safeRemovePreference(category, pref);
             }
 
             // Fire TV apps are not allowed to use WebViews or browsers, so hide the Help category
             /*if (getActivity().getPackageManager().hasSystemFeature("amazon.hardware.fire_tv")) {
                 PreferenceCategory category =
                         (PreferenceCategory) findPreference("category_help");
-                screen.removePreference(category);
+                safeRemovePreference(screen, category);
             }*/
             PreferenceCategory category_gamepad_settings =
                     (PreferenceCategory) findPreference("category_gamepad_settings");
             // Remove the vibration options if the device can't vibrate
             if (!((Vibrator)getActivity().getSystemService(Context.VIBRATOR_SERVICE)).hasVibrator()) {
-                category_gamepad_settings.removePreference(findPreference("checkbox_vibrate_fallback"));
-                category_gamepad_settings.removePreference(findPreference("seekbar_vibrate_fallback_strength"));
+                Preference pref = findPreference("checkbox_vibrate_fallback");
+                safeRemovePreference(category_gamepad_settings, pref);
+                pref = findPreference("seekbar_vibrate_fallback_strength");
+                safeRemovePreference(category_gamepad_settings, pref);
+
                 // The entire OSC category may have already been removed by the touchscreen check above
                 PreferenceCategory category = (PreferenceCategory) findPreference("category_onscreen_controls");
                 if (category != null) {
-                    category.removePreference(findPreference("checkbox_vibrate_osc"));
+                    pref = findPreference("checkbox_vibrate_osc");
+                    safeRemovePreference(category, pref);
                 }
             }
             else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
                     !((Vibrator)getActivity().getSystemService(Context.VIBRATOR_SERVICE)).hasAmplitudeControl() ) {
                 // Remove the vibration strength selector of the device doesn't have amplitude control
-                category_gamepad_settings.removePreference(findPreference("seekbar_vibrate_fallback_strength"));
+                Preference pref = findPreference("seekbar_vibrate_fallback_strength");
+                safeRemovePreference(category_gamepad_settings, pref);
             }
 
             Display display = getActivity().getWindowManager().getDefaultDisplay();
@@ -628,34 +655,42 @@ public class StreamSettings extends Activity {
 
             // Android L introduces the drop duplicate behavior of releaseOutputBuffer()
             // that the unlock FPS option relies on to not massively increase latency.
-            findPreference(PreferenceConfiguration.UNLOCK_FPS_STRING).setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
-                    // HACK: We need to let the preference change succeed before reinitializing to ensure
-                    // it's reflected in the new layout.
-                    final Handler h = new Handler();
-                    h.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            // Ensure the activity is still open when this timeout expires
-                            StreamSettings settingsActivity = (StreamSettings) SettingsFragment.this.getActivity();
-                            if (settingsActivity != null) {
-                                settingsActivity.reloadSettings();
+            Preference unlockFpsPref = findPreference(PreferenceConfiguration.UNLOCK_FPS_STRING);
+            if (unlockFpsPref != null) {
+                unlockFpsPref.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                    @Override
+                    public boolean onPreferenceChange(Preference preference, Object newValue) {
+                        // HACK: We need to let the preference change succeed before reinitializing to ensure
+                        // it's reflected in the new layout.
+                        final Handler h = new Handler();
+                        h.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                // Ensure the activity is still open when this timeout expires
+                                StreamSettings settingsActivity = (StreamSettings) SettingsFragment.this.getActivity();
+                                if (settingsActivity != null) {
+                                    settingsActivity.reloadSettings();
+                                }
                             }
-                        }
-                    }, 500);
+                        }, 500);
 
-                    // Allow the original preference change to take place
-                    return true;
-                }
-            });
+                        // Allow the original preference change to take place
+                        return true;
+                    }
+                });
+            }
 
             // Remove HDR preference for devices below Nougat
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
                 LimeLog.info("Excluding HDR toggle based on OS");
                 PreferenceCategory category =
                         (PreferenceCategory) findPreference("category_advanced_settings");
-                category.removePreference(findPreference("checkbox_enable_hdr"));
+                if (category != null) {
+                    Preference pref = findPreference("checkbox_enable_hdr");
+                    if (pref != null) {
+                        category.removePreference(pref);
+                    }
+                }
             }
             else {
                 Display.HdrCapabilities hdrCaps = display.getHdrCapabilities();
@@ -676,75 +711,91 @@ public class StreamSettings extends Activity {
                     LimeLog.info("Excluding HDR toggle based on display capabilities");
                     PreferenceCategory category =
                             (PreferenceCategory) findPreference("category_advanced_settings");
-                    category.removePreference(findPreference("checkbox_enable_hdr"));
+                    if (category != null) {
+                        Preference pref = findPreference("checkbox_enable_hdr");
+                        if (pref != null) {
+                            category.removePreference(pref);
+                        }
+                    }
                 }
                 else if (PreferenceConfiguration.isShieldAtvFirmwareWithBrokenHdr()) {
                     LimeLog.info("Disabling HDR toggle on old broken SHIELD TV firmware");
                     PreferenceCategory category =
                             (PreferenceCategory) findPreference("category_advanced_settings");
-                    CheckBoxPreference hdrPref = (CheckBoxPreference) category.findPreference("checkbox_enable_hdr");
-                    hdrPref.setEnabled(false);
-                    hdrPref.setChecked(false);
-                    hdrPref.setSummary("Update the firmware on your NVIDIA SHIELD Android TV to enable HDR");
+                    if (category != null) {
+                        CheckBoxPreference hdrPref = (CheckBoxPreference) category.findPreference("checkbox_enable_hdr");
+                        if (hdrPref != null) {
+                            hdrPref.setEnabled(false);
+                            hdrPref.setChecked(false);
+                            hdrPref.setSummary("Update the firmware on your NVIDIA SHIELD Android TV to enable HDR");
+                        }
+                    }
                 }
             }
 
             // Add a listener to the FPS and resolution preference
             // so the bitrate can be auto-adjusted
-            findPreference(PreferenceConfiguration.RESOLUTION_PREF_STRING).setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
-                    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(SettingsFragment.this.getActivity());
-                    String valueStr = (String) newValue;
+            Preference resPref = findPreference(PreferenceConfiguration.RESOLUTION_PREF_STRING);
+            if (resPref != null) {
+                resPref.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                    @Override
+                    public boolean onPreferenceChange(Preference preference, Object newValue) {
+                        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(SettingsFragment.this.getActivity());
+                        String valueStr = (String) newValue;
 
-                    // Detect if this value is the native resolution option
-                    CharSequence[] values = ((ListPreference)preference).getEntryValues();
-                    boolean isNativeRes = true;
-                    for (int i = 0; i < values.length; i++) {
-                        // Look for a match prior to the start of the native resolution entries
-                        if (valueStr.equals(values[i].toString()) && i < nativeResolutionStartIndex) {
-                            isNativeRes = false;
-                            break;
+                        // Detect if this value is the native resolution option
+                        CharSequence[] values = ((ListPreference)preference).getEntryValues();
+                        boolean isNativeRes = true;
+                        for (int i = 0; i < values.length; i++) {
+                            // Look for a match prior to the start of the native resolution entries
+                            if (valueStr.equals(values[i].toString()) && i < nativeResolutionStartIndex) {
+                                isNativeRes = false;
+                                break;
+                            }
                         }
+
+                        // If this is native resolution, show the warning dialog
+                        if (isNativeRes) {
+                            Dialog.displayDialog(getActivity(),
+                                    getResources().getString(R.string.title_native_res_dialog),
+                                    getResources().getString(R.string.text_native_res_dialog),
+                                    false);
+                        }
+
+                        // Write the new bitrate value
+                        resetBitrateToDefault(prefs, valueStr, null);
+
+                        // Allow the original preference change to take place
+                        return true;
                     }
+                });
+            }
 
-                    // If this is native resolution, show the warning dialog
-                    if (isNativeRes) {
-                        Dialog.displayDialog(getActivity(),
-                                getResources().getString(R.string.title_native_res_dialog),
-                                getResources().getString(R.string.text_native_res_dialog),
-                                false);
+            Preference fpsPref = findPreference(PreferenceConfiguration.FPS_PREF_STRING);
+            if (fpsPref != null) {
+                fpsPref.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+                    @Override
+                    public boolean onPreferenceChange(Preference preference, Object newValue) {
+                        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(SettingsFragment.this.getActivity());
+                        String valueStr = (String) newValue;
+
+                        // If this is native frame rate, show the warning dialog
+                        CharSequence[] values = ((ListPreference)preference).getEntryValues();
+                        if (nativeFramerateShown && values[values.length - 1].toString().equals(newValue.toString())) {
+                            Dialog.displayDialog(getActivity(),
+                                    getResources().getString(R.string.title_native_fps_dialog),
+                                    getResources().getString(R.string.text_native_res_dialog),
+                                    false);
+                        }
+
+                        // Write the new bitrate value
+                        resetBitrateToDefault(prefs, null, valueStr);
+
+                        // Allow the original preference change to take place
+                        return true;
                     }
-
-                    // Write the new bitrate value
-                    resetBitrateToDefault(prefs, valueStr, null);
-
-                    // Allow the original preference change to take place
-                    return true;
-                }
-            });
-            findPreference(PreferenceConfiguration.FPS_PREF_STRING).setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
-                @Override
-                public boolean onPreferenceChange(Preference preference, Object newValue) {
-                    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(SettingsFragment.this.getActivity());
-                    String valueStr = (String) newValue;
-
-                    // If this is native frame rate, show the warning dialog
-                    CharSequence[] values = ((ListPreference)preference).getEntryValues();
-                    if (nativeFramerateShown && values[values.length - 1].toString().equals(newValue.toString())) {
-                        Dialog.displayDialog(getActivity(),
-                                getResources().getString(R.string.title_native_fps_dialog),
-                                getResources().getString(R.string.text_native_res_dialog),
-                                false);
-                    }
-
-                    // Write the new bitrate value
-                    resetBitrateToDefault(prefs, null, valueStr);
-
-                    // Allow the original preference change to take place
-                    return true;
-                }
-            });
+                });
+            }
         }
     }
 }
