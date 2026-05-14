@@ -1,0 +1,178 @@
+package com.limelight.shared.ui.components
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Monitor
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.limelight.shared.model.ComputerInfo
+import com.limelight.shared.model.ComputerStatus
+import com.limelight.shared.ui.theme.MoonlightColors
+
+@Composable
+fun PcCard(
+    computer: ComputerInfo,
+    onClick: () -> Unit,
+    onWakeOnLan: (() -> Unit)? = null,
+    onPair: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    val statusColor by animateColorAsState(
+        targetValue = when (computer.status) {
+            ComputerStatus.ONLINE -> MoonlightColors.Green
+            ComputerStatus.OFFLINE -> MoonlightColors.Red
+            ComputerStatus.UNKNOWN -> MoonlightColors.Outline
+        },
+        animationSpec = tween(500)
+    )
+
+    val glowAlpha = if (computer.isOnline) 0.08f else 0f
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(100.dp) // Fixed height for a sleek look
+            .clip(RoundedCornerShape(28.dp))
+            .clickable(enabled = computer.isOnline && computer.isPaired) { onClick() },
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp // Flat Apple look
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Subtle gradient glow for online PCs
+            if (computer.isOnline) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    MoonlightColors.Purple.copy(alpha = 0.6f),
+                                    MoonlightColors.Cyan.copy(alpha = 0.6f)
+                                )
+                            )
+                        )
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Status indicator circle with icon
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(statusColor.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (computer.isStreaming) Icons.Default.PlayArrow
+                        else Icons.Default.Monitor,
+                        contentDescription = null,
+                        tint = statusColor,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = computer.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (computer.isOnline && !computer.isPaired) "Need pairing" else computer.statusLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (computer.isOnline && !computer.isPaired) MoonlightColors.Amber else statusColor.copy(alpha = 0.9f)
+                    )
+                    if (computer.localAddress != null) {
+                        Text(
+                            text = computer.localAddress,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+
+                // Pairing button
+                if (computer.isOnline && !computer.isPaired && onPair != null) {
+                    Button(
+                        onClick = onPair,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MoonlightColors.Purple.copy(alpha = 0.2f),
+                            contentColor = MoonlightColors.Purple
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("VINCULAR", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    // Status badge
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = statusColor.copy(alpha = 0.12f),
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text(
+                            text = when (computer.status) {
+                                ComputerStatus.ONLINE -> "ONLINE"
+                                ComputerStatus.OFFLINE -> "OFFLINE"
+                                ComputerStatus.UNKNOWN -> "..."
+                            },
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // WOL button for offline PCs
+                if (!computer.isOnline && onWakeOnLan != null && computer.macAddress != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(onClick = onWakeOnLan) {
+                        Icon(
+                            Icons.Default.PowerSettingsNew,
+                            contentDescription = "Wake on LAN",
+                            tint = MoonlightColors.Amber
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

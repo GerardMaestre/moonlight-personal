@@ -16,6 +16,9 @@
         <item name="android:windowNoTitle">true</item>
     </style>
 
+    <style name="Widget" />
+    <style name="Widget.Moonlight" />
+
     <style name="Widget.Moonlight.Button" parent="Widget.Material3.Button">
         <item name="android:minHeight">@dimen/ml_button_min_height</item>
         <item name="android:paddingStart">@dimen/ml_space_lg</item>
@@ -41,7 +44,7 @@
         <item name="android:padding">@dimen/ml_space_lg</item>
     </style>
 
-    <style name="UnifiedIconButton" parent="?android:attr/borderlessButtonStyle">
+    <style name="UnifiedIconButton" parent="android:Widget.Holo.Button.Borderless">
         <item name="android:stateListAnimator">@animator/button_touch_feedback</item>
     </style>
 </resources>
