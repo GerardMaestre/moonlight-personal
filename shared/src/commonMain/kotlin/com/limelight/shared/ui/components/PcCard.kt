@@ -30,6 +30,7 @@ fun PcCard(
     computer: ComputerInfo,
     onClick: () -> Unit,
     onWakeOnLan: (() -> Unit)? = null,
+    onPair: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val statusColor by animateColorAsState(
@@ -48,7 +49,7 @@ fun PcCard(
             .fillMaxWidth()
             .height(100.dp) // Fixed height for a sleek look
             .clip(RoundedCornerShape(28.dp))
-            .clickable(enabled = computer.isOnline) { onClick() },
+            .clickable(enabled = computer.isOnline && computer.isPaired) { onClick() },
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
@@ -112,9 +113,9 @@ fun PcCard(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = computer.statusLabel,
+                        text = if (computer.isOnline && !computer.isPaired) "Need pairing" else computer.statusLabel,
                         style = MaterialTheme.typography.bodySmall,
-                        color = statusColor.copy(alpha = 0.9f)
+                        color = if (computer.isOnline && !computer.isPaired) MoonlightColors.Amber else statusColor.copy(alpha = 0.9f)
                     )
                     if (computer.localAddress != null) {
                         Text(
@@ -125,23 +126,39 @@ fun PcCard(
                     }
                 }
 
-                // Status badge
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = statusColor.copy(alpha = 0.12f),
-                    modifier = Modifier.padding(start = 8.dp)
-                ) {
-                    Text(
-                        text = when (computer.status) {
-                            ComputerStatus.ONLINE -> "ONLINE"
-                            ComputerStatus.OFFLINE -> "OFFLINE"
-                            ComputerStatus.UNKNOWN -> "..."
-                        },
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = statusColor,
-                        fontWeight = FontWeight.Bold
-                    )
+                // Pairing button
+                if (computer.isOnline && !computer.isPaired && onPair != null) {
+                    Button(
+                        onClick = onPair,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MoonlightColors.Purple.copy(alpha = 0.2f),
+                            contentColor = MoonlightColors.Purple
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("VINCULAR", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    // Status badge
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = statusColor.copy(alpha = 0.12f),
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text(
+                            text = when (computer.status) {
+                                ComputerStatus.ONLINE -> "ONLINE"
+                                ComputerStatus.OFFLINE -> "OFFLINE"
+                                ComputerStatus.UNKNOWN -> "..."
+                            },
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
                 // WOL button for offline PCs

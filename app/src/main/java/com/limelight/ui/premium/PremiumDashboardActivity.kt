@@ -61,29 +61,26 @@ class PremiumDashboardActivity : ComponentActivity() {
                                         val intent = Intent(this@PremiumDashboardActivity, StreamSettings::class.java)
                                         startActivity(intent)
                                     }
-                                    override fun onPcClick(id: String, name: String) {
-                                        viewModel.dashboardState.selectedComputer = viewModel.dashboardState.computers.find { it.id == id }
-                                        viewModel.dashboardState.games.clear()
-                                        viewModel.dashboardState.games.addAll(listOf(
-                                            com.limelight.shared.model.GameInfo(1, "Steam", boxArtUrl = ""),
-                                            com.limelight.shared.model.GameInfo(2, "Desktop", boxArtUrl = ""),
-                                            com.limelight.shared.model.GameInfo(3, "Epic Games", boxArtUrl = "")
-                                        ))
-                                        nav.navigateTo(AppScreen.GAME_LIST)
-                                    }
-                                    override fun onApplyNetworkProfile(profileId: String) {}
-                                    override fun onWakeOnLan(macAddress: String) {
-                                        thread {
-                                            val fakeComputer = ComputerDetails().apply {
-                                                this.macAddress = macAddress
-                                                this.manualAddress = ComputerDetails.AddressTuple("255.255.255.255", 9)
-                                            }
-                                            WakeOnLanSender.sendWolPacket(fakeComputer)
-                                        }
-                                    }
-                                    override fun onNavigateBack() {
-                                        nav.goBack()
-                                    }
+                                     override fun onPcClick(id: String, name: String) {
+                                         viewModel.selectComputer(id)
+                                         nav.navigateTo(AppScreen.GAME_LIST)
+                                     }
+                                     override fun onPair(id: String) {
+                                         viewModel.pair(id, this@PremiumDashboardActivity)
+                                     }
+                                     override fun onApplyNetworkProfile(profileId: String) {}
+                                     override fun onWakeOnLan(macAddress: String) {
+                                         thread {
+                                             val fakeComputer = ComputerDetails().apply {
+                                                 this.macAddress = macAddress
+                                                 this.manualAddress = ComputerDetails.AddressTuple("255.255.255.255", 9)
+                                             }
+                                             WakeOnLanSender.sendWolPacket(fakeComputer)
+                                         }
+                                     }
+                                     override fun onNavigateBack() {
+                                         nav.goBack()
+                                     }
                                 }
                             )
                         }
@@ -92,11 +89,25 @@ class PremiumDashboardActivity : ComponentActivity() {
                                 state = viewModel.dashboardState,
                                 onBack = { nav.goBack() },
                                 onGameClick = { game ->
-                                    // Here we would eventually launch the native stream
-                                    val intent = Intent(this@PremiumDashboardActivity, AppView::class.java)
-                                    intent.putExtra(AppView.UUID_EXTRA, viewModel.dashboardState.selectedComputer?.id)
-                                    intent.putExtra(AppView.NAME_EXTRA, viewModel.dashboardState.selectedComputer?.name)
-                                    startActivity(intent)
+                                     val binder = viewModel.getBinder()
+                                     val computer = viewModel.dashboardState.selectedComputer
+                                     if (binder != null && computer != null) {
+                                         val computerDetails = binder.getComputer(computer.id)
+                                         if (computerDetails != null) {
+                                             // Convert GameInfo back to NvApp for ServerHelper
+                                             val nvApp = com.limelight.nvstream.http.NvApp().apply {
+                                                 setAppId(game.id)
+                                                 setAppName(game.name)
+                                                 // Assume other fields if needed
+                                             }
+                                             com.limelight.utils.ServerHelper.doStart(
+                                                 this@PremiumDashboardActivity,
+                                                 nvApp,
+                                                 computerDetails,
+                                                 binder
+                                             )
+                                         }
+                                     }
                                 }
                             )
                         }

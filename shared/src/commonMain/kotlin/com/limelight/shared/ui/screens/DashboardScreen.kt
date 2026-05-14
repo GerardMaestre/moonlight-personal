@@ -94,6 +94,9 @@ fun DashboardScreen(
                         },
                         onWakeOnLan = computer.macAddress?.let { mac ->
                             { actions.onWakeOnLan(mac) }
+                        },
+                        onPair = {
+                            actions.onPair(computer.id)
                         }
                     )
                 }

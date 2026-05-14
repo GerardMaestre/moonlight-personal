@@ -87,6 +87,9 @@ fun main() = application {
                                     ))
                                     nav.navigateTo(AppScreen.GAME_LIST)
                                 }
+                                override fun onPair(computerId: String) {
+                                    state.showMessage("Pairing not implemented on Desktop mock.")
+                                }
                                 override fun onApplyNetworkProfile(profileId: String) {}
                                 override fun onWakeOnLan(macAddress: String) {
                                     state.showMessage("Enviando señal de encendido (WOL) a $macAddress...")

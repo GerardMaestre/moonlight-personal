@@ -13,6 +13,7 @@ interface PlatformActions {
     fun onAddPcManual(ip: String)
     fun onOpenSettings()
     fun onPcClick(computerId: String, computerName: String)
+    fun onPair(computerId: String)
     fun onApplyNetworkProfile(profileId: String)
     fun onWakeOnLan(macAddress: String)
     fun onNavigateBack()
@@ -26,6 +27,7 @@ object PreviewPlatformActions : PlatformActions {
     override fun onAddPcManual(ip: String) {}
     override fun onOpenSettings() {}
     override fun onPcClick(computerId: String, computerName: String) {}
+    override fun onPair(computerId: String) {}
     override fun onApplyNetworkProfile(profileId: String) {}
     override fun onWakeOnLan(macAddress: String) {}
     override fun onNavigateBack() {}
