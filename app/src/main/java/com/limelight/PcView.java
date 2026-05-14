@@ -8,6 +8,8 @@ import com.limelight.binding.PlatformBinding;
 import com.limelight.binding.crypto.AndroidCryptoProvider;
 import com.limelight.computers.ComputerManagerListener;
 import com.limelight.computers.ComputerManagerService;
+import com.limelight.custom.CustomRemoteConfig;
+import com.limelight.custom.CustomRemotePanelActivity;
 import com.limelight.grid.PcGridAdapter;
 import com.limelight.grid.assets.DiskAssetLoader;
 import com.limelight.nvstream.http.ComputerDetails;
@@ -80,6 +82,8 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
                     // Now make the binder visible
                     managerBinder = localBinder;
 
+                    addCustomHostIfConfigured();
+
                     // Start updates
                     startComputerUpdates();
 
@@ -140,6 +144,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
         ImageButton settingsButton = findViewById(R.id.settingsButton);
         ImageButton addComputerButton = findViewById(R.id.manuallyAddPc);
         ImageButton helpButton = findViewById(R.id.helpButton);
+        ImageButton customRemoteButton = findViewById(R.id.customRemoteButton);
 
         settingsButton.setOnClickListener(new OnClickListener() {
             @Override
@@ -158,6 +163,12 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
             @Override
             public void onClick(View v) {
                 HelpLauncher.launchSetupGuide(PcView.this);
+            }
+        });
+        customRemoteButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(PcView.this, CustomRemotePanelActivity.class));
             }
         });
 
@@ -180,6 +191,22 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
             noPcFoundLayout.setVisibility(View.INVISIBLE);
         }
         pcGridAdapter.notifyDataSetChanged();
+    }
+
+    private void addCustomHostIfConfigured() {
+        CustomRemoteConfig config = CustomRemoteConfig.read(this);
+        if (!config.hasDirectHost() || managerBinder == null) {
+            return;
+        }
+
+        try {
+            LimeLog.info("Adding custom remote host from configured direct address: " + config.hostAddress);
+            managerBinder.addComputerBlocking(config.createComputerDetails());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (RuntimeException e) {
+            LimeLog.warning("Custom remote host configuration is invalid: " + e.getMessage());
+        }
     }
 
     @Override
@@ -307,6 +334,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
         UiHelper.showDecoderCrashDialog(this);
 
         inForeground = true;
+        addCustomHostIfConfigured();
         startComputerUpdates();
     }
 

@@ -625,33 +625,21 @@ public class ComputerManagerService extends Service {
     }
 
     private ComputerDetails parallelPollPc(ComputerDetails details) throws InterruptedException {
-        ParallelPollTuple localInfo = new ParallelPollTuple(details.localAddress, details);
         ParallelPollTuple manualInfo = new ParallelPollTuple(details.manualAddress, details);
+        ParallelPollTuple localInfo = new ParallelPollTuple(details.localAddress, details);
         ParallelPollTuple remoteInfo = new ParallelPollTuple(details.remoteAddress, details);
         ParallelPollTuple ipv6Info = new ParallelPollTuple(details.ipv6Address, details);
 
         // These must be started in order of precedence for the deduplication algorithm
         // to result in the correct behavior.
         HashSet<ComputerDetails.AddressTuple> uniqueAddresses = new HashSet<>();
-        startParallelPollThread(localInfo, uniqueAddresses);
         startParallelPollThread(manualInfo, uniqueAddresses);
+        startParallelPollThread(localInfo, uniqueAddresses);
         startParallelPollThread(remoteInfo, uniqueAddresses);
         startParallelPollThread(ipv6Info, uniqueAddresses);
 
         try {
-            // Check local first
-            synchronized (localInfo) {
-                while (!localInfo.complete) {
-                    localInfo.wait();
-                }
-
-                if (localInfo.returnedDetails != null) {
-                    localInfo.returnedDetails.activeAddress = localInfo.address;
-                    return localInfo.returnedDetails;
-                }
-            }
-
-            // Now manual
+            // Check manually configured addresses first for direct/Tailscale setups.
             synchronized (manualInfo) {
                 while (!manualInfo.complete) {
                     manualInfo.wait();
@@ -660,6 +648,18 @@ public class ComputerManagerService extends Service {
                 if (manualInfo.returnedDetails != null) {
                     manualInfo.returnedDetails.activeAddress = manualInfo.address;
                     return manualInfo.returnedDetails;
+                }
+            }
+
+            // Now local
+            synchronized (localInfo) {
+                while (!localInfo.complete) {
+                    localInfo.wait();
+                }
+
+                if (localInfo.returnedDetails != null) {
+                    localInfo.returnedDetails.activeAddress = localInfo.address;
+                    return localInfo.returnedDetails;
                 }
             }
 

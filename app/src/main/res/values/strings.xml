@@ -23,6 +23,34 @@
     <string name="pcview_menu_test_network">Test Network Connection</string>
     <string name="pcview_menu_details">View Details</string>
     <string name="pcview_menu_eol">NVIDIA GameStream End-of-Service</string>
+    <string name="custom_panel_title">Custom Remote Panel</string>
+    <string name="custom_panel_summary">Direct host, Bridge wakeup, Wake-On-LAN fallback, and quick network profiles.</string>
+    <string name="custom_enable_direct_host">Prefer direct host/Tailscale address</string>
+    <string name="custom_host_name">Host name</string>
+    <string name="custom_host_address">Tailscale IP, hostname, or manual address</string>
+    <string name="custom_http_port">HTTP port</string>
+    <string name="custom_https_port">HTTPS port</string>
+    <string name="custom_mac_address">MAC address for WOL, for example AA:BB:CC:DD:EE:FF</string>
+    <string name="custom_enable_bridge">Enable Bridge HTTP prepare request</string>
+    <string name="custom_bridge_url">Bridge URL</string>
+    <string name="custom_bridge_get">GET</string>
+    <string name="custom_bridge_post">POST</string>
+    <string name="custom_bridge_timeout">Bridge timeout in ms</string>
+    <string name="custom_save">Save</string>
+    <string name="custom_prepare_pc">Prepare PC</string>
+    <string name="custom_send_wol">WOL</string>
+    <string name="custom_profiles_title">Network profiles</string>
+    <string name="custom_profile_home">Casa</string>
+    <string name="custom_profile_5g">5G</string>
+    <string name="custom_profile_saver">Ahorro</string>
+    <string name="custom_status_idle">Ready.</string>
+    <string name="custom_status_saved">Configuration saved. Return to the PC list to refresh direct host polling.</string>
+    <string name="custom_status_bridge_not_configured">Bridge is not configured.</string>
+    <string name="custom_status_bridge_pending">Calling Bridge...</string>
+    <string name="custom_status_bridge_success">Bridge success: %1$s</string>
+    <string name="custom_status_bridge_error">Bridge error: %1$s</string>
+    <string name="custom_status_wol_missing">WOL needs direct host and MAC address.</string>
+    <string name="custom_status_wol_error">WOL error: %1$s</string>
 
     <!-- Network test strings -->
     <string name="nettest_title_waiting">Testing Network Connection</string>
