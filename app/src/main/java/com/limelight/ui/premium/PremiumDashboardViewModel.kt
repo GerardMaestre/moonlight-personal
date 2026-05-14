@@ -6,15 +6,19 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
-import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.AndroidViewModel
 import com.limelight.computers.ComputerManagerListener
 import com.limelight.computers.ComputerManagerService
 import com.limelight.nvstream.http.ComputerDetails
+import com.limelight.shared.model.ComputerInfo
+import com.limelight.shared.model.ComputerStatus
+import com.limelight.shared.ui.screens.DashboardState
 
 class PremiumDashboardViewModel(application: Application) : AndroidViewModel(application) {
     private var managerBinder: ComputerManagerService.ComputerManagerBinder? = null
-    val computers = mutableStateListOf<ComputerDetails>()
+    
+    // Use the shared state
+    val dashboardState = DashboardState()
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -23,12 +27,25 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
             
             binder.startPolling(object : ComputerManagerListener {
                 override fun notifyComputerUpdated(details: ComputerDetails) {
-                    val index = computers.indexOfFirst { it.uuid == details.uuid }
-                    if (index != -1) {
-                        computers[index] = details
-                    } else {
-                        computers.add(details)
+                    val status = when (details.state) {
+                        ComputerDetails.State.ONLINE -> ComputerStatus.ONLINE
+                        ComputerDetails.State.OFFLINE -> ComputerStatus.OFFLINE
+                        else -> ComputerStatus.UNKNOWN
                     }
+                    
+                    val info = ComputerInfo(
+                        id = details.uuid ?: "",
+                        name = details.name ?: "Unknown PC",
+                        status = status,
+                        localAddress = details.localAddress?.address,
+                        remoteAddress = details.remoteAddress?.address,
+                        macAddress = details.macAddress,
+                        isPaired = details.pairState == com.limelight.nvstream.http.PairingManager.PairState.PAIRED,
+                        runningGameId = details.runningGameId,
+                        isNvidiaServer = details.nvidiaServer
+                    )
+                    
+                    dashboardState.updateComputer(info)
                 }
             })
         }
