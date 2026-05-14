@@ -292,6 +292,7 @@ class PremiumDashboardActivity : ComponentActivity() {
                                 ) {
                                     Icon(androidx.compose.material.icons.Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(24.dp))
                                     Spacer(modifier = Modifier.width(12.dp))
+                                    Text("ARRANCAR SERVIDOR IMMICH", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                 }
                                 
                                 Spacer(modifier = Modifier.height(16.dp))
