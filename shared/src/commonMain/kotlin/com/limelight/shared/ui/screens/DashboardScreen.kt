@@ -14,10 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.limelight.shared.model.NetworkProfiles
 import com.limelight.shared.platform.PlatformActions
 import com.limelight.shared.platform.PreviewPlatformActions
-import com.limelight.shared.ui.components.NetworkProfileCard
 import com.limelight.shared.ui.components.PcCard
 import com.limelight.shared.ui.theme.MoonlightColors
 import com.limelight.shared.ui.theme.MoonlightTheme
@@ -101,43 +99,25 @@ fun DashboardScreen(
                     )
                 }
 
-                // ── Section: Network Profiles ───────────────────────
-                item {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    SectionHeader(
-                        title = "Network Profiles",
-                        icon = {
-                            Icon(
-                                Icons.Default.Tune,
-                                contentDescription = null,
-                                tint = MoonlightColors.Cyan,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                items(
-                    items = NetworkProfiles.all,
-                    key = { it.id }
-                ) { profile ->
-                    NetworkProfileCard(
-                        profile = profile,
-                        isSelected = state.selectedProfileId == profile.id,
-                        onClick = {
-                            state.selectProfile(profile.id)
-                            actions.onApplyNetworkProfile(profile.id)
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
-
                 // Bottom spacing for FAB
                 item {
                     Spacer(modifier = Modifier.height(80.dp))
                 }
             }
+        }
+
+        // Action Feedback Dialog
+        state.lastActionMessage?.let { message ->
+            AlertDialog(
+                onDismissRequest = { state.clearMessage() },
+                title = { Text("Acción Ejecutada") },
+                text = { Text(message) },
+                confirmButton = {
+                    TextButton(onClick = { state.clearMessage() }) {
+                        Text("Aceptar")
+                    }
+                }
+            )
         }
     }
 }

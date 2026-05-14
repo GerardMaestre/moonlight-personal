@@ -17,6 +17,16 @@ class DashboardState {
     val computers = mutableStateListOf<ComputerInfo>()
     var selectedProfileId by mutableStateOf(NetworkProfiles.HOME.id)
         private set
+    
+    var lastActionMessage by mutableStateOf<String?>(null)
+
+    fun showMessage(message: String) {
+        lastActionMessage = message
+    }
+
+    fun clearMessage() {
+        lastActionMessage = null
+    }
 
     fun selectProfile(profileId: String) {
         selectedProfileId = profileId
