@@ -36,6 +36,15 @@ You can find the latest compiled version in the `app/build/outputs/apk/nonRoot/d
 
 ---
 
+
+## 🎨 UI Architecture Reference
+
+For non-streaming UI architecture, reusable UI states/components, and migration/motion guidelines, see:
+
+- [`docs/ui/non-streaming-ui-guidelines.md`](docs/ui/non-streaming-ui-guidelines.md)
+
+---
+
 ## 👨‍💻 Author & Contributions
 
 Customized and maintained by **Gerard Maestre**.
