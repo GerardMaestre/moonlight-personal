@@ -19,6 +19,7 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
     
     // Use the shared state
     val dashboardState = DashboardState()
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -45,7 +46,9 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
                         isNvidiaServer = details.nvidiaServer
                     )
                     
-                    dashboardState.updateComputer(info)
+                    mainHandler.post {
+                        dashboardState.updateComputer(info)
+                    }
                 }
             })
         }
@@ -64,6 +67,28 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
     }
 
     fun getBinder(): ComputerManagerService.ComputerManagerBinder? = managerBinder
+    
+    fun addComputer(ip: String) {
+        val binder = managerBinder ?: return
+        kotlin.concurrent.thread {
+            try {
+                val details = ComputerDetails()
+                details.manualAddress = ComputerDetails.AddressTuple(ip, com.limelight.nvstream.http.NvHTTP.DEFAULT_HTTP_PORT)
+                val success = binder.addComputerBlocking(details)
+                mainHandler.post {
+                    if (success) {
+                        dashboardState.showMessage("Ordenador añadido correctamente.")
+                    } else {
+                        dashboardState.showMessage("No se pudo encontrar el ordenador en la IP: $ip")
+                    }
+                }
+            } catch (e: Exception) {
+                mainHandler.post {
+                    dashboardState.showMessage("Error al añadir: ${e.message}")
+                }
+            }
+        }
+    }
 
     override fun onCleared() {
         super.onCleared()

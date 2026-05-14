@@ -15,7 +15,16 @@ import com.limelight.shared.ui.screens.DashboardScreen
 import com.limelight.shared.ui.screens.AppNavigation
 import com.limelight.shared.ui.screens.AppScreen
 import com.limelight.shared.ui.screens.MainMenuScreen
+import com.limelight.shared.ui.screens.GameListScreen
 import com.limelight.shared.ui.theme.MoonlightTheme
+import com.limelight.computers.ComputerManagerService
+import com.limelight.preferences.AddComputerManually
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 class PremiumDashboardActivity : ComponentActivity() {
     private val viewModel: PremiumDashboardViewModel by viewModels()
@@ -23,50 +32,18 @@ class PremiumDashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val actions = object : PlatformActions {
-            override fun onAddPc() {
-                val intent = Intent(this@PremiumDashboardActivity, ComputerAddActivity::class.java)
-                startActivity(intent)
-            }
-
-            override fun onOpenSettings() {
-                val intent = Intent(this@PremiumDashboardActivity, StreamSettings::class.java)
-                startActivity(intent)
-            }
-
-            override fun onPcClick(computerId: String, computerName: String) {
-                val intent = Intent(this@PremiumDashboardActivity, AppView::class.java)
-                intent.putExtra(ComputerManagerService.EXTRA_HOST_ID, computerId)
-                intent.putExtra(AppView.EXTRA_HOST_NAME, computerName)
-                startActivity(intent)
-            }
-
-            override fun onApplyNetworkProfile(profileId: String) {
-                // Feature removed
-            }
-
-            override fun onWakeOnLan(macAddress: String) {
-                thread {
-                    val fakeComputer = ComputerDetails().apply {
-                        this.macAddress = macAddress
-                        this.manualAddress = ComputerDetails.AddressTuple("255.255.255.255", 9)
-                    }
-                    WakeOnLanSender.sendWolPacket(fakeComputer)
-                }
-            }
-
-            override fun onNavigateBack() {
-                // Now handled by the navigation state
-            }
-        }
-
         setContent {
             val nav = androidx.compose.runtime.remember { AppNavigation() }
 
             MoonlightTheme {
-                androidx.compose.material3.Surface(
-                    modifier = androidx.compose.ui.Modifier.fillMaxSize(),
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.background
+                // Handle system back button
+                androidx.activity.compose.BackHandler(enabled = nav.currentScreen != AppScreen.MAIN_MENU) {
+                    nav.goBack()
+                }
+
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     when (nav.currentScreen) {
                         AppScreen.MAIN_MENU -> {
@@ -75,30 +52,67 @@ class PremiumDashboardActivity : ComponentActivity() {
                             )
                         }
                         AppScreen.MOONLIGHT -> {
-                            // We need to pass the real goBack action to the platform actions
-                            val moonlightActions = object : PlatformActions by actions {
-                                override fun onNavigateBack() {
-                                    nav.goBack()
-                                }
-                            }
                             DashboardScreen(
                                 state = viewModel.dashboardState,
-                                actions = moonlightActions
+                                actions = object : PlatformActions {
+                                    override fun onAddPc() {}
+                                    override fun onAddPcManual(ip: String) { viewModel.addComputer(ip) }
+                                    override fun onOpenSettings() {
+                                        val intent = Intent(this@PremiumDashboardActivity, StreamSettings::class.java)
+                                        startActivity(intent)
+                                    }
+                                    override fun onPcClick(id: String, name: String) {
+                                        viewModel.dashboardState.selectedComputer = viewModel.dashboardState.computers.find { it.id == id }
+                                        viewModel.dashboardState.games.clear()
+                                        viewModel.dashboardState.games.addAll(listOf(
+                                            com.limelight.shared.model.GameInfo(1, "Steam", boxArtUrl = ""),
+                                            com.limelight.shared.model.GameInfo(2, "Desktop", boxArtUrl = ""),
+                                            com.limelight.shared.model.GameInfo(3, "Epic Games", boxArtUrl = "")
+                                        ))
+                                        nav.navigateTo(AppScreen.GAME_LIST)
+                                    }
+                                    override fun onApplyNetworkProfile(profileId: String) {}
+                                    override fun onWakeOnLan(macAddress: String) {
+                                        thread {
+                                            val fakeComputer = ComputerDetails().apply {
+                                                this.macAddress = macAddress
+                                                this.manualAddress = ComputerDetails.AddressTuple("255.255.255.255", 9)
+                                            }
+                                            WakeOnLanSender.sendWolPacket(fakeComputer)
+                                        }
+                                    }
+                                    override fun onNavigateBack() {
+                                        nav.goBack()
+                                    }
+                                }
+                            )
+                        }
+                        AppScreen.GAME_LIST -> {
+                            GameListScreen(
+                                state = viewModel.dashboardState,
+                                onBack = { nav.goBack() },
+                                onGameClick = { game ->
+                                    // Here we would eventually launch the native stream
+                                    val intent = Intent(this@PremiumDashboardActivity, AppView::class.java)
+                                    intent.putExtra(AppView.UUID_EXTRA, viewModel.dashboardState.selectedComputer?.id)
+                                    intent.putExtra(AppView.NAME_EXTRA, viewModel.dashboardState.selectedComputer?.name)
+                                    startActivity(intent)
+                                }
                             )
                         }
                         AppScreen.POWER_CONTROL -> {
-                            androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                androidx.compose.material3.Text("Modo: Mi PC (Encender/Apagar)", color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground)
-                                androidx.compose.material3.Button(onClick = { nav.goBack() }, modifier = androidx.compose.ui.Modifier.padding(top = 100.dp)) {
-                                    androidx.compose.material3.Text("Volver")
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Modo: Mi PC (Encender/Apagar)", color = MaterialTheme.colorScheme.onBackground)
+                                Button(onClick = { nav.goBack() }, modifier = Modifier.padding(top = 100.dp)) {
+                                    Text("Volver")
                                 }
                             }
                         }
                         AppScreen.PHOTO_SERVER -> {
-                            androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                                androidx.compose.material3.Text("Modo: Servidor de Fotos", color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground)
-                                androidx.compose.material3.Button(onClick = { nav.goBack() }, modifier = androidx.compose.ui.Modifier.padding(top = 100.dp)) {
-                                    androidx.compose.material3.Text("Volver")
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Modo: Servidor de Fotos", color = MaterialTheme.colorScheme.onBackground)
+                                Button(onClick = { nav.goBack() }, modifier = Modifier.padding(top = 100.dp)) {
+                                    Text("Volver")
                                 }
                             }
                         }

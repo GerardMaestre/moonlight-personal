@@ -10,10 +10,13 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.limelight.shared.model.ComputerInfo
+import com.limelight.shared.model.ComputerStatus
 import com.limelight.shared.platform.PlatformActions
 import com.limelight.shared.platform.PreviewPlatformActions
 import com.limelight.shared.ui.components.PcCard
@@ -46,7 +49,7 @@ fun DashboardScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = actions::onAddPc) {
+                        IconButton(onClick = { state.isAddPcDialogOpen = true }) {
                             Icon(Icons.Default.Add, contentDescription = "Add PC")
                         }
                         IconButton(onClick = actions::onOpenSettings) {
@@ -109,6 +112,45 @@ fun DashboardScreen(
                 confirmButton = {
                     TextButton(onClick = { state.clearMessage() }) {
                         Text("Aceptar")
+                    }
+                }
+            )
+        }
+
+        // Add PC Dialog
+        if (state.isAddPcDialogOpen) {
+            var ipAddress by remember { mutableStateOf("") }
+            AlertDialog(
+                onDismissRequest = { state.isAddPcDialogOpen = false },
+                title = { Text("Añadir PC (IP Tailscale)") },
+                text = {
+                    Column {
+                        Text("Introduce la dirección IP de tu ordenador:")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextField(
+                            value = ipAddress,
+                            onValueChange = { ipAddress = it },
+                            placeholder = { Text("Ej: 100.x.y.z") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (ipAddress.isNotBlank()) {
+                                actions.onAddPcManual(ipAddress)
+                                state.isAddPcDialogOpen = false
+                            }
+                        }
+                    ) {
+                        Text("Añadir")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { state.isAddPcDialogOpen = false }) {
+                        Text("Cancelar")
                     }
                 }
             )

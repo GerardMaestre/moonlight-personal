@@ -2,26 +2,30 @@ package com.limelight.shared.ui.screens
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
 
 enum class AppScreen {
     MAIN_MENU,
     MOONLIGHT,
+    GAME_LIST,
     POWER_CONTROL,
     PHOTO_SERVER
 }
 
 class AppNavigation {
-    var currentScreen by mutableStateOf(AppScreen.MAIN_MENU)
-        private set
+    private val screenStack = mutableStateListOf(AppScreen.MAIN_MENU)
+    
+    val currentScreen: AppScreen
+        get() = screenStack.last()
 
     fun navigateTo(screen: AppScreen) {
-        currentScreen = screen
+        screenStack.add(screen)
     }
 
     fun goBack() {
-        if (currentScreen != AppScreen.MAIN_MENU) {
-            currentScreen = AppScreen.MAIN_MENU
+        if (screenStack.size > 1) {
+            screenStack.removeAt(screenStack.size - 1)
         }
     }
 }

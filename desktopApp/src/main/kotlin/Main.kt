@@ -17,6 +17,7 @@ import com.limelight.shared.ui.screens.DashboardState
 import com.limelight.shared.ui.screens.AppNavigation
 import com.limelight.shared.ui.screens.AppScreen
 import com.limelight.shared.ui.screens.MainMenuScreen
+import com.limelight.shared.ui.screens.GameListScreen
 import com.limelight.shared.ui.theme.MoonlightTheme
 
 import kotlinx.coroutines.*
@@ -58,20 +59,35 @@ fun main() = application {
                     }
                     AppScreen.MOONLIGHT -> {
                         DashboardScreen(
-                    state = state,
-                    actions = object : com.limelight.shared.platform.PlatformActions {
-                        override fun onAddPc() {
-                            state.showMessage("Buscando nuevos PCs en la red local...")
-                        }
-                        override fun onOpenSettings() {
-                            state.showMessage("Abriendo ajustes de streaming...")
-                        }
-                        override fun onPcClick(computerId: String, computerName: String) {
-                                    state.showMessage("Intentando conectar a $computerName ($computerId)...")
+                            state = state,
+                            actions = object : com.limelight.shared.platform.PlatformActions {
+                                override fun onAddPc() {
+                                    // Handled by shared UI dialog
                                 }
-                                override fun onApplyNetworkProfile(profileId: String) {
-                                    // Removed
+                                override fun onAddPcManual(ip: String) {
+                                    state.updateComputer(com.limelight.shared.model.ComputerInfo(
+                                        id = ip,
+                                        name = "PC Manual ($ip)",
+                                        status = com.limelight.shared.model.ComputerStatus.ONLINE,
+                                        localAddress = ip,
+                                        isPaired = true
+                                    ))
                                 }
+                                override fun onOpenSettings() {
+                                    state.showMessage("Abriendo ajustes de streaming...")
+                                }
+                                override fun onPcClick(computerId: String, computerName: String) {
+                                    state.selectedComputer = state.computers.find { it.id == computerId }
+                                    // Mock games for desktop
+                                    state.games.clear()
+                                    state.games.addAll(listOf(
+                                        com.limelight.shared.model.GameInfo(1, "Steam", boxArtUrl = ""),
+                                        com.limelight.shared.model.GameInfo(2, "Desktop", boxArtUrl = ""),
+                                        com.limelight.shared.model.GameInfo(3, "Epic Games", boxArtUrl = "")
+                                    ))
+                                    nav.navigateTo(AppScreen.GAME_LIST)
+                                }
+                                override fun onApplyNetworkProfile(profileId: String) {}
                                 override fun onWakeOnLan(macAddress: String) {
                                     state.showMessage("Enviando señal de encendido (WOL) a $macAddress...")
                                     scope.launch(Dispatchers.IO) {
@@ -81,6 +97,15 @@ fun main() = application {
                                 override fun onNavigateBack() {
                                     nav.goBack()
                                 }
+                            }
+                        )
+                    }
+                    AppScreen.GAME_LIST -> {
+                        GameListScreen(
+                            state = state,
+                            onBack = { nav.goBack() },
+                            onGameClick = { game ->
+                                state.showMessage("Iniciando ${game.name}...")
                             }
                         )
                     }

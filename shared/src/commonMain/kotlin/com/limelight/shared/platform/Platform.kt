@@ -10,6 +10,7 @@ expect fun getPlatformName(): String
  */
 interface PlatformActions {
     fun onAddPc()
+    fun onAddPcManual(ip: String)
     fun onOpenSettings()
     fun onPcClick(computerId: String, computerName: String)
     fun onApplyNetworkProfile(profileId: String)
@@ -22,6 +23,7 @@ interface PlatformActions {
  */
 object PreviewPlatformActions : PlatformActions {
     override fun onAddPc() {}
+    override fun onAddPcManual(ip: String) {}
     override fun onOpenSettings() {}
     override fun onPcClick(computerId: String, computerName: String) {}
     override fun onApplyNetworkProfile(profileId: String) {}
