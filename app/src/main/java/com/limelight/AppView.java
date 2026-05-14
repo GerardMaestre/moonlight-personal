@@ -303,9 +303,19 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
         showHiddenApps = getIntent().getBooleanExtra(SHOW_HIDDEN_APPS_EXTRA, false);
         uuidString = getIntent().getStringExtra(UUID_EXTRA);
 
+        if (uuidString == null || uuidString.trim().isEmpty()) {
+            LimeLog.severe("AppView launched without a valid computer UUID");
+            finish();
+            return;
+        }
+
         SharedPreferences hiddenAppsPrefs = getSharedPreferences(HIDDEN_APPS_PREF_FILENAME, MODE_PRIVATE);
         for (String hiddenAppIdStr : hiddenAppsPrefs.getStringSet(uuidString, new HashSet<String>())) {
-            hiddenAppIds.add(Integer.parseInt(hiddenAppIdStr));
+            try {
+                hiddenAppIds.add(Integer.parseInt(hiddenAppIdStr));
+            } catch (NumberFormatException e) {
+                LimeLog.warning("Ignoring invalid hidden app ID: " + hiddenAppIdStr);
+            }
         }
 
         String computerName = getIntent().getStringExtra(NAME_EXTRA);
