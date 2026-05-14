@@ -20,6 +20,8 @@ import com.limelight.shared.ui.screens.GameListScreen
 import com.limelight.shared.ui.theme.MoonlightTheme
 import com.limelight.computers.ComputerManagerService
 import com.limelight.preferences.AddComputerManually
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,7 +45,8 @@ class PremiumDashboardActivity : ComponentActivity() {
                 powerState.isConfigured = config.isConfigured
                 powerState.serverUrl = config.serverUrl
                 powerState.username = config.getUsername() ?: ""
-                powerState.password = "" // Never pre-fill password for security
+                // We load the password from secure storage so it stays in the fields
+                powerState.password = config.getPassword() ?: "" 
                 powerState.deviceId = config.deviceId
                 powerState.isEnabled = config.isEnabled
             }
@@ -136,6 +139,7 @@ class PremiumDashboardActivity : ComponentActivity() {
                                     powerState.isConfigured = true
                                     powerState.serverUrl = url
                                     powerState.username = user
+                                    powerState.password = pass // Keep it in state
                                     powerState.deviceId = deviceId
                                     powerState.isEnabled = true
                                     powerState.showConfig = false
@@ -182,27 +186,70 @@ class PremiumDashboardActivity : ComponentActivity() {
                                     powerState.statusMessage = null
                                     powerState.showConfig = true
                                 },
-                                onTestConnection = {
+                                onTestConnection = { url, user, password ->
+                                    powerState.isTestingConnection = true
                                     powerState.statusMessage = null
+                                    powerState.availableDevices.clear()
+                                    
                                     thread {
-                                        val client = UpSnapClient(
-                                            powerState.serverUrl,
-                                            powerState.username,
-                                            powerState.password
-                                        )
+                                        val client = UpSnapClient(url, user, password)
                                         val devices = client.listDevices()
                                         
                                         runOnUiThread {
+                                            powerState.isTestingConnection = false
                                             if (devices.isNotEmpty()) {
-                                                val names = devices.joinToString(", ") { it.second }
-                                                powerState.statusMessage = "Conexión OK ✓ Dispositivos: $names"
-                                                // Auto-fill device name if matching device found
-                                                val match = devices.find { it.first == powerState.deviceId }
-                                                if (match != null) {
-                                                    powerState.deviceName = match.second
-                                                }
+                                                powerState.availableDevices.addAll(devices)
+                                                powerState.statusMessage = "¡Dispositivos encontrados! Selecciona el tuyo abajo ✓"
                                             } else {
-                                                powerState.statusMessage = "Error: No se pudo conectar o autenticar con UpSnap."
+                                                // If list is empty, it could be wrong auth or wrong URL
+                                                powerState.statusMessage = "Error: No se han encontrado dispositivos. Revisa usuario, contraseña y URL."
+                                            }
+                                        }
+                                    }
+                                },
+                                onStartImmich = {
+                                    val config = UpSnapConfig.getInstance(this@PremiumDashboardActivity)
+                                    val upsnapUrl = config.serverUrl ?: ""
+                                    if (upsnapUrl.isEmpty()) {
+                                        powerState.statusMessage = "Error: UpSnap no configurado."
+                                        return@PowerControlScreen
+                                    }
+                                    
+                                    powerState.statusMessage = "Iniciando Immich en el servidor..."
+                                    thread {
+                                        try {
+                                            val uri = java.net.URI(upsnapUrl)
+                                            val scheme = uri.scheme ?: "http"
+                                            val host = uri.host ?: upsnapUrl
+                                            val streamDeckUrl = "$scheme://$host:3000/api/run-script"
+                                            
+                                            val json = org.json.JSONObject()
+                                            json.put("carpeta", "07_Personalizacion")
+                                            json.put("archivo", "fotos.bat")
+                                            
+                                            val mediaType = "application/json; charset=utf-8".toMediaType()
+                                            val body = json.toString().toRequestBody(mediaType)
+                                            
+                                            val request = okhttp3.Request.Builder()
+                                                .url(streamDeckUrl)
+                                                .post(body)
+                                                .addHeader("Authorization", "Bearer CasaGerard")
+                                                .build()
+                                                
+                                            val client = okhttp3.OkHttpClient()
+                                            val response = client.newCall(request).execute()
+                                            
+                                            runOnUiThread {
+                                                if (response.isSuccessful) {
+                                                    powerState.statusMessage = "¡Servidor Immich arrancado correctamente! ✓"
+                                                } else {
+                                                    powerState.statusMessage = "Error al iniciar Immich: HTTP ${response.code}"
+                                                }
+                                            }
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                            runOnUiThread {
+                                                powerState.statusMessage = "Error de red: No se pudo contactar con Stream Deck local (puerto 3000)."
                                             }
                                         }
                                     }

@@ -43,9 +43,16 @@ class UpSnapClient(
      */
     fun wakeDevice(deviceId: String): WakeResult {
         return try {
-            // Step 1: Authenticate to get JWT token
-            val token = authenticate()
-                ?: return WakeResult.Error("Error de autenticación. Verifica usuario y contraseña.")
+            // Step 1: Authenticate to get JWT token (only if credentials provided)
+            val token = if (username.isNotBlank()) {
+                authenticate()
+            } else {
+                ""
+            }
+            
+            if (username.isNotBlank() && token.isEmpty()) {
+                return WakeResult.Error("Error de autenticación. Verifica usuario y contraseña.")
+            }
 
             // Step 2: Send wake request
             sendWakeRequest(deviceId, token)
@@ -65,9 +72,13 @@ class UpSnapClient(
      */
     fun listDevices(): List<Pair<String, String>> {
         return try {
-            val token = authenticate() ?: return emptyList()
+            val token = if (username.isNotBlank()) authenticate() else ""
+            if (username.isNotBlank() && token.isEmpty()) return emptyList()
             
-            val url = URL("$serverUrl/api/collections/devices/records")
+            val base = serverUrl.trim().let { 
+                if (!it.startsWith("http")) "http://$it" else it 
+            }.trimEnd('/')
+            val url = URL("$base/api/collections/devices/records")
             val conn = createConnection(url)
             conn.requestMethod = "GET"
             conn.setRequestProperty("Authorization", "Bearer $token")
@@ -93,31 +104,63 @@ class UpSnapClient(
         }
     }
 
-    private fun authenticate(): String? {
-        val url = URL("$serverUrl/api/collections/users/auth-with-password")
-        val conn = createConnection(url)
+    private fun authenticate(url: URL? = null): String {
+        val authUrl = try {
+            val base = serverUrl.trim().let { 
+                if (!it.startsWith("http")) "http://$it" else it 
+            }.trimEnd('/')
+            url ?: URL("$base/api/collections/users/auth-with-password")
+        } catch (e: Exception) {
+            Log.e(TAG, "Invalid URL: $serverUrl", e)
+            return ""
+        }
+        
+        val conn = createConnection(authUrl)
         conn.requestMethod = "POST"
         conn.doOutput = true
         conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("Accept", "application/json")
         conn.connectTimeout = CONNECT_TIMEOUT
         conn.readTimeout = READ_TIMEOUT
 
         val body = JSONObject().apply {
-            put("identity", username)
+            if (authUrl.toString().contains("/admins/")) {
+                put("email", username.trim())
+            } else {
+                put("identity", username.trim())
+            }
             put("password", password)
         }
 
-        OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
-            writer.write(body.toString())
-            writer.flush()
+        try {
+            OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
+                writer.write(body.toString())
+                writer.flush()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write body to $authUrl", e)
+            return ""
         }
 
         return if (conn.responseCode == 200) {
             val response = BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8)).readText()
-            JSONObject(response).optString("token", null)
+            JSONObject(response).optString("token", "")
+        } else if (conn.responseCode == 400 && authUrl.toString().contains("/collections/users/")) {
+            // Try modern admin auth fallback (PocketBase v0.23+)
+            Log.i(TAG, "User auth 400, trying _superusers auth...")
+            val superUserUrl = URL(authUrl.toString().replace("/collections/users/", "/collections/_superusers/"))
+            return authenticate(superUserUrl)
+        } else if (conn.responseCode == 404 && authUrl.toString().contains("/collections/_superusers/")) {
+            // Try legacy admin auth fallback (PocketBase < v0.23)
+            Log.i(TAG, "Superusers auth 404, trying legacy admins auth...")
+            val adminUrl = URL(authUrl.toString().replace("/collections/_superusers/", "/admins/"))
+            return authenticate(adminUrl)
         } else {
-            Log.w(TAG, "Auth failed with code ${conn.responseCode}")
-            null
+            val errorBody = try {
+                conn.errorStream?.bufferedReader()?.readText() ?: "No error body"
+            } catch (_: Exception) { "Error reading error body" }
+            Log.w(TAG, "Auth failed (${conn.responseCode}) at $authUrl: $errorBody")
+            ""
         }
     }
 
@@ -131,13 +174,14 @@ class UpSnapClient(
 
         return when (conn.responseCode) {
             200, 204 -> WakeResult.Success
-            401 -> WakeResult.Error("Token expirado. Reintenta.")
-            404 -> WakeResult.Error("Dispositivo no encontrado en UpSnap.")
+            401 -> WakeResult.Error("Contraseña incorrecta o usuario no válido.")
+            403 -> WakeResult.Error("No tienes permiso para despertar este dispositivo.")
+            404 -> WakeResult.Error("ID de dispositivo no encontrado. Prueba a buscarlo de nuevo.")
             else -> {
                 val errorBody = try {
                     conn.errorStream?.bufferedReader()?.readText() ?: ""
                 } catch (_: Exception) { "" }
-                WakeResult.Error("Error ${conn.responseCode}: $errorBody")
+                WakeResult.Error("Error del servidor (${conn.responseCode}): $errorBody")
             }
         }
     }

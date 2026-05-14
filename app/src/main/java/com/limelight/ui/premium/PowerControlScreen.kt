@@ -1,8 +1,9 @@
 package com.limelight.ui.premium
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -42,6 +43,10 @@ class PowerControlState {
     var statusMessage by mutableStateOf<String?>(null)
     var showConfig by mutableStateOf(false)
     var isEnabled by mutableStateOf(false)
+    
+    // New: List of devices found on the server
+    var availableDevices = mutableStateListOf<Pair<String, String>>()
+    var isTestingConnection by mutableStateOf(false)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,7 +57,8 @@ fun PowerControlScreen(
     onSaveConfig: (url: String, user: String, pass: String, deviceId: String) -> Unit,
     onWake: () -> Unit,
     onClearConfig: () -> Unit,
-    onTestConnection: () -> Unit
+    onTestConnection: (url: String, user: String, pass: String) -> Unit,
+    onStartImmich: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -98,7 +104,7 @@ fun PowerControlScreen(
             if (state.showConfig) {
                 ConfigSection(state, onSaveConfig, onClearConfig, onTestConnection)
             } else {
-                WakeSection(state, onWake)
+                WakeSection(state, onWake, onStartImmich)
             }
         }
     }
@@ -107,7 +113,8 @@ fun PowerControlScreen(
 @Composable
 private fun WakeSection(
     state: PowerControlState,
-    onWake: () -> Unit
+    onWake: () -> Unit,
+    onStartImmich: () -> Unit
 ) {
     Spacer(modifier = Modifier.height(48.dp))
 
@@ -244,7 +251,7 @@ private fun WakeSection(
     // Status message
     state.statusMessage?.let { msg ->
         Spacer(modifier = Modifier.height(24.dp))
-        val isError = msg.startsWith("Error") || msg.startsWith("No se")
+        val isError = msg.startsWith("Error") || msg.startsWith("No se") || msg.contains("incorrecta")
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -276,6 +283,33 @@ private fun WakeSection(
     }
 
     Spacer(modifier = Modifier.height(32.dp))
+
+    // Start Immich Button
+    FilledTonalButton(
+        onClick = onStartImmich,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MoonlightColors.Cyan.copy(alpha = 0.2f),
+            contentColor = MoonlightColors.Cyan
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Icon(
+            Icons.Default.CloudSync,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            "ARRANCAR SERVIDOR IMMICH",
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
 
     // Security info
     Card(
@@ -310,12 +344,12 @@ private fun ConfigSection(
     state: PowerControlState,
     onSave: (url: String, user: String, pass: String, deviceId: String) -> Unit,
     onClear: () -> Unit,
-    onTestConnection: () -> Unit
+    onTestConnection: (url: String, user: String, pass: String) -> Unit
 ) {
-    var url by remember { mutableStateOf(state.serverUrl) }
-    var user by remember { mutableStateOf(state.username) }
-    var pass by remember { mutableStateOf(state.password) }
-    var devId by remember { mutableStateOf(state.deviceId) }
+    var url by remember(state.serverUrl) { mutableStateOf(state.serverUrl) }
+    var user by remember(state.username) { mutableStateOf(state.username) }
+    var pass by remember(state.password) { mutableStateOf(state.password) }
+    var devId by remember(state.deviceId) { mutableStateOf(state.deviceId) }
     var showPassword by remember { mutableStateOf(false) }
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -330,12 +364,39 @@ private fun ConfigSection(
 
     Spacer(modifier = Modifier.height(24.dp))
 
+    // Help box
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MoonlightColors.Purple.copy(alpha = 0.05f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                "GUÍA RÁPIDA:",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MoonlightColors.Purple
+            )
+            Text(
+                "1. Pon la IP de tu servidor UpSnap.\n" +
+                "2. Pon tu usuario y contraseña.\n" +
+                "3. Pulsa 'BUSCAR MIS DISPOSITIVOS'.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(24.dp))
+
     // Server URL
     OutlinedTextField(
         value = url,
         onValueChange = { url = it },
         label = { Text("URL del servidor") },
-        placeholder = { Text("http://100.69.149.17:8090") },
+        placeholder = { Text("Ej: 100.69.149.17:8090") },
         leadingIcon = { Icon(Icons.Default.Dns, contentDescription = null) },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -379,56 +440,99 @@ private fun ConfigSection(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
     )
 
-    Spacer(modifier = Modifier.height(12.dp))
-
-    // Device ID
-    OutlinedTextField(
-        value = devId,
-        onValueChange = { devId = it },
-        label = { Text("Device ID") },
-        placeholder = { Text("ID del dispositivo en UpSnap") },
-        leadingIcon = { Icon(Icons.Default.Devices, contentDescription = null) },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        singleLine = true,
-        supportingText = {
-            Text("Encuéntralo en la URL de UpSnap al editar tu dispositivo")
-        }
-    )
-
     Spacer(modifier = Modifier.height(24.dp))
 
-    // Save button
+    // Test connection / Fetch devices button
+    Button(
+        onClick = { onTestConnection(url.trim(), user.trim(), pass) },
+        modifier = Modifier.fillMaxWidth().height(52.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MoonlightColors.Purple
+        ),
+        enabled = !state.isTestingConnection && url.isNotBlank() && user.isNotBlank() && pass.isNotBlank()
+    ) {
+        if (state.isTestingConnection) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+        } else {
+            Icon(Icons.Default.Search, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("BUSCAR MIS DISPOSITIVOS", fontWeight = FontWeight.Black)
+        }
+    }
+
+    // Device selector (if devices found)
+    AnimatedVisibility(
+        visible = state.availableDevices.isNotEmpty(),
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut()
+    ) {
+        Column(modifier = Modifier.padding(top = 24.dp)) {
+            Text(
+                "SELECCIONA TU PC:",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MoonlightColors.Green
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            state.availableDevices.forEach { (id, name) ->
+                val isSelected = devId == id
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .clickable { 
+                            devId = id
+                            state.deviceId = id
+                            state.deviceName = name
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected) 
+                            MoonlightColors.Green.copy(alpha = 0.15f) 
+                        else 
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (isSelected) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
+                            contentDescription = null,
+                            tint = if (isSelected) MoonlightColors.Green else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(name, fontWeight = FontWeight.Bold)
+                            Text("ID: $id", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(32.dp))
+
+    // Final Save button
     Button(
         onClick = { onSave(url.trim(), user.trim(), pass, devId.trim()) },
-        modifier = Modifier.fillMaxWidth().height(52.dp),
+        modifier = Modifier.fillMaxWidth().height(56.dp),
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MoonlightColors.Green
         ),
         enabled = url.isNotBlank() && user.isNotBlank() && pass.isNotBlank() && devId.isNotBlank()
     ) {
-        Icon(Icons.Default.Save, contentDescription = null)
+        Icon(Icons.Default.Check, contentDescription = null)
         Spacer(modifier = Modifier.width(8.dp))
-        Text("Guardar configuración", fontWeight = FontWeight.Bold)
-    }
-
-    Spacer(modifier = Modifier.height(12.dp))
-
-    // Test connection
-    OutlinedButton(
-        onClick = onTestConnection,
-        modifier = Modifier.fillMaxWidth().height(48.dp),
-        shape = RoundedCornerShape(16.dp),
-        enabled = url.isNotBlank() && user.isNotBlank() && pass.isNotBlank()
-    ) {
-        Icon(Icons.Default.NetworkCheck, contentDescription = null)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text("Probar conexión")
+        Text("GUARDAR Y FINALIZAR", fontWeight = FontWeight.Black)
     }
 
     if (state.isConfigured) {
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Clear configuration
         TextButton(
@@ -440,46 +544,7 @@ private fun ConfigSection(
         ) {
             Icon(Icons.Default.DeleteForever, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Borrar configuración")
-        }
-    }
-
-    Spacer(modifier = Modifier.height(16.dp))
-
-    // Security notice
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MoonlightColors.Cyan.copy(alpha = 0.08f)
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Shield,
-                    contentDescription = null,
-                    tint = MoonlightColors.Cyan,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "Seguridad",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MoonlightColors.Cyan
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                "• Credenciales cifradas con AES-256 (Android Keystore)\n" +
-                "• La clave de cifrado no sale del dispositivo\n" +
-                "• Conexión vía red privada Tailscale\n" +
-                "• No se envía información a terceros",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 20.sp
-            )
+            Text("Borrar toda la configuración")
         }
     }
 

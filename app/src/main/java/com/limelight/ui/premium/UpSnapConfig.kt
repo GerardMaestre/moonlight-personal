@@ -44,7 +44,13 @@ class UpSnapConfig private constructor(private val context: Context) {
 
     var serverUrl: String
         get() = prefs.getString(KEY_SERVER_URL, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_SERVER_URL, value.trimEnd('/')).apply()
+        set(value) {
+            var formattedUrl = value.trim().trimEnd('/')
+            if (formattedUrl.isNotBlank() && !formattedUrl.startsWith("http://") && !formattedUrl.startsWith("https://")) {
+                formattedUrl = "http://$formattedUrl"
+            }
+            prefs.edit().putString(KEY_SERVER_URL, formattedUrl).apply()
+        }
 
     var deviceId: String
         get() = prefs.getString(KEY_DEVICE_ID, "") ?: ""
