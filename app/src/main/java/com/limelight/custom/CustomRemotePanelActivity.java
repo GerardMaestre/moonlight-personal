@@ -12,7 +12,7 @@ import android.widget.Toast;
 
 import com.limelight.R;
 import com.limelight.nvstream.http.ComputerDetails;
-import com.limelight.nvstream.wol.WakeOnLanSender;
+import com.limelight.shared.network.StandardWolSender;
 import com.limelight.utils.UiHelper;
 
 import java.io.IOException;
@@ -175,14 +175,14 @@ public class CustomRemotePanelActivity extends Activity {
             public void run() {
                 try {
                     ComputerDetails details = config.createComputerDetails();
-                    WakeOnLanSender.sendWolPacket(details);
+                    StandardWolSender.INSTANCE.sendMagicPacket(details.macAddress, "255.255.255.255", 9);
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             setStatus(getString(R.string.wol_waking_msg));
                         }
                     });
-                } catch (final IOException e) {
+                } catch (final Exception e) {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {

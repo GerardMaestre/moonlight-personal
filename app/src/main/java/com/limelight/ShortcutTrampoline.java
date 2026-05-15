@@ -15,7 +15,7 @@ import com.limelight.nvstream.http.ComputerDetails;
 import com.limelight.nvstream.http.NvApp;
 import com.limelight.nvstream.http.NvHTTP;
 import com.limelight.nvstream.http.PairingManager;
-import com.limelight.nvstream.wol.WakeOnLanSender;
+import com.limelight.shared.network.StandardWolSender;
 import com.limelight.utils.CacheHelper;
 import com.limelight.utils.Dialog;
 import com.limelight.utils.ServerHelper;
@@ -94,13 +94,13 @@ public class ShortcutTrampoline extends Activity {
                             if (details.state == ComputerDetails.State.OFFLINE && details.macAddress != null && --wakeHostTries >= 0) {
                                 try {
                                     // Make a best effort attempt to wake the target PC
-                                    WakeOnLanSender.sendWolPacket(computer);
+                                    StandardWolSender.INSTANCE.sendMagicPacket(computer.macAddress, "255.255.255.255", 9);
 
                                     // If we sent at least one WoL packet, reset the computer state
                                     // to force ComputerManager to poll it again.
                                     managerBinder.invalidateStateForComputer(computer.uuid);
                                     return;
-                                } catch (IOException e) {
+                                } catch (Exception e) {
                                     // If we got an exception, we couldn't send a single WoL packet,
                                     // so fallthrough into the offline error path.
                                     e.printStackTrace();

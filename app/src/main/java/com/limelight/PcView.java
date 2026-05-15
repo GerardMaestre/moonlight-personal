@@ -17,7 +17,7 @@ import com.limelight.nvstream.http.NvApp;
 import com.limelight.nvstream.http.NvHTTP;
 import com.limelight.nvstream.http.PairingManager;
 import com.limelight.nvstream.http.PairingManager.PairState;
-import com.limelight.nvstream.wol.WakeOnLanSender;
+import com.limelight.shared.network.StandardWolSender;
 import com.limelight.preferences.AddComputerManually;
 import com.limelight.preferences.GlPreferences;
 import com.limelight.preferences.PreferenceConfiguration;
@@ -564,9 +564,9 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
             public void run() {
                 String message;
                 try {
-                    WakeOnLanSender.sendWolPacket(computer);
+                    StandardWolSender.INSTANCE.sendMagicPacket(computer.macAddress, "255.255.255.255", 9);
                     message = getResources().getString(R.string.wol_waking_msg);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     message = getResources().getString(R.string.wol_fail);
                 }
 

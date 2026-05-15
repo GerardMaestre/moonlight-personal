@@ -6,7 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.limelight.shared.model.ComputerInfo
 import com.limelight.shared.model.ComputerStatus
-import com.limelight.shared.model.NetworkProfiles
+
 import com.limelight.shared.model.GameInfo
 
 /**
@@ -19,8 +19,7 @@ class DashboardState {
     var selectedComputer by mutableStateOf<ComputerInfo?>(null)
     val games = mutableStateListOf<GameInfo>()
 
-    var selectedProfileId by mutableStateOf(NetworkProfiles.HOME.id)
-        private set
+
     
     var isAddPcDialogOpen by mutableStateOf(false)
     var lastActionMessage by mutableStateOf<String?>(null)
@@ -33,9 +32,7 @@ class DashboardState {
         lastActionMessage = null
     }
 
-    fun selectProfile(profileId: String) {
-        selectedProfileId = profileId
-    }
+
 
     fun updateComputer(computer: ComputerInfo) {
         val index = computers.indexOfFirst { it.id == computer.id }
