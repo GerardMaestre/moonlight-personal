@@ -2,6 +2,7 @@ package com.limelight.ui.premium
 
 import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PhotoServerStatus
+import com.limelight.utils.LanAddressResolver
 import fi.iki.elonen.NanoHTTPD
 
 class AndroidPhotoServerManager(private val state: PhotoServerState) {
@@ -19,7 +20,14 @@ class AndroidPhotoServerManager(private val state: PhotoServerState) {
             }
             http.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
             server = http
-            state.updateStatus(PhotoServerStatus.Running(http.listeningPort, "http://127.0.0.1:${http.listeningPort}/"))
+            val port = http.listeningPort
+            val lanIp = LanAddressResolver.getActiveLanIpv4Address()
+            val url = if (lanIp != null) {
+                "http://$lanIp:$port/"
+            } else {
+                "http://127.0.0.1:$port/ (sin IP LAN activa; fallback local)"
+            }
+            state.updateStatus(PhotoServerStatus.Running(port, url))
         }.onFailure {
             state.updateStatus(PhotoServerStatus.Error(it.message ?: "No se pudo iniciar el servidor"))
         }
