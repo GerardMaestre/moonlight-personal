@@ -37,7 +37,8 @@
             android:layout_height="wrap_content"
             android:hint="@string/custom_host_name"
             android:inputType="textCapWords"
-            android:singleLine="true" />
+            android:maxLines="1"
+            android:ellipsize="end" />
 
         <EditText
             android:id="@+id/customHostAddress"
@@ -45,7 +46,8 @@
             android:layout_height="wrap_content"
             android:hint="@string/custom_host_address"
             android:inputType="textUri"
-            android:singleLine="true" />
+            android:maxLines="1"
+            android:ellipsize="end" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -59,18 +61,19 @@
                 android:layout_weight="1"
                 android:hint="@string/custom_http_port"
                 android:inputType="number"
-                android:singleLine="true" />
+                android:maxLines="1"
+                android:ellipsize="end" />
 
             <EditText
                 android:id="@+id/customHttpsPort"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="12dp"
                 android:layout_marginStart="12dp"
                 android:layout_weight="1"
                 android:hint="@string/custom_https_port"
                 android:inputType="number"
-                android:singleLine="true" />
+                android:maxLines="1"
+                android:ellipsize="end" />
         </LinearLayout>
 
         <EditText
@@ -79,7 +82,8 @@
             android:layout_height="wrap_content"
             android:hint="@string/custom_mac_address"
             android:inputType="text"
-            android:singleLine="true" />
+            android:maxLines="1"
+            android:ellipsize="end" />
 
         <CheckBox
             android:id="@+id/customEnableBridge"
@@ -94,7 +98,8 @@
             android:layout_height="wrap_content"
             android:hint="@string/custom_bridge_url"
             android:inputType="textUri"
-            android:singleLine="true" />
+            android:maxLines="1"
+            android:ellipsize="end" />
 
         <RadioGroup
             android:id="@+id/customBridgeMethod"
@@ -112,7 +117,6 @@
                 android:id="@+id/customBridgePost"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="24dp"
                 android:layout_marginStart="24dp"
                 android:text="@string/custom_bridge_post" />
         </RadioGroup>
@@ -123,37 +127,41 @@
             android:layout_height="wrap_content"
             android:hint="@string/custom_bridge_timeout"
             android:inputType="number"
-            android:singleLine="true" />
+            android:maxLines="1"
+            android:ellipsize="end" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:orientation="horizontal">
+            android:orientation="vertical">
 
-            <Button
-                android:id="@+id/customSaveButton"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/custom_save" />
+                android:orientation="horizontal">
 
-            <Button
-                android:id="@+id/customPrepareButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="8dp"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:text="@string/custom_prepare_pc" />
+                <Button
+                    android:id="@+id/customSaveButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/custom_save" />
+
+                <Button
+                    android:id="@+id/customPrepareButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:text="@string/custom_prepare_pc" />
+            </LinearLayout>
 
             <Button
                 android:id="@+id/customWolButton"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="8dp"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
+                android:layout_marginTop="8dp"
                 android:text="@string/custom_send_wol" />
         </LinearLayout>
 
@@ -169,31 +177,34 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:orientation="horizontal">
+            android:orientation="vertical">
 
-            <Button
-                android:id="@+id/customHomeProfileButton"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/custom_profile_home" />
+                android:orientation="horizontal">
 
-            <Button
-                android:id="@+id/customFiveGProfileButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="8dp"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:text="@string/custom_profile_5g" />
+                <Button
+                    android:id="@+id/customHomeProfileButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/custom_profile_home" />
+
+                <Button
+                    android:id="@+id/customFiveGProfileButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:text="@string/custom_profile_5g" />
+            </LinearLayout>
 
             <Button
                 android:id="@+id/customSaverProfileButton"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="8dp"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
+                android:layout_marginTop="8dp"
                 android:text="@string/custom_profile_saver" />
         </LinearLayout>
 

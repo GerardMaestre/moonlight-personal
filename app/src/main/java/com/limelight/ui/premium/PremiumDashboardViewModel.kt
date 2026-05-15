@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.lifecycle.AndroidViewModel
+import com.limelight.R
 import com.limelight.computers.ComputerManagerListener
 import com.limelight.computers.ComputerManagerService
 import com.limelight.nvstream.http.ComputerDetails
@@ -22,6 +23,7 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
     val controller = AppController()
     val dashboardState get() = controller.dashboardState
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val appContext = getApplication<Application>()
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -41,7 +43,7 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
                         
                         val info = com.limelight.shared.model.ComputerInfo(
                             id = details.uuid ?: "",
-                            name = details.name ?: "Unknown PC",
+                            name = details.name ?: appContext.getString(R.string.premium_unknown_pc),
                             status = status,
                             localAddress = details.localAddress?.address,
                             remoteAddress = details.remoteAddress?.address,
@@ -127,8 +129,8 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
                 mainHandler.post {
                     com.limelight.utils.Dialog.displayDialog(
                         activity,
-                        "Vincular Dispositivo",
-                        "Introduce este PIN en tu PC: $pinStr",
+                        appContext.getString(R.string.premium_pair_dialog_title),
+                        appContext.getString(R.string.premium_pair_dialog_message, pinStr),
                         false
                     )
                 }
@@ -141,15 +143,15 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
                     if (pairState == com.limelight.nvstream.http.PairingManager.PairState.PAIRED) {
                         binder.getComputer(computer.uuid).serverCert = pm.pairedCert
                         binder.invalidateStateForComputer(computer.uuid)
-                        dashboardState.showMessage("Vinculado correctamente.")
+                        dashboardState.showMessage(appContext.getString(R.string.premium_pair_success))
                     } else {
-                        dashboardState.showMessage("Error al vincular. Inténtalo de nuevo.")
+                        dashboardState.showMessage(appContext.getString(R.string.premium_pair_error))
                     }
                 }
             } catch (e: Exception) {
                 mainHandler.post {
                     com.limelight.utils.Dialog.closeDialogs()
-                    dashboardState.showMessage("Error: ${e.message}")
+                    dashboardState.showMessage(appContext.getString(R.string.premium_generic_error, e.message ?: ""))
                 }
             }
         }
@@ -166,14 +168,14 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
                 val success = binder.addComputerBlocking(details)
                 mainHandler.post {
                     if (success) {
-                        dashboardState.showMessage("Ordenador añadido correctamente.")
+                        dashboardState.showMessage(appContext.getString(R.string.premium_add_computer_success))
                     } else {
-                        dashboardState.showMessage("No se pudo encontrar el ordenador en la IP: $ip")
+                        dashboardState.showMessage(appContext.getString(R.string.premium_add_computer_not_found, ip))
                     }
                 }
             } catch (e: Exception) {
                 mainHandler.post {
-                    dashboardState.showMessage("Error al añadir: ${e.message}")
+                    dashboardState.showMessage(appContext.getString(R.string.premium_add_computer_error, e.message ?: ""))
                 }
             }
         }

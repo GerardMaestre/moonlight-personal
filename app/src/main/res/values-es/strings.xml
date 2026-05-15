@@ -262,4 +262,14 @@
     <string name="title_seekbar_vibrate_fallback_strength">Ajustar la intensidad del ruido emulado</string>
     <string name="summary_seekbar_vibrate_fallback_strength">Amplifica o reduce la intensidad de la vibración de tu dispositivo</string>
     <string name="suffix_seekbar_vibrate_fallback_strength">%</string>
+
+    <string name="premium_unknown_pc">PC desconocido</string>
+    <string name="premium_pair_dialog_title">Vincular dispositivo</string>
+    <string name="premium_pair_dialog_message">Introduce este PIN en tu PC: %1$s</string>
+    <string name="premium_pair_success">Vinculación completada correctamente.</string>
+    <string name="premium_pair_error">Error de vinculación. Inténtalo de nuevo.</string>
+    <string name="premium_generic_error">Error: %1$s</string>
+    <string name="premium_add_computer_success">Ordenador añadido correctamente.</string>
+    <string name="premium_add_computer_not_found">No se pudo encontrar un ordenador en la IP: %1$s</string>
+    <string name="premium_add_computer_error">Error al añadir el ordenador: %1$s</string>
 </resources>
