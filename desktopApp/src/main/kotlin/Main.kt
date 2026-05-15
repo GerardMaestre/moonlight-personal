@@ -16,6 +16,7 @@ import androidx.compose.ui.window.application
 import com.limelight.shared.model.ComputerInfo
 import com.limelight.shared.model.ComputerStatus
 import com.limelight.shared.platform.PhotoServerActions
+import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PlatformActions
 import com.limelight.shared.ui.screens.*
 import com.limelight.shared.ui.theme.MoonlightTheme
@@ -26,7 +27,15 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 
-fun main() = application {
+fun main(args: Array<String>) {
+    if (args.contains("--server")) {
+        runHeadlessServerMode()
+        return
+    }
+    runDesktopUi()
+}
+
+private fun runDesktopUi() = application {
     val controller = remember { AppController() }
     val scope = rememberCoroutineScope()
     val photoServerManager = remember { DesktopPhotoServerManager(controller.photoServerState) }
@@ -94,6 +103,18 @@ fun main() = application {
                 }
             }
         }
+    }
+}
+
+private fun runHeadlessServerMode() {
+    val state = PhotoServerState()
+    val manager = DesktopPhotoServerManager(state)
+    manager.start()
+    if (System.getProperty("os.name").contains("Windows", ignoreCase = true)) {
+        manager.registerWindowsStartupTask()
+    }
+    while (true) {
+        Thread.sleep(60_000)
     }
 }
 

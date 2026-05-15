@@ -11,9 +11,17 @@ sealed interface PhotoServerStatus {
     data class Error(val message: String) : PhotoServerStatus
 }
 
+sealed interface StartCommandResult {
+    data object Success : StartCommandResult
+    data class Failed(val reason: String) : StartCommandResult
+}
+
 class PhotoServerState {
     var status: PhotoServerStatus by mutableStateOf(PhotoServerStatus.Stopped)
     var lastError: String? by mutableStateOf(null)
+    var lastCommandResult: StartCommandResult? by mutableStateOf(null)
+    var healthMessage: String by mutableStateOf("Sin comprobaciones")
+    var recentLogs: List<String> by mutableStateOf(emptyList())
 
     fun updateStatus(next: PhotoServerStatus) {
         status = next
@@ -24,7 +32,7 @@ class PhotoServerState {
 }
 
 interface PhotoServerActions {
-    fun startPhotoServer()
+    fun startPhotoServer(): StartCommandResult
     fun stopPhotoServer()
     fun restartPhotoServer() {
         stopPhotoServer()
@@ -33,6 +41,6 @@ interface PhotoServerActions {
 }
 
 object PreviewPhotoServerActions : PhotoServerActions {
-    override fun startPhotoServer() {}
+    override fun startPhotoServer(): StartCommandResult = StartCommandResult.Success
     override fun stopPhotoServer() {}
 }

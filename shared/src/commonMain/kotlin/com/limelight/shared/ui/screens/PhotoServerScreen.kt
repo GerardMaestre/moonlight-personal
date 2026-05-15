@@ -18,6 +18,7 @@ import com.limelight.shared.platform.PhotoServerActions
 import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PhotoServerStatus
 import com.limelight.shared.platform.PreviewPhotoServerActions
+import com.limelight.shared.platform.StartCommandResult
 
 @Composable
 fun PhotoServerScreen(
@@ -46,8 +47,19 @@ fun PhotoServerScreen(
             Text("Último error: $it", color = MaterialTheme.colorScheme.error)
         }
 
+        Text("Healthcheck: ${state.healthMessage}")
+        if (state.recentLogs.isNotEmpty()) {
+            Text("Logs recientes:")
+            state.recentLogs.takeLast(5).forEach { line -> Text("• $line") }
+        }
+        when (val result = state.lastCommandResult) {
+            StartCommandResult.Success -> Text("Último inicio: OK")
+            is StartCommandResult.Failed -> Text("Último inicio: ERROR (${result.reason})", color = MaterialTheme.colorScheme.error)
+            null -> Unit
+        }
+
         Spacer(Modifier.height(8.dp))
-        Button(onClick = actions::startPhotoServer, modifier = Modifier.fillMaxWidth()) { Text("Iniciar") }
+        Button(onClick = { actions.startPhotoServer() }, modifier = Modifier.fillMaxWidth()) { Text("Iniciar") }
         OutlinedButton(onClick = actions::stopPhotoServer, modifier = Modifier.fillMaxWidth()) { Text("Detener") }
         OutlinedButton(onClick = actions::restartPhotoServer, modifier = Modifier.fillMaxWidth()) { Text("Reiniciar") }
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Volver") }
