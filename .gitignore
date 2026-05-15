@@ -1,44 +1,58 @@
-# built application files
+# Build outputs
+build/
 *.apk
 *.ap_
 *.aab
+*.aar
 output.json
 output-metadata.json
 out/
 
-# files for the dex VM
+# Dex VM
 *.dex
 
 # Java class files
 *.class
 
-# generated files
+# Generated files
 bin/
 gen/
 
-# Local configuration file (sdk path, etc)
+# Local configuration
 local.properties
 
-# Windows thumbnail db
+# Windows
 Thumbs.db
 
-# OSX files
+# macOS
 .DS_Store
 
-# Eclipse project files
+# IDE
+.idea/
+*.iml
 .classpath
 .project
 
-# Android Studio
-.idea
-#.idea/workspace.xml - remove # and delete .idea if it better suit your needs.
-.gradle
-build/
-*.iml
+# Gradle
+.gradle/
+.kotlin/
 
-# Compiled JNI libraries folder
+# Compiled JNI libraries
 **/jniLibs
 app/.externalNativeBuild/
 
-# NDK stuff
+# NDK
 .cxx/
+
+# Release signing
+release.keystore
+*.jks
+*.keystore
+!debug.keystore
+
+# Logs
+*.log
+logs/
+
+# Desktop app (excluded from Phase 1 build)
+# desktopApp/build/

@@ -1,65 +1,163 @@
-# Moonlight Personal - Custom Edition 🌙🚀
+# Moonlight Personal — Custom Edition 🌙
 
-[![Custom Build](https://img.shields.io/badge/Build-Custom_Edition-blueviolet?style=for-the-badge&logo=android)](https://github.com/GerardMaestre/moonlight-personal)
+[![Android CI](https://github.com/GerardMaestre/moonlight-personal/actions/workflows/build.yml/badge.svg)](https://github.com/GerardMaestre/moonlight-personal/actions/workflows/build.yml)
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](LICENSE.txt)
 
-**Moonlight Personal** is a high-performance, customized fork of the Moonlight Android client. This version is optimized for a premium user experience with advanced features not found in the standard build.
+**Moonlight Personal** is a customized fork of the [Moonlight Android](https://github.com/moonlight-stream/moonlight-android) game streaming client, with additional home automation features and a modern Jetpack Compose dashboard.
 
 ---
 
-## ✨ Key Custom Features
+## 📋 Contents
 
-### 📱 iPhone-Style Premium UI
-- **Jetpack Compose Native:** Completely redesigned interface using modern Jetpack Compose for buttery-smooth 60fps animations.
-- **Minimalist Aesthetic:** Clean, "iPhone-style" design with glassmorphism effects and curated color palettes.
-- **Fluid Transitions:** Hardware-accelerated screen transitions for a tactile, high-end feel.
+1. [Features](#-features)
+2. [Project Status](#-project-status)
+3. [Build & Installation](#️-build--installation)
+4. [Architecture](#-architecture)
+5. [Contributing](#-contributing)
+6. [License](#️-license)
 
-### 🌐 Advanced Connectivity
-- **Direct IP Linking:** Bypass network discovery lag with pre-configured direct IP connectivity for instant sessions.
-- **HTTP Wake-on-LAN:** Integrated automated WoL via HTTP requests, allowing you to wake your gaming PC with a single tap from anywhere.
-- **Dynamic Network Profiles:** Quick-access profiles that automatically optimize bitrate, codec (HEVC/H.264), and frame pacing based on your connection (5G, Wi-Fi 6, or Remote).
+---
+
+## ✨ Features
+
+### 🎮 Game Streaming (Moonlight Core)
+- **GameStream / Sunshine Protocol:** Full-featured game streaming from NVIDIA GameStream or [Sunshine](https://github.com/LizardByte/Sunshine) hosts
+- **Codec Support:** H.264, HEVC, and AV1 video decoding via Android MediaCodec
+- **Low Latency:** Hardware-accelerated video decoding with configurable bitrate and frame pacing
+- **Input Support:** Touch, gamepad, mouse, and keyboard input forwarding
+
+### 🎨 Modern Dashboard UI
+- **Jetpack Compose:** Custom dashboard ("Panel de Control") built with Jetpack Compose and Material Design 3
+- **Dark Theme:** Custom dark color palette designed for OLED displays
+- **Responsive Layout:** Adapts to phones, tablets, and landscape orientation
+- **Shared UI:** Screens are built in a Kotlin Multiplatform `shared/` module
+
+### 🌐 Connectivity
+- **Automatic Discovery:** mDNS-based PC discovery on the local network (inherited from Moonlight)
+- **Direct IP:** Connect by static IP address when autodiscovery doesn't work
+- **Wake-on-LAN (UpSnap):** Integrated with [UpSnap](https://github.com/seriousm4x/UpSnap) WoL API for remote PC wake
+- **Wake-on-LAN (UDP):** Standard Magic Packet WoL for same-subnet scenarios
+- **Manual Codec/Bitrate Selection:** Choose codec and bitrate from the settings screen
+
+### 🏠 Home Automation
+- **UpSnap Integration:** Configure and trigger WoL from a beautiful power control panel
+- **Remote Script Execution:** Trigger batch scripts on a Stream Deck PC via authenticated HTTP API
+- **Immich Photo Server:** Start/stop an Immich Docker stack remotely from the mobile app
+
+---
+
+## 📊 Project Status
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Android Streaming Client | ✅ Functional | Core inherited from Moonlight Android |
+| mDNS Discovery | ✅ Functional | Via jmDNS library |
+| H.264 / HEVC Streaming | ✅ Functional | MediaCodec hardware decoding |
+| Compose Dashboard UI | ✅ Functional | 6 screens in shared/ module |
+| Wake-on-LAN (UpSnap) | ✅ Functional | HTTP API + JWT auth |
+| Wake-on-LAN (UDP) | ✅ Functional | Standard Magic Packet |
+| Direct IP Connection | ✅ Functional | Manual PC addition |
+| Immich Remote Control | ✅ Functional | Via Stream Deck HTTP API |
+| Jetpack Compose Migration | 🟡 In Progress | Dashboard is Compose; legacy screens are still Java |
+| Desktop Client | ❌ Removed (Phase 1) | Was an Immich server manager, not a streaming client |
+| Dynamic Network Profiles | ❌ Not Implemented | Data model exists, but profiles are not applied to streams |
 
 ---
 
 ## 🛠️ Build & Installation
 
-### Download the APK
-You can find the latest compiled version in the `app/build/outputs/apk/nonRoot/debug/` directory or download it from the [Releases](https://github.com/GerardMaestre/moonlight-personal/releases) section.
+### Prerequisites
 
-### Local Compilation
-1. Clone this repository:
-   ```bash
-   git clone --recursive https://github.com/GerardMaestre/moonlight-personal.git
-   ```
-2. Open in **Android Studio**.
-3. Build the `nonRoot` variant for standard device deployment.
+- **Android Studio** Jellyfish (2024.1) or later
+- **JDK 17+**
+- **Android SDK 34** (target) / **SDK 21** (minimum)
+- **Android NDK 27** (for native code)
 
----
+### Build from Source
 
+```bash
+# Clone with submodules
+git clone --recursive https://github.com/GerardMaestre/moonlight-personal.git
+cd moonlight-personal
 
-## 🎨 UI Architecture Reference
+# Build debug APK
+./gradlew app:assembleNonRootDebug
 
-For non-streaming UI architecture, reusable UI states/components, and migration/motion guidelines, see:
+# Build release APK (requires signing config)
+./gradlew app:assembleNonRootRelease
+```
 
-- [`docs/ui/non-streaming-ui-guidelines.md`](docs/ui/non-streaming-ui-guidelines.md)
+### Download Prebuilt APK
 
-## 🧱 Regla de arquitectura multiplataforma
+Signed APKs are published on the [Releases](https://github.com/GerardMaestre/moonlight-personal/releases) page.
 
-- Toda la lógica funcional compartida (descubrimiento, WOL, estado de servidor, navegación y reglas de negocio) debe vivir en `shared/src/commonMain`.
-- `shared/src/androidMain` y `shared/src/desktopMain` deben contener solo:
-  - integraciones nativas
-  - permisos/plataforma
-  - arranque de actividad/ventana
-
-### ✅ Checklist de PR (obligatorio)
-
-- [ ] ¿Este cambio afecta a ambas plataformas?
-- [ ] ¿Está la lógica en `shared/src/commonMain`?
-- [ ] ¿Se actualizó Desktop y Android cuando aplica?
+> **Note:** Never distribute debug APKs. Always use signed release builds for production use.
 
 ---
 
-## 👨‍💻 Author & Contributions
+## 🏗 Architecture
+
+```
+moonlight-personal/
+├── shared/                    # Kotlin Multiplatform shared module
+│   └── src/
+│       ├── commonMain/        # Platform-agnostic code
+│       │   ├── model/         # ComputerInfo, GameInfo, NetworkProfile
+│       │   ├── network/       # UpSnapClient, RemoteScriptClient
+│       │   ├── platform/      # PlatformActions interface, PhotoServerContract
+│       │   └── ui/
+│       │       ├── screens/   # Compose screens (Dashboard, PowerControl, etc.)
+│       │       ├── components/# Reusable Compose components
+│       │       └── theme/     # MoonlightTheme (dark Material 3)
+│       ├── androidMain/       # Android expect/actual implementations
+│       └── desktopMain/       # Desktop expect/actual implementations
+├── app/                       # Android application
+│   └── src/main/
+│       ├── java/              # Legacy Java code (Moonlight core + custom Kotlin)
+│       │   └── com/limelight/
+│       │       ├── ui/premium/  # Compose Activity + ViewModel
+│       │       ├── nvstream/    # GameStream protocol (inherited)
+│       │       ├── computers/   # PC discovery & management
+│       │       └── binding/     # Platform bindings (input, video, audio)
+│       ├── jni/               # Native C code (video decoding)
+│       └── res/               # Android resources
+├── docs/                      # Documentation
+└── .github/workflows/         # CI/CD pipelines
+```
+
+For detailed architecture documentation, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+---
+
+## 🤝 Contributing
+
+See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) for contribution guidelines.
+
+---
+
+## 🚀 Roadmap
+
+### Phase 1 (Current)
+- [x] Architecture audit
+- [x] Remove dead code (LuaScripts, appveyor, fastlane)
+- [x] Fix README to match reality
+- [x] CI/CD with GitHub Actions
+- [ ] Automated signed releases
+
+### Phase 2 (Next)
+- [ ] Extract hardcoded credentials to settings
+- [ ] Migrate Java custom code to Kotlin
+- [ ] Unify WoL implementations
+- [ ] Add unit test coverage (>70%)
+
+### Phase 3 (Future)
+- [ ] Desktop streaming client (Compose Desktop)
+- [ ] Proper expect/actual abstractions (Logger, Storage, Network)
+- [ ] Dependency injection (Hilt)
+
+---
+
+## 👨‍💻 Author
 
 Customized and maintained by **Gerard Maestre**.
 
@@ -72,44 +170,8 @@ Customized and maintained by **Gerard Maestre**.
 ---
 
 ## ⚖️ License
-This project is licensed under the GPLv3 License. See [LICENSE.txt](LICENSE.txt) for details. Based on the original [Moonlight Android](https://github.com/moonlight-stream/moonlight-android).
 
-## 🪟 Configuración de servidor en Windows (desktopMain)
+This project is licensed under the **GPLv3 License**. See [LICENSE.txt](LICENSE.txt) for details.
 
-### Objetivo
-- La app de escritorio ahora soporta ejecución **headless** del servidor de fotos (`--server`) sin abrir UI.
-- La UI puede iniciar/detener el servidor y recibir estado (`running/failed`) en pantalla.
-- Se publica endpoint `/health` y logging local para verificar que el proceso sigue vivo incluso con sesión bloqueada.
-
-### Ejecución manual
-1. Iniciar UI normal:
-   ```bash
-   ./gradlew :desktopApp:run
-   ```
-2. Iniciar solo servidor (sin UI):
-   ```bash
-   ./gradlew :desktopApp:run --args="--server"
-   ```
-
-### Autoarranque (Task Scheduler recomendado)
-- En Windows, el modo `--server` intenta registrar tarea `MoonlightPhotoServer` usando `schtasks`.
-- Para ejecutar aunque la sesión esté cerrada, configure la tarea en el Programador de tareas con:
-  - **Run whether user is logged on or not**
-  - **Run with highest privileges** (si necesita puertos/permisos elevados)
-- Trigger sugerido: `At log on` o `At startup` según su política.
-
-### Logs y healthcheck
-- Archivo de log local:
-  - `%USERPROFILE%\\.moonlight\\photo-server.log`
-- Endpoint de salud:
-  - `http://<host>:<puerto>/health`
-- La pantalla “Servidor de Fotos” muestra:
-  - último resultado de inicio
-  - healthcheck periódico
-  - logs recientes
-
-### Limitaciones (UAC / permisos / sesión bloqueada)
-- Registrar tareas en `Task Scheduler` puede requerir permisos de administrador (UAC).
-- Si se selecciona “Run whether user is logged on or not”, el proceso corre en contexto no interactivo (sin UI).
-- Reglas de firewall pueden bloquear puertos aunque el proceso esté activo.
-- Credenciales de la tarea (password expirado/cambiado) pueden causar fallo en arranque en background.
+Based on the original [Moonlight Android](https://github.com/moonlight-stream/moonlight-android).
+All custom changes and additions by Gerard Maestre.
