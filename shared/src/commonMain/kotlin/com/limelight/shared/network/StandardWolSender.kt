@@ -10,6 +10,7 @@ import com.limelight.wol.MagicPacket
  * Note: Uses java.net which currently restricts it to JVM targets (Android/Desktop).
  */
 object StandardWolSender {
+    @JvmStatic
     fun sendMagicPacket(macAddress: String, broadcastIp: String = "255.255.255.255", port: Int = 9): Result<Unit> {
         return runCatching {
             require(port in 1..65535) { "Invalid port: $port" }
@@ -22,6 +23,11 @@ object StandardWolSender {
                 socket.send(packet)
             }
         }
+    }
+
+    @JvmStatic
+    fun sendMagicPacketCompat(macAddress: String, broadcastIp: String = "255.255.255.255", port: Int = 9): Boolean {
+        return sendMagicPacket(macAddress, broadcastIp, port).isSuccess
     }
 
     fun createMagicPacket(macAddress: String): ByteArray {

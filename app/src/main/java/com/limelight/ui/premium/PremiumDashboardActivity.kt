@@ -89,7 +89,7 @@ class PremiumDashboardActivity : ComponentActivity() {
 
                                              override fun onWakeOnLan(macAddress: String) {
                                                  thread {
-                                                     com.limelight.shared.network.StandardWolSender.sendMagicPacket(macAddress)
+                                                     com.limelight.shared.network.StandardWolSender.sendMagicPacketCompat(macAddress)
                                                  }
                                              }
                                              override fun onNavigateBack() {
