@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.limelight.shared.network.UpSnapUrlValidator
 import com.limelight.shared.ui.theme.MoonlightColors
 
 /**
@@ -320,6 +321,7 @@ private fun ConfigSection(
     var pass by remember(state.password) { mutableStateOf(state.password) }
     var devId by remember(state.deviceId) { mutableStateOf(state.deviceId) }
     var showPassword by remember { mutableStateOf(false) }
+    val isHttpsUrlValid = UpSnapUrlValidator.isValidServerUrl(url)
 
     Spacer(modifier = Modifier.height(16.dp))
 
@@ -337,12 +339,18 @@ private fun ConfigSection(
         value = url,
         onValueChange = { url = it },
         label = { Text("URL del servidor") },
-        placeholder = { Text("Ej: 100.69.149.17:8090") },
+        placeholder = { Text("Ej: https://100.69.149.17:8090") },
         leadingIcon = { Icon(Icons.Default.Dns, contentDescription = null) },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+        isError = url.isNotBlank() && !isHttpsUrlValid,
+        supportingText = {
+            if (url.isNotBlank() && !isHttpsUrlValid) {
+                Text("URL inválida: usa HTTPS (https://) y un host válido")
+            }
+        }
     )
 
     Spacer(modifier = Modifier.height(12.dp))
@@ -388,7 +396,7 @@ private fun ConfigSection(
         colors = ButtonDefaults.buttonColors(
             containerColor = MoonlightColors.PrimaryContainer
         ),
-        enabled = !state.isTestingConnection && url.isNotBlank() && user.isNotBlank() && pass.isNotBlank()
+        enabled = !state.isTestingConnection && isHttpsUrlValid && user.isNotBlank() && pass.isNotBlank()
     ) {
         if (state.isTestingConnection) {
             CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
@@ -460,7 +468,7 @@ private fun ConfigSection(
         colors = ButtonDefaults.buttonColors(
             containerColor = MoonlightColors.Secondary
         ),
-        enabled = url.isNotBlank() && user.isNotBlank() && pass.isNotBlank() && devId.isNotBlank()
+        enabled = isHttpsUrlValid && user.isNotBlank() && pass.isNotBlank() && devId.isNotBlank()
     ) {
         Icon(Icons.Default.Check, contentDescription = null)
         Spacer(modifier = Modifier.width(8.dp))
