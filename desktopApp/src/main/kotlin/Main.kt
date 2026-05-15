@@ -88,10 +88,10 @@ private fun runDesktopUi() = application {
                                     override fun onOpenSettings() = controller.dashboardState.showMessage("Abriendo ajustes de streaming...")
                                     override fun onPcClick(computerId: String, computerName: String) = controller.openComputer(computerId, AppController.desktopFallbackGames())
                                     override fun onPair(computerId: String) = controller.onDiscoveryStatus("Pairing no implementado en Desktop.")
-                                    override fun onApplyNetworkProfile(profileId: String) {}
+
                                     override fun onWakeOnLan(macAddress: String) {
                                         controller.onWakeOnLanDispatched(macAddress)
-                                        scope.launch(Dispatchers.IO) { sendWolPacket(macAddress) }
+                                        scope.launch(Dispatchers.IO) { com.limelight.shared.network.StandardWolSender.sendMagicPacket(macAddress) }
                                     }
                                     override fun onNavigateBack() = controller.navigation.goBack()
                                 }
@@ -218,16 +218,4 @@ private fun startDesktopDiscovery(controller: AppController) {
     } catch (_: Exception) {
     }
 }
-
-private fun sendWolPacket(macAddress: String) {
-    try {
-        val macBytes = macAddress.split(":", "-").map { it.toInt(16).toByte() }.toByteArray()
-        val bytes = ByteArray(6 + 16 * macBytes.size)
-        for (i in 0 until 6) bytes[i] = 0xff.toByte()
-        for (i in 1 until 17) System.arraycopy(macBytes, 0, bytes, i * macBytes.size, macBytes.size)
-        val address = InetAddress.getByName("255.255.255.255")
-        val packet = DatagramPacket(bytes, bytes.size, address, 9)
-        DatagramSocket().send(packet)
-    } catch (_: Exception) {
-    }
-}
+

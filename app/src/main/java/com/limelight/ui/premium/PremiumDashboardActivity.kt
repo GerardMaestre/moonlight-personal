@@ -7,7 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import com.limelight.AppView
 import com.limelight.nvstream.http.ComputerDetails
-import com.limelight.nvstream.wol.WakeOnLanSender
+import com.limelight.shared.network.StandardWolSender
 import com.limelight.preferences.StreamSettings
 import kotlin.concurrent.thread
 import com.limelight.shared.platform.PhotoServerActions
@@ -86,14 +86,10 @@ class PremiumDashboardActivity : ComponentActivity() {
                                              override fun onPair(id: String) {
                                                  viewModel.pair(id, this@PremiumDashboardActivity)
                                              }
-                                             override fun onApplyNetworkProfile(profileId: String) {}
+
                                              override fun onWakeOnLan(macAddress: String) {
                                                  thread {
-                                                     val fakeComputer = ComputerDetails().apply {
-                                                         this.macAddress = macAddress
-                                                         this.manualAddress = ComputerDetails.AddressTuple("255.255.255.255", 9)
-                                                     }
-                                                     WakeOnLanSender.sendWolPacket(fakeComputer)
+                                                     com.limelight.shared.network.StandardWolSender.sendMagicPacket(macAddress)
                                                  }
                                              }
                                              override fun onNavigateBack() {
@@ -220,7 +216,10 @@ class PremiumDashboardActivity : ComponentActivity() {
                                     )
                                 }
                                 AppScreen.PHOTO_SERVER -> {
-                                    val remoteClient = remember { RemoteScriptClient("http://100.67.140.39:3000", "CasaGerard") }
+                                    val config = remember { RemoteScriptConfig.getInstance(this@PremiumDashboardActivity) }
+                                    val remoteClient = remember(config.serverUrl, config.token) { 
+                                        RemoteScriptClient(config.serverUrl, config.token) 
+                                    }
                                     com.limelight.shared.ui.screens.PhotoServerScreen(
                                         state = controller.photoServerState,
                                         actions = object : PhotoServerActions {
