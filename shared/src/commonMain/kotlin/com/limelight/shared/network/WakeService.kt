@@ -15,13 +15,16 @@ object WakeService {
         macAddress: String?,
         broadcastIp: String = "255.255.255.255",
         port: Int = 9,
+        udpWake: (mac: String, ip: String, p: Int) -> Result<Unit> = { mac, ip, p ->
+            StandardWolSender.sendMagicPacket(mac, ip, p)
+        },
     ): WakeOutcome {
         if (upSnapClient != null && !deviceId.isNullOrBlank()) {
             return when (val result = upSnapClient.wakeDevice(deviceId)) {
                 is UpSnapClient.WakeResult.Success -> WakeOutcome.Success
                 is UpSnapClient.WakeResult.Error -> {
                     if (!macAddress.isNullOrBlank()) {
-                        val fallback = StandardWolSender.sendMagicPacket(macAddress, broadcastIp, port)
+                        val fallback = udpWake(macAddress, broadcastIp, port)
                         if (fallback.isSuccess) WakeOutcome.Success else WakeOutcome.Failure(result.message)
                     } else {
                         WakeOutcome.Failure(result.message)
@@ -31,7 +34,7 @@ object WakeService {
         }
 
         if (!macAddress.isNullOrBlank()) {
-            val udp = StandardWolSender.sendMagicPacket(macAddress, broadcastIp, port)
+            val udp = udpWake(macAddress, broadcastIp, port)
             return if (udp.isSuccess) WakeOutcome.Success else WakeOutcome.Failure("No se pudo enviar paquete WoL UDP")
         }
 
