@@ -1,9 +1,11 @@
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,53 +55,127 @@ private fun runDesktopUi() = application {
     ) {
         MoonlightTheme {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                when (controller.navigation.currentScreen) {
-                    AppScreen.MAIN_MENU -> MainMenuScreen(
-                        onNavigate = { screen ->
-                            when (screen) {
-                                AppScreen.MOONLIGHT -> controller.openMoonlight()
-                                AppScreen.POWER_CONTROL -> controller.openPowerControl()
-                                AppScreen.PHOTO_SERVER -> controller.openPhotoServer()
-                                AppScreen.GAME_LIST -> Unit
-                                AppScreen.MAIN_MENU -> Unit
+                Scaffold(
+                    bottomBar = {
+                        com.limelight.shared.ui.components.BottomNavBar(
+                            currentScreen = controller.navigation.currentScreen,
+                            onNavigate = { screen ->
+                                if (controller.navigation.currentScreen != screen) {
+                                    controller.navigation.navigateTo(screen)
+                                }
                             }
+                        )
+                    }
+                ) { innerPadding ->
+                    Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                        when (controller.navigation.currentScreen) {
+                            AppScreen.MAIN_MENU -> MainMenuScreen(
+                                onNavigate = { screen ->
+                                    when (screen) {
+                                        AppScreen.MOONLIGHT -> controller.openMoonlight()
+                                        AppScreen.POWER_CONTROL -> controller.openPowerControl()
+                                        AppScreen.PHOTO_SERVER -> controller.openPhotoServer()
+                                        AppScreen.GAME_LIST -> Unit
+                                        AppScreen.MAIN_MENU -> Unit
+                                    }
+                                }
+                            )
+                            AppScreen.MOONLIGHT -> DashboardScreen(
+                                state = controller.dashboardState,
+                                actions = object : PlatformActions {
+                                    override fun onAddPc() {}
+                                    override fun onAddPcManual(ip: String) = controller.updateDiscoveredComputer(AppController.manualComputer(ip))
+                                    override fun onOpenSettings() = controller.dashboardState.showMessage("Abriendo ajustes de streaming...")
+                                    override fun onPcClick(computerId: String, computerName: String) = controller.openComputer(computerId, AppController.desktopFallbackGames())
+                                    override fun onPair(computerId: String) = controller.onDiscoveryStatus("Pairing no implementado en Desktop.")
+                                    override fun onApplyNetworkProfile(profileId: String) {}
+                                    override fun onWakeOnLan(macAddress: String) {
+                                        controller.onWakeOnLanDispatched(macAddress)
+                                        scope.launch(Dispatchers.IO) { sendWolPacket(macAddress) }
+                                    }
+                                    override fun onNavigateBack() = controller.navigation.goBack()
+                                }
+                            )
+                            AppScreen.GAME_LIST -> GameListScreen(
+                                state = controller.dashboardState,
+                                onBack = { controller.navigation.goBack() },
+                                onGameClick = { game -> controller.dashboardState.showMessage("Iniciando ${game.name}...") }
+                            )
+                            AppScreen.POWER_CONTROL -> PowerControlScreen(
+                                state = controller.powerControlState,
+                                onBack = { controller.navigation.goBack() },
+                                onSaveConfig = { url, user, pass, deviceId ->
+                                    controller.powerControlState.isConfigured = true
+                                    controller.powerControlState.serverUrl = url
+                                    controller.powerControlState.username = user
+                                    controller.powerControlState.password = pass
+                                    controller.powerControlState.deviceId = deviceId
+                                    controller.powerControlState.showConfig = false
+                                    controller.powerControlState.statusMessage = "Configuración guardada ✓"
+                                },
+                                onWake = {
+                                    controller.powerControlState.isWaking = true
+                                    controller.powerControlState.statusMessage = null
+                                    scope.launch(Dispatchers.IO) {
+                                        val client = com.limelight.shared.network.UpSnapClient(
+                                            controller.powerControlState.serverUrl,
+                                            controller.powerControlState.username,
+                                            controller.powerControlState.password
+                                        )
+                                        val result = client.wakeDevice(controller.powerControlState.deviceId)
+                                        withContext(Dispatchers.Main) {
+                                            controller.powerControlState.isWaking = false
+                                            when (result) {
+                                                is com.limelight.shared.network.UpSnapClient.WakeResult.Success -> {
+                                                    controller.powerControlState.statusMessage = "Señal enviada con éxito ✓"
+                                                }
+                                                is com.limelight.shared.network.UpSnapClient.WakeResult.Error -> {
+                                                    controller.powerControlState.statusMessage = result.message
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                onClearConfig = {
+                                    controller.powerControlState.isConfigured = false
+                                    controller.powerControlState.showConfig = true
+                                },
+                                onTestConnection = { url, user, pass ->
+                                    controller.powerControlState.isTestingConnection = true
+                                    scope.launch(Dispatchers.IO) {
+                                        try {
+                                            val client = com.limelight.shared.network.UpSnapClient(url, user, pass)
+                                            val devices = client.listDevices()
+                                            withContext(Dispatchers.Main) {
+                                                controller.powerControlState.isTestingConnection = false
+                                                if (devices.isNotEmpty()) {
+                                                    controller.powerControlState.availableDevices.clear()
+                                                    controller.powerControlState.availableDevices.addAll(devices)
+                                                    controller.powerControlState.statusMessage = "¡Dispositivos encontrados! Selecciona uno abajo ✓"
+                                                } else {
+                                                    controller.powerControlState.statusMessage = "No se encontraron dispositivos."
+                                                }
+                                            }
+                                        } catch (e: Exception) {
+                                            withContext(Dispatchers.Main) {
+                                                controller.powerControlState.isTestingConnection = false
+                                                controller.powerControlState.statusMessage = "Error: ${e.message}"
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                            AppScreen.PHOTO_SERVER -> PhotoServerScreen(
+                                state = controller.photoServerState,
+                                actions = object : PhotoServerActions {
+                                    override fun startPhotoServer() = photoServerManager.start()
+                                    override fun stopPhotoServer() = photoServerManager.stop()
+                                    override fun restartPhotoServer() { photoServerManager.restart() }
+                                },
+                                onBack = { controller.navigation.goBack() }
+                            )
                         }
-                    )
-                    AppScreen.MOONLIGHT -> DashboardScreen(
-                        state = controller.dashboardState,
-                        actions = object : PlatformActions {
-                            override fun onAddPc() {}
-                            override fun onAddPcManual(ip: String) = controller.updateDiscoveredComputer(AppController.manualComputer(ip))
-                            override fun onOpenSettings() = controller.dashboardState.showMessage("Abriendo ajustes de streaming...")
-                            override fun onPcClick(computerId: String, computerName: String) = controller.openComputer(computerId, AppController.desktopFallbackGames())
-                            override fun onPair(computerId: String) = controller.onDiscoveryStatus("Pairing no implementado en Desktop.")
-                            override fun onApplyNetworkProfile(profileId: String) {}
-                            override fun onWakeOnLan(macAddress: String) {
-                                controller.onWakeOnLanDispatched(macAddress)
-                                scope.launch(Dispatchers.IO) { sendWolPacket(macAddress) }
-                            }
-                            override fun onNavigateBack() = controller.navigation.goBack()
-                        }
-                    )
-                    AppScreen.GAME_LIST -> GameListScreen(
-                        state = controller.dashboardState,
-                        onBack = { controller.navigation.goBack() },
-                        onGameClick = { game -> controller.dashboardState.showMessage("Iniciando ${game.name}...") }
-                    )
-                    AppScreen.POWER_CONTROL -> FeatureStatusScreen(
-                        title = "Mi PC",
-                        message = controller.featureMessage ?: "Módulo listo",
-                        onBack = { controller.navigation.goBack() }
-                    )
-                    AppScreen.PHOTO_SERVER -> PhotoServerScreen(
-                        state = controller.photoServerState,
-                        actions = object : PhotoServerActions {
-                            override fun startPhotoServer() = photoServerManager.start()
-                            override fun stopPhotoServer() = photoServerManager.stop()
-                            override fun restartPhotoServer() = photoServerManager.restart()
-                        },
-                        onBack = { controller.navigation.goBack() }
-                    )
+                    }
                 }
             }
         }
@@ -118,6 +194,7 @@ private fun runHeadlessServerMode() {
     }
 }
 
+@Composable
 private fun FeatureStatusScreen(title: String, message: String, onBack: () -> Unit) {
     AlertDialog(
         onDismissRequest = onBack,

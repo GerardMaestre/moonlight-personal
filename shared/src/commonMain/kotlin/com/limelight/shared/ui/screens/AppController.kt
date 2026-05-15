@@ -13,12 +13,12 @@ class AppController(
     val navigation: AppNavigation = AppNavigation()
 ) {
     val photoServerState: PhotoServerState = PhotoServerState()
+    val powerControlState: PowerControlState = PowerControlState()
     var featureMessage: String? = null
         private set
 
     fun openMoonlight() = navigation.navigateTo(AppScreen.MOONLIGHT)
     fun openPowerControl() {
-        featureMessage = "Control de energía disponible desde esta capa compartida."
         navigation.navigateTo(AppScreen.POWER_CONTROL)
     }
     fun openPhotoServer() {

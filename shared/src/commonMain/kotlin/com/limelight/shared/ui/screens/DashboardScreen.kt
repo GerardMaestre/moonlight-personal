@@ -36,8 +36,9 @@ fun DashboardScreen(
                     title = {
                         Text(
                             "MOONLIGHT",
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 3.sp
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp
                         )
                     },
                     navigationIcon = {
@@ -57,10 +58,10 @@ fun DashboardScreen(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.onBackground,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                        actionIconContentColor = MaterialTheme.colorScheme.onBackground
+                        containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
             },
@@ -176,15 +177,15 @@ private fun SectionHeader(
         Column {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
             )
             if (subtitle != null) {
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MoonlightColors.Green
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MoonlightColors.Secondary
                 )
             }
         }
