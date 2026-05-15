@@ -334,4 +334,14 @@
     <string name="analogscroll_none">None (both sticks move the mouse)</string>
     <string name="analogscroll_right">Right analog stick</string>
     <string name="analogscroll_left">Left analog stick</string>
+
+    <string name="premium_unknown_pc">Unknown PC</string>
+    <string name="premium_pair_dialog_title">Pair Device</string>
+    <string name="premium_pair_dialog_message">Enter this PIN on your PC: %1$s</string>
+    <string name="premium_pair_success">Paired successfully.</string>
+    <string name="premium_pair_error">Pairing failed. Please try again.</string>
+    <string name="premium_generic_error">Error: %1$s</string>
+    <string name="premium_add_computer_success">Computer added successfully.</string>
+    <string name="premium_add_computer_not_found">Could not find a computer at IP: %1$s</string>
+    <string name="premium_add_computer_error">Error while adding computer: %1$s</string>
 </resources>
