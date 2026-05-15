@@ -34,6 +34,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Looper;
 import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -79,6 +80,7 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
     public final static String SHOW_HIDDEN_APPS_EXTRA = "ShowHiddenApps";
 
     private ComputerManagerService.ComputerManagerBinder managerBinder;
+    private boolean serviceBound;
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder binder) {
             final ComputerManagerService.ComputerManagerBinder localBinder =
@@ -94,7 +96,7 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
                     // Get the computer object
                     computer = localBinder.getComputer(uuidString);
                     if (computer == null) {
-                        finish();
+                        finishSafely();
                         return;
                     }
 
@@ -109,7 +111,7 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
                                 showHiddenApps);
                     } catch (Exception e) {
                         e.printStackTrace();
-                        finish();
+                        finishSafely();
                         return;
                     }
 
@@ -279,6 +281,28 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
         }
     }
 
+    private void finishSafely() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed()) {
+            return;
+        }
+
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            if (!isFinishing()) {
+                finish();
+            }
+        }
+        else {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (!isFinishing()) {
+                        finish();
+                    }
+                }
+            });
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -325,8 +349,8 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
         label.setText(computerName);
 
         // Bind to the computer manager service
-        bindService(new Intent(this, ComputerManagerService.class), serviceConnection,
-                Service.BIND_AUTO_CREATE);
+        serviceBound = bindService(new Intent(this, ComputerManagerService.class), serviceConnection,
+            Service.BIND_AUTO_CREATE);
     }
 
     private void updateHiddenApps(boolean hideImmediately) {
@@ -374,8 +398,9 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
         SpinnerDialog.closeDialogs(this);
         Dialog.closeDialogs();
 
-        if (managerBinder != null) {
+        if (serviceBound) {
             unbindService(serviceConnection);
+            serviceBound = false;
         }
     }
 

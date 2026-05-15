@@ -28,36 +28,40 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
             val binder = service as ComputerManagerService.ComputerManagerBinder
             managerBinder = binder
             
-            binder.startPolling(object : ComputerManagerListener {
-                override fun notifyComputerUpdated(details: ComputerDetails) {
-                    val status = when (details.state) {
-                        ComputerDetails.State.ONLINE -> com.limelight.shared.model.ComputerStatus.ONLINE
-                        ComputerDetails.State.OFFLINE -> com.limelight.shared.model.ComputerStatus.OFFLINE
-                        else -> com.limelight.shared.model.ComputerStatus.UNKNOWN
-                    }
-                    
-                    val info = com.limelight.shared.model.ComputerInfo(
-                        id = details.uuid ?: "",
-                        name = details.name ?: "Unknown PC",
-                        status = status,
-                        localAddress = details.localAddress?.address,
-                        remoteAddress = details.remoteAddress?.address,
-                        macAddress = details.macAddress,
-                        isPaired = details.pairState == com.limelight.nvstream.http.PairingManager.PairState.PAIRED,
-                        runningGameId = details.runningGameId,
-                        isNvidiaServer = details.nvidiaServer
-                    )
-                    
-                    mainHandler.post {
-                        dashboardState.updateComputer(info)
+            Thread {
+                binder.waitForReady()
+                
+                binder.startPolling(object : ComputerManagerListener {
+                    override fun notifyComputerUpdated(details: ComputerDetails) {
+                        val status = when (details.state) {
+                            ComputerDetails.State.ONLINE -> com.limelight.shared.model.ComputerStatus.ONLINE
+                            ComputerDetails.State.OFFLINE -> com.limelight.shared.model.ComputerStatus.OFFLINE
+                            else -> com.limelight.shared.model.ComputerStatus.UNKNOWN
+                        }
                         
-                        // If this is the currently selected computer, update games too
-                        if (dashboardState.selectedComputer?.id == details.uuid && details.rawAppList != null) {
-                            updateGamesFromRawList(details.rawAppList)
+                        val info = com.limelight.shared.model.ComputerInfo(
+                            id = details.uuid ?: "",
+                            name = details.name ?: "Unknown PC",
+                            status = status,
+                            localAddress = details.localAddress?.address,
+                            remoteAddress = details.remoteAddress?.address,
+                            macAddress = details.macAddress,
+                            isPaired = details.pairState == com.limelight.nvstream.http.PairingManager.PairState.PAIRED,
+                            runningGameId = details.runningGameId,
+                            isNvidiaServer = details.nvidiaServer
+                        )
+                        
+                        mainHandler.post {
+                            dashboardState.updateComputer(info)
+                            
+                            // If this is the currently selected computer, update games too
+                            if (dashboardState.selectedComputer?.id == details.uuid && details.rawAppList != null) {
+                                updateGamesFromRawList(details.rawAppList)
+                            }
                         }
                     }
-                }
-            })
+                })
+            }.start()
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {

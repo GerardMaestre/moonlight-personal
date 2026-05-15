@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.compose")
     id("com.android.library")
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.20"
 }
 
 kotlin {
@@ -24,6 +25,7 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(compose.components.uiToolingPreview)
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
         }
 
         commonTest.dependencies {

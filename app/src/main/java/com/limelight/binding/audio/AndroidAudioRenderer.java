@@ -187,6 +187,10 @@ public class AndroidAudioRenderer implements AudioRenderer {
 
     @Override
     public void playDecodedAudio(short[] audioData) {
+        if (track == null) {
+            return;
+        }
+
         // Only queue up to 40 ms of pending audio data in addition to what AudioTrack is buffering for us.
         if (MoonBridge.getPendingAudioDuration() < 40) {
             // This will block until the write is completed. That can cause a backlog
@@ -201,7 +205,7 @@ public class AndroidAudioRenderer implements AudioRenderer {
 
     @Override
     public void start() {
-        if (enableAudioFx) {
+        if (enableAudioFx && track != null) {
             // Open an audio effect control session to allow equalizers to apply audio effects
             Intent i = new Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION);
             i.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, track.getAudioSessionId());
@@ -213,7 +217,7 @@ public class AndroidAudioRenderer implements AudioRenderer {
 
     @Override
     public void stop() {
-        if (enableAudioFx) {
+        if (enableAudioFx && track != null) {
             // Close our audio effect control session when we're stopping
             Intent i = new Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
             i.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, track.getAudioSessionId());
@@ -224,10 +228,19 @@ public class AndroidAudioRenderer implements AudioRenderer {
 
     @Override
     public void cleanup() {
+        if (track == null) {
+            return;
+        }
+
         // Immediately drop all pending data
-        track.pause();
-        track.flush();
+        try {
+            track.pause();
+            track.flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         track.release();
+        track = null;
     }
 }
