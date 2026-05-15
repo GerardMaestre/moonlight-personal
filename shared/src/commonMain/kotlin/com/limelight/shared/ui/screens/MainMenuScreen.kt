@@ -1,8 +1,11 @@
 package com.limelight.shared.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Games
@@ -13,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,11 +37,27 @@ fun MainMenuScreen(
                         letterSpacing = 2.sp
                     )
                 },
+                navigationIcon = {
+                    IconButton(onClick = { /* TODO: account action */ }) {
+                        Icon(
+                            imageVector = Icons.Default.Computer, // Placeholder, use proper icon later
+                            contentDescription = "Account",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { /* TODO: tune action */ }) {
+                        Icon(
+                            imageVector = Icons.Default.Computer, // Placeholder
+                            contentDescription = "Tune",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MoonlightColors.Purple,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
+                    titleContentColor = MoonlightColors.TertiaryContainer
                 )
             )
         },
@@ -47,7 +67,7 @@ fun MainMenuScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.TopCenter
         ) {
             // We use an experimental layout or a simple adaptive column/row based on screen width.
             // A BoxWithConstraints allows us to switch from Column to Row.
@@ -82,12 +102,15 @@ fun MainMenuScreen(
                         )
                     }
                 } else {
-                    // Mobile / Portrait mode: Stacked
+                    // Mobile / Portrait mode: Stacked and Scrollable
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         MenuCard(
                             title = "Moonlight",
                             subtitle = "Streaming de Juegos",
@@ -109,6 +132,7 @@ fun MainMenuScreen(
                             onClick = { onNavigate(AppScreen.PHOTO_SERVER) },
                             modifier = Modifier.fillMaxWidth()
                         )
+                        Spacer(modifier = Modifier.height(80.dp))
                     }
                 }
             }
@@ -126,14 +150,14 @@ private fun MenuCard(
 ) {
     Card(
         modifier = modifier
-            .height(200.dp)
             .clip(RoundedCornerShape(24.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
     ) {
         Column(
             modifier = Modifier
@@ -142,12 +166,20 @@ private fun MenuCard(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                modifier = Modifier.size(64.dp),
-                tint = MoonlightColors.Green
-            )
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(MoonlightColors.Secondary.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    modifier = Modifier.size(36.dp),
+                    tint = MoonlightColors.Secondary
+                )
+            }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = title,

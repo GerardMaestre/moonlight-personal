@@ -36,11 +36,11 @@ fun NetworkProfileCard(
 
     val borderGradient = if (isSelected) {
         Brush.horizontalGradient(
-            listOf(MoonlightColors.Purple, MoonlightColors.Cyan)
+            listOf(MoonlightColors.PrimaryContainer, MoonlightColors.TertiaryContainer)
         )
     } else {
         Brush.horizontalGradient(
-            listOf(MoonlightColors.SurfaceElevated, MoonlightColors.SurfaceElevated)
+            listOf(MoonlightColors.SurfaceVariant, MoonlightColors.SurfaceVariant)
         )
     }
 
@@ -60,7 +60,7 @@ fun NetworkProfileCard(
             Icon(
                 imageVector = icon,
                 contentDescription = profile.name,
-                tint = if (isSelected) MoonlightColors.Purple else MoonlightColors.OnSurfaceVariant,
+                tint = if (isSelected) MoonlightColors.PrimaryContainer else MoonlightColors.OnSurfaceVariant,
                 modifier = Modifier.size(28.dp)
             )
 
@@ -71,7 +71,7 @@ fun NetworkProfileCard(
                     text = profile.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isSelected) MoonlightColors.Purple
+                    color = if (isSelected) MoonlightColors.PrimaryContainer
                     else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
@@ -84,13 +84,13 @@ fun NetworkProfileCard(
             if (isSelected) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = MoonlightColors.Purple.copy(alpha = 0.15f)
+                    color = MoonlightColors.PrimaryContainer.copy(alpha = 0.15f)
                 ) {
                     Text(
                         text = "ACTIVO",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MoonlightColors.Purple,
+                        color = MoonlightColors.PrimaryContainer,
                         fontWeight = FontWeight.Bold
                     )
                 }

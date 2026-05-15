@@ -52,10 +52,10 @@ fun GameListScreen(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
@@ -98,7 +98,7 @@ fun GameCard(game: GameInfo, onClick: () -> Unit) {
                 Text(
                     game.name.take(1).uppercase(),
                     style = MaterialTheme.typography.headlineLarge,
-                    color = MoonlightColors.Purple
+                    color = MoonlightColors.PrimaryContainer
                 )
             }
         }

@@ -62,30 +62,30 @@ class UpSnapClient(
     }
 
     fun listDevices(): List<Pair<String, String>> {
-        return try {
-            val token = if (username.isNotBlank()) authenticate() else ""
-            if (username.isNotBlank() && token.isEmpty()) return emptyList()
-            
-            val base = serverUrl.trim().let { 
-                if (!it.startsWith("http")) "http://$it" else it 
-            }.trimEnd('/')
-            val url = URL("$base/api/collections/devices/records")
-            val conn = createConnection(url)
-            conn.requestMethod = "GET"
-            if (token.isNotEmpty()) conn.setRequestProperty("Authorization", "Bearer $token")
-            conn.connectTimeout = CONNECT_TIMEOUT
-            conn.readTimeout = READ_TIMEOUT
+        val token = if (username.isNotBlank()) authenticate() else ""
+        
+        val base = serverUrl.trim().let { 
+            if (!it.startsWith("http")) "http://$it" else it 
+        }.trimEnd('/')
+        val url = URL("$base/api/collections/devices/records")
+        val conn = createConnection(url)
+        conn.requestMethod = "GET"
+        if (token.isNotEmpty()) conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.connectTimeout = CONNECT_TIMEOUT
+        conn.readTimeout = READ_TIMEOUT
 
-            if (conn.responseCode == 200) {
-                val body = conn.inputStream.bufferedReader().readText()
-                val response = json.decodeFromString<DeviceListResponse>(body)
-                response.items.map { it.id to it.name }
-            } else {
-                emptyList()
+        val responseCode = conn.responseCode
+        if (responseCode == 200) {
+            val body = conn.inputStream.bufferedReader().readText()
+            val response = json.decodeFromString<DeviceListResponse>(body)
+            return response.items.map { it.id to it.name }
+        } else {
+            val errorBody = try {
+                conn.errorStream?.bufferedReader()?.readText() ?: "Código $responseCode"
+            } catch (ex: Exception) {
+                "Código $responseCode"
             }
-        } catch (e: Exception) {
-            println("[UpSnapClient] listDevices failed: ${e.message}")
-            emptyList()
+            throw Exception("Error del servidor ($responseCode): $errorBody")
         }
     }
 
@@ -114,23 +114,25 @@ class UpSnapClient(
             json.encodeToString(AuthRequest.serializer(), AuthRequest(identity = username.trim(), password = password))
         }
 
-        try {
-            conn.outputStream.bufferedWriter().use { it.write(body) }
-        } catch (e: Exception) {
-            return ""
-        }
+        conn.outputStream.bufferedWriter().use { it.write(body) }
 
-        return if (conn.responseCode == 200) {
+        val responseCode = conn.responseCode
+        return if (responseCode == 200) {
             val response = conn.inputStream.bufferedReader().readText()
             json.decodeFromString<AuthResponse>(response).token
-        } else if (conn.responseCode == 400 && authUrl.toString().contains("/collections/users/")) {
+        } else if (responseCode == 400 && authUrl.toString().contains("/collections/users/")) {
             val superUserUrl = URL(authUrl.toString().replace("/collections/users/", "/collections/_superusers/"))
             authenticate(superUserUrl)
-        } else if (conn.responseCode == 404 && authUrl.toString().contains("/collections/_superusers/")) {
+        } else if (responseCode == 404 && authUrl.toString().contains("/collections/_superusers/")) {
             val adminUrl = URL(authUrl.toString().replace("/collections/_superusers/", "/admins/"))
             authenticate(adminUrl)
         } else {
-            ""
+            val errorMsg = try {
+                conn.errorStream?.bufferedReader()?.readText() ?: "Sin respuesta"
+            } catch (ex: Exception) {
+                "Fallo HTTP $responseCode"
+            }
+            throw Exception("Fallo de autenticación ($responseCode): $errorMsg")
         }
     }
 

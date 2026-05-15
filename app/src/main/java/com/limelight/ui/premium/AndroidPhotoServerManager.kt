@@ -2,16 +2,17 @@ package com.limelight.ui.premium
 
 import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PhotoServerStatus
+import com.limelight.shared.platform.StartCommandResult
 import fi.iki.elonen.NanoHTTPD
 
 class AndroidPhotoServerManager(private val state: PhotoServerState) {
     private var server: NanoHTTPD? = null
 
     @Synchronized
-    fun start() {
-        if (server != null) return
+    fun start(): StartCommandResult {
+        if (server != null) return StartCommandResult.Success
         state.updateStatus(PhotoServerStatus.Starting)
-        runCatching {
+        return runCatching {
             val http = object : NanoHTTPD(0) {
                 override fun serve(session: IHTTPSession): Response {
                     return newFixedLengthResponse("Moonlight Photo Server OK")
@@ -20,8 +21,11 @@ class AndroidPhotoServerManager(private val state: PhotoServerState) {
             http.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
             server = http
             state.updateStatus(PhotoServerStatus.Running(http.listeningPort, "http://127.0.0.1:${http.listeningPort}/"))
-        }.onFailure {
-            state.updateStatus(PhotoServerStatus.Error(it.message ?: "No se pudo iniciar el servidor"))
+            StartCommandResult.Success
+        }.getOrElse {
+            val msg = it.message ?: "No se pudo iniciar el servidor"
+            state.updateStatus(PhotoServerStatus.Error(msg))
+            StartCommandResult.Failed(msg)
         }
     }
 
@@ -32,8 +36,8 @@ class AndroidPhotoServerManager(private val state: PhotoServerState) {
         state.updateStatus(PhotoServerStatus.Stopped)
     }
 
-    fun restart() {
+    fun restart(): StartCommandResult {
         stop()
-        start()
+        return start()
     }
 }

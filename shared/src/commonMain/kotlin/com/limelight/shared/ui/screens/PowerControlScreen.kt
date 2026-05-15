@@ -3,6 +3,7 @@ package com.limelight.shared.ui.screens
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -84,10 +85,10 @@ fun PowerControlScreen(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MoonlightColors.Purple,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
+                    titleContentColor = MoonlightColors.TertiaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
@@ -115,7 +116,7 @@ private fun WakeSection(
     state: PowerControlState,
     onWake: () -> Unit
 ) {
-    Spacer(modifier = Modifier.height(48.dp))
+    Spacer(modifier = Modifier.height(24.dp))
 
     if (!state.isConfigured) {
         Card(
@@ -167,7 +168,7 @@ private fun WakeSection(
     )
 
     val buttonColor by animateColorAsState(
-        targetValue = if (state.isWaking) MoonlightColors.Amber else MoonlightColors.Green,
+        targetValue = if (state.isWaking) MoonlightColors.Secondary else MoonlightColors.Secondary,
         animationSpec = tween(500),
         label = "buttonColor"
     )
@@ -187,7 +188,7 @@ private fun WakeSection(
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 
-    Spacer(modifier = Modifier.height(48.dp))
+    Spacer(modifier = Modifier.height(24.dp))
 
     Box(
         contentAlignment = Alignment.Center,
@@ -195,41 +196,43 @@ private fun WakeSection(
             .size(200.dp)
             .scale(if (!state.isWaking) pulseScale else 1f)
     ) {
+        val glowColor = buttonColor.copy(alpha = 0.5f)
+        
         Box(
             modifier = Modifier
-                .size(200.dp)
+                .size(192.dp)
                 .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            buttonColor.copy(alpha = 0.15f),
-                            Color.Transparent
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .border(1.dp, glowColor, CircleShape)
+                .clickable { if (!state.isWaking) onWake() }
+        ) {
+            // Shadow simulation
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(buttonColor.copy(alpha = 0.3f), Color.Transparent),
+                            radius = 400f
                         )
                     )
-                )
-        )
-
-        FilledIconButton(
-            onClick = { if (!state.isWaking) onWake() },
-            modifier = Modifier.size(140.dp),
-            shape = CircleShape,
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = buttonColor.copy(alpha = 0.2f),
-                contentColor = buttonColor
             )
-        ) {
-            if (state.isWaking) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(48.dp),
-                    color = buttonColor,
-                    strokeWidth = 3.dp
-                )
-            } else {
-                Icon(
-                    Icons.Default.PowerSettingsNew,
-                    contentDescription = "Encender PC",
-                    modifier = Modifier.size(64.dp)
-                )
+            
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                if (state.isWaking) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        color = buttonColor,
+                        strokeWidth = 3.dp
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.PowerSettingsNew,
+                        contentDescription = "Encender PC",
+                        modifier = Modifier.size(80.dp),
+                        tint = buttonColor
+                    )
+                }
             }
         }
     }
@@ -240,7 +243,7 @@ private fun WakeSection(
         if (state.isWaking) "Enviando señal de encendido..." else "Pulsa para encender",
         style = MaterialTheme.typography.bodyLarge,
         fontWeight = FontWeight.Medium,
-        color = if (state.isWaking) MoonlightColors.Amber else MaterialTheme.colorScheme.onSurfaceVariant
+        color = if (state.isWaking) MoonlightColors.Secondary else MaterialTheme.colorScheme.onSurfaceVariant
     )
 
     state.statusMessage?.let { msg ->
@@ -251,9 +254,9 @@ private fun WakeSection(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = if (isError)
-                    MoonlightColors.Red.copy(alpha = 0.1f)
+                    MoonlightColors.Error.copy(alpha = 0.1f)
                 else
-                    MoonlightColors.Green.copy(alpha = 0.1f)
+                    MoonlightColors.Secondary.copy(alpha = 0.1f)
             )
         ) {
             Row(
@@ -263,7 +266,7 @@ private fun WakeSection(
                 Icon(
                     if (isError) Icons.Default.Error else Icons.Default.CheckCircle,
                     contentDescription = null,
-                    tint = if (isError) MoonlightColors.Red else MoonlightColors.Green,
+                    tint = if (isError) MoonlightColors.Error else MoonlightColors.Secondary,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -292,7 +295,7 @@ private fun WakeSection(
             Icon(
                 Icons.Default.Lock,
                 contentDescription = null,
-                tint = MoonlightColors.Cyan,
+                tint = MoonlightColors.PrimaryContainer,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -325,7 +328,7 @@ private fun ConfigSection(
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Black,
         letterSpacing = 2.sp,
-        color = MoonlightColors.Purple
+        color = MoonlightColors.PrimaryContainer
     )
 
     Spacer(modifier = Modifier.height(24.dp))
@@ -383,7 +386,7 @@ private fun ConfigSection(
         modifier = Modifier.fillMaxWidth().height(52.dp),
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = MoonlightColors.Purple
+            containerColor = MoonlightColors.PrimaryContainer
         ),
         enabled = !state.isTestingConnection && url.isNotBlank() && user.isNotBlank() && pass.isNotBlank()
     ) {
@@ -406,7 +409,7 @@ private fun ConfigSection(
                 "SELECCIONA TU PC:",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                color = MoonlightColors.Green
+                color = MoonlightColors.Secondary
             )
             Spacer(modifier = Modifier.height(12.dp))
             state.availableDevices.forEach { (id, name) ->
@@ -423,7 +426,7 @@ private fun ConfigSection(
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (isSelected) 
-                            MoonlightColors.Green.copy(alpha = 0.15f) 
+                            MoonlightColors.Secondary.copy(alpha = 0.15f) 
                         else 
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     )
@@ -435,7 +438,7 @@ private fun ConfigSection(
                         Icon(
                             if (isSelected) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
                             contentDescription = null,
-                            tint = if (isSelected) MoonlightColors.Green else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (isSelected) MoonlightColors.Secondary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
@@ -455,7 +458,7 @@ private fun ConfigSection(
         modifier = Modifier.fillMaxWidth().height(56.dp),
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = MoonlightColors.Green
+            containerColor = MoonlightColors.Secondary
         ),
         enabled = url.isNotBlank() && user.isNotBlank() && pass.isNotBlank() && devId.isNotBlank()
     ) {
@@ -471,7 +474,7 @@ private fun ConfigSection(
             onClick = onClear,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.textButtonColors(
-                contentColor = MoonlightColors.Red
+                contentColor = MoonlightColors.Error
             )
         ) {
             Icon(Icons.Default.DeleteForever, contentDescription = null)

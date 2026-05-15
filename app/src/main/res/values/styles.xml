@@ -5,6 +5,7 @@
     <style name="AppTheme" parent="AppBaseTheme">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
+        <item name="android:statusBarColor">#000000</item>
     </style>
 
     <style name="StreamBaseTheme" parent="AppBaseTheme">
