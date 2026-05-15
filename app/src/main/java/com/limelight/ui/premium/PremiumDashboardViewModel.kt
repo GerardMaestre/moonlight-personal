@@ -13,14 +13,14 @@ import com.limelight.computers.ComputerManagerService
 import com.limelight.nvstream.http.ComputerDetails
 import com.limelight.shared.model.ComputerInfo
 import com.limelight.shared.model.ComputerStatus
-import com.limelight.shared.ui.screens.DashboardState
+import com.limelight.shared.ui.screens.AppController
 
 class PremiumDashboardViewModel(application: Application) : AndroidViewModel(application) {
     private var managerBinder: ComputerManagerService.ComputerManagerBinder? = null
     private var appListPoller: ComputerManagerService.ApplistPoller? = null
     
-    // Use the shared state
-    val dashboardState = DashboardState()
+    val controller = AppController()
+    val dashboardState get() = controller.dashboardState
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     private val serviceConnection = object : ServiceConnection {
@@ -98,7 +98,7 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
         val binder = managerBinder ?: return
         val computer = binder.getComputer(computerId) ?: return
         
-        dashboardState.selectedComputer = dashboardState.computers.find { it.id == computerId }
+        controller.openComputer(computerId)
         
         // Stop previous poller if any
         appListPoller?.stop()

@@ -120,3 +120,14 @@ Se estandarizan modelos reutilizables para alimentar vistas compartidas:
 - [ ] Usa componentes compartidos (`TopBarConfig`, `UiCellModel`, `ActionButtonModel`, `EmptyStateModel`).
 - [ ] Mantiene paridad funcional.
 - [ ] No afecta el pipeline de streaming.
+
+---
+
+## 6) Política obligatoria: Shared-first para features comunes
+
+Para cualquier feature común entre Desktop/Android (por ejemplo discovery, pairing, lista de juegos, WOL o navegación base), se aplica esta regla:
+
+1. **Primero en `shared`**: la fuente de verdad de estado e intents debe definirse en `shared/src/commonMain` (por ejemplo en `AppController`).
+2. **Después adaptadores**: `desktopApp/.../Main.kt` y Android Activity/ViewModel solo deben puentear APIs nativas y hostear UI.
+3. **Sin duplicar reglas de negocio** en capas de plataforma.
+4. **Nuevos estados/eventos de navegación** deben modelarse en shared antes de crear pantallas/adaptadores de plataforma.

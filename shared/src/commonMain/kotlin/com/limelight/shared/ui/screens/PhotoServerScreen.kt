@@ -1,108 +1,67 @@
 package com.limelight.shared.ui.screens
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.limelight.shared.ui.theme.MoonlightColors
+import com.limelight.shared.platform.PhotoServerActions
+import com.limelight.shared.platform.PhotoServerState
+import com.limelight.shared.platform.PhotoServerStatus
+import com.limelight.shared.platform.PreviewPhotoServerActions
+import com.limelight.shared.platform.StartCommandResult
 
 @Composable
 fun PhotoServerScreen(
-    statusMessage: String?,
+    state: PhotoServerState,
+    actions: PhotoServerActions = PreviewPhotoServerActions,
     onBack: () -> Unit,
-    onStartServer: () -> Unit,
-    onStopServer: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Icon(
-            imageVector = Icons.Default.CloudSync,
-            contentDescription = "Immich",
-            modifier = Modifier.size(80.dp),
-            tint = MoonlightColors.Cyan
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            "Servidor de Fotos",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            "Arranca el stack de contenedores de Immich en el ordenador remoto sin mostrar ventanas visibles.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(48.dp))
-        
-        FilledTonalButton(
-            onClick = onStartServer,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MoonlightColors.Cyan.copy(alpha = 0.2f),
-                contentColor = MoonlightColors.Cyan
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(24.dp))
-            Spacer(modifier = Modifier.width(12.dp))
-            Text("ARRANCAR SERVIDOR IMMICH", fontWeight = FontWeight.Bold)
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        FilledTonalButton(
-            onClick = onStopServer,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MoonlightColors.Red.copy(alpha = 0.2f),
-                contentColor = MoonlightColors.Red
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Icon(Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(24.dp))
-            Spacer(modifier = Modifier.width(12.dp))
-            Text("APAGAR SERVIDOR IMMICH", fontWeight = FontWeight.Bold)
-        }
-        
-        statusMessage?.let { msg ->
-            Spacer(modifier = Modifier.height(24.dp))
-            val isError = msg.startsWith("Error") || msg.contains("falló")
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isError) MoonlightColors.Red.copy(alpha = 0.1f) else MoonlightColors.Green.copy(alpha = 0.1f)
-                )
-            ) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (isError) Icons.Default.Error else Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = if (isError) MoonlightColors.Red else MoonlightColors.Green,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(msg, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                }
+        Text("Servidor de Fotos", style = MaterialTheme.typography.headlineSmall)
+
+        when (val status = state.status) {
+            PhotoServerStatus.Stopped -> Text("Estado: detenido")
+            PhotoServerStatus.Starting -> Text("Estado: iniciando...")
+            is PhotoServerStatus.Running -> {
+                Text("Estado: ejecutándose")
+                Text("Puerto: ${status.port}")
+                Text("URL: ${status.url}")
             }
+            is PhotoServerStatus.Error -> Text("Estado: error (${status.message})", color = MaterialTheme.colorScheme.error)
         }
-        
-        Spacer(modifier = Modifier.height(48.dp))
-        TextButton(onClick = onBack) {
-            Text("Volver", color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        state.lastError?.let {
+            Text("Último error: $it", color = MaterialTheme.colorScheme.error)
         }
+
+        Text("Healthcheck: ${state.healthMessage}")
+        if (state.recentLogs.isNotEmpty()) {
+            Text("Logs recientes:")
+            state.recentLogs.takeLast(5).forEach { line -> Text("• $line") }
+        }
+        when (val result = state.lastCommandResult) {
+            StartCommandResult.Success -> Text("Último inicio: OK")
+            is StartCommandResult.Failed -> Text("Último inicio: ERROR (${result.reason})", color = MaterialTheme.colorScheme.error)
+            null -> Unit
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = { actions.startPhotoServer() }, modifier = Modifier.fillMaxWidth()) { Text("Iniciar") }
+        OutlinedButton(onClick = actions::stopPhotoServer, modifier = Modifier.fillMaxWidth()) { Text("Detener") }
+        OutlinedButton(onClick = actions::restartPhotoServer, modifier = Modifier.fillMaxWidth()) { Text("Reiniciar") }
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Volver") }
     }
 }
