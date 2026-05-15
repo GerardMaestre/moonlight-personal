@@ -6,6 +6,9 @@ pluginManagement {
     }
 }
 
+rootProject.name = "moonlight-personal"
+
 include(":app")
 include(":shared")
-include(":desktopApp")
+// desktopApp removed in Phase 1 — see docs/ARCHITECTURE.md
+
