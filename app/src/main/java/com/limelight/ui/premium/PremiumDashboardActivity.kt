@@ -19,8 +19,10 @@ import com.limelight.shared.ui.theme.MoonlightTheme
 import com.limelight.computers.ComputerManagerService
 import com.limelight.preferences.AddComputerManually
 import com.limelight.shared.network.RemoteScriptClient
-import com.limelight.shared.network.UpSnapClient
 import com.limelight.shared.network.WakeService
+import com.limelight.di.UpSnapClientFactory
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import com.limelight.shared.ui.screens.PowerControlScreen
 import com.limelight.shared.platform.StartCommandResult
 import androidx.compose.foundation.layout.*
@@ -30,7 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+@AndroidEntryPoint
 class PremiumDashboardActivity : ComponentActivity() {
+    @Inject lateinit var upSnapClientFactory: UpSnapClientFactory
     private val viewModel: PremiumDashboardViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -164,7 +168,7 @@ class PremiumDashboardActivity : ComponentActivity() {
                                             powerState.isWaking = true
                                             powerState.statusMessage = null
                                             thread {
-                                                val client = UpSnapClient(
+                                                val client = upSnapClientFactory.create(
                                                     powerState.serverUrl,
                                                     powerState.username,
                                                     powerState.password
@@ -198,7 +202,7 @@ class PremiumDashboardActivity : ComponentActivity() {
                                             powerState.statusMessage = null
                                             thread {
                                                 try {
-                                                    val client = UpSnapClient(url, user, password)
+                                                    val client = upSnapClientFactory.create(url, user, password)
                                                     val devices = client.listDevices()
                                                     runOnUiThread {
                                                         powerState.isTestingConnection = false
