@@ -141,9 +141,14 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
                 mainHandler.post {
                     com.limelight.utils.Dialog.closeDialogs()
                     if (pairState == com.limelight.nvstream.http.PairingManager.PairState.PAIRED) {
-                        binder.getComputer(computer.uuid).serverCert = pm.pairedCert
-                        binder.invalidateStateForComputer(computer.uuid)
-                        dashboardState.showMessage(appContext.getString(R.string.premium_pair_success))
+                        val pairedComputer = binder.getComputer(computer.uuid)
+                        if (pairedComputer != null) {
+                            pairedComputer.serverCert = pm.pairedCert
+                            binder.invalidateStateForComputer(computer.uuid)
+                            dashboardState.showMessage(appContext.getString(R.string.premium_pair_success))
+                        } else {
+                            dashboardState.showMessage(appContext.getString(R.string.premium_pair_pc_not_found))
+                        }
                     } else {
                         dashboardState.showMessage(appContext.getString(R.string.premium_pair_error))
                     }

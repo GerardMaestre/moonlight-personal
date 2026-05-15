@@ -344,4 +344,5 @@
     <string name="premium_add_computer_success">Computer added successfully.</string>
     <string name="premium_add_computer_not_found">Could not find a computer at IP: %1$s</string>
     <string name="premium_add_computer_error">Error while adding computer: %1$s</string>
+    <string name="premium_pair_pc_not_found">Computer is no longer available. Refresh the list and try again.</string>
 </resources>
