@@ -3,6 +3,7 @@ package com.limelight.shared.network
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+import com.limelight.wol.MagicPacket
 
 /**
  * Platform-agnostic standard Wake-on-LAN Magic Packet sender.
@@ -24,13 +25,7 @@ object StandardWolSender {
     }
 
     fun createMagicPacket(macAddress: String): ByteArray {
-        val macBytes = getMacBytes(macAddress)
-        val bytes = ByteArray(6 + 16 * macBytes.size)
-        repeat(6) { bytes[it] = 0xFF.toByte() }
-        for (i in 0 until 16) {
-            System.arraycopy(macBytes, 0, bytes, 6 + i * macBytes.size, macBytes.size)
-        }
-        return bytes
+        return MagicPacket.create(macAddress)
     }
 
     fun getMacBytes(macStr: String): ByteArray {
