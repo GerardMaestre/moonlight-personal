@@ -20,13 +20,11 @@ import com.limelight.shared.ui.screens.GameListScreen
 import com.limelight.shared.ui.theme.MoonlightTheme
 import com.limelight.computers.ComputerManagerService
 import com.limelight.preferences.AddComputerManually
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Cancel
+import com.limelight.shared.network.UpSnapClient
+import com.limelight.shared.network.RemoteScriptClient
+import com.limelight.shared.ui.screens.PowerControlState
+import com.limelight.shared.ui.screens.PowerControlScreen
+import com.limelight.shared.ui.screens.PhotoServerScreen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -144,7 +142,7 @@ class PremiumDashboardActivity : ComponentActivity() {
                                     powerState.isConfigured = true
                                     powerState.serverUrl = url
                                     powerState.username = user
-                                    powerState.password = pass // Keep it in state
+                                    powerState.password = pass
                                     powerState.deviceId = deviceId
                                     powerState.isEnabled = true
                                     powerState.showConfig = false
@@ -152,25 +150,23 @@ class PremiumDashboardActivity : ComponentActivity() {
                                 },
                                 onWake = {
                                     val config = UpSnapConfig.getInstance(this@PremiumDashboardActivity)
-                                    if (!config.isConfigured) {
-                                        powerState.statusMessage = "Error: UpSnap no configurado"
-                                        return@PowerControlScreen
-                                    }
+                                    if (!config.isConfigured) return@PowerControlScreen
                                     
                                     powerState.isWaking = true
                                     powerState.statusMessage = null
                                     
                                     thread {
-                                        val username = config.getUsername() ?: ""
-                                        val password = config.getPassword() ?: ""
-                                        val client = UpSnapClient(config.serverUrl, username, password)
+                                        val client = UpSnapClient(
+                                            config.serverUrl, 
+                                            config.getUsername() ?: "", 
+                                            config.getPassword() ?: ""
+                                        )
                                         val result = client.wakeDevice(config.deviceId)
-                                        
                                         runOnUiThread {
                                             powerState.isWaking = false
                                             when (result) {
                                                 is UpSnapClient.WakeResult.Success -> {
-                                                    powerState.statusMessage = "Señal WoL enviada correctamente ✓"
+                                                    powerState.statusMessage = "Señal enviada correctamente ✓"
                                                 }
                                                 is UpSnapClient.WakeResult.Error -> {
                                                     powerState.statusMessage = result.message
@@ -180,34 +176,24 @@ class PremiumDashboardActivity : ComponentActivity() {
                                     }
                                 },
                                 onClearConfig = {
-                                    val config = UpSnapConfig.getInstance(this@PremiumDashboardActivity)
-                                    config.clear()
+                                    UpSnapConfig.getInstance(this@PremiumDashboardActivity).clear()
                                     powerState.isConfigured = false
-                                    powerState.serverUrl = ""
-                                    powerState.username = ""
-                                    powerState.password = ""
-                                    powerState.deviceId = ""
-                                    powerState.isEnabled = false
-                                    powerState.statusMessage = null
                                     powerState.showConfig = true
                                 },
                                 onTestConnection = { url, user, password ->
                                     powerState.isTestingConnection = true
                                     powerState.statusMessage = null
-                                    powerState.availableDevices.clear()
-                                    
                                     thread {
                                         val client = UpSnapClient(url, user, password)
                                         val devices = client.listDevices()
-                                        
                                         runOnUiThread {
                                             powerState.isTestingConnection = false
                                             if (devices.isNotEmpty()) {
+                                                powerState.availableDevices.clear()
                                                 powerState.availableDevices.addAll(devices)
-                                                powerState.statusMessage = "¡Dispositivos encontrados! Selecciona el tuyo abajo ✓"
+                                                powerState.statusMessage = "¡Dispositivos encontrados! ✓"
                                             } else {
-                                                // If list is empty, it could be wrong auth or wrong URL
-                                                powerState.statusMessage = "Error: No se han encontrado dispositivos. Revisa usuario, contraseña y URL."
+                                                powerState.statusMessage = "Error: Revisa los datos."
                                             }
                                         }
                                     }
@@ -215,166 +201,27 @@ class PremiumDashboardActivity : ComponentActivity() {
                             )
                         }
                         AppScreen.PHOTO_SERVER -> {
-                            var immichStatus by remember { mutableStateOf<String?>(null) }
-                            
-                            Column(
-                                modifier = Modifier.fillMaxSize().padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = androidx.compose.material.icons.Icons.Default.CloudSync,
-                                    contentDescription = "Immich",
-                                    modifier = Modifier.size(80.dp),
-                                    tint = com.limelight.shared.ui.theme.MoonlightColors.Cyan
-                                )
-                                Spacer(modifier = Modifier.height(24.dp))
-                                Text(
-                                    "Servidor de Fotos",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onBackground
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    "Arranca el stack de contenedores de Immich en el ordenador remoto sin mostrar ventanas visibles.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                )
-                                Spacer(modifier = Modifier.height(48.dp))
-                                
-                                FilledTonalButton(
-                                    onClick = {
-                                        immichStatus = "Iniciando Immich en el servidor..."
-                                        thread {
-                                            try {
-                                                // IP directa del PC con Stream Deck (Tailscale)
-                                                val streamDeckUrl = "http://100.67.140.39:3000/api/run-script"
-                                                
-                                                val json = org.json.JSONObject()
-                                                json.put("carpeta", "07_Personalizacion")
-                                                json.put("archivo", "fotos.bat")
-                                                
-                                                val mediaType = "application/json; charset=utf-8".toMediaType()
-                                                val body = json.toString().toRequestBody(mediaType)
-                                                
-                                                val request = okhttp3.Request.Builder()
-                                                    .url(streamDeckUrl)
-                                                    .post(body)
-                                                    .addHeader("Authorization", "Bearer CasaGerard")
-                                                    .build()
-                                                    
-                                                val client = okhttp3.OkHttpClient()
-                                                val response = client.newCall(request).execute()
-                                                
-                                                runOnUiThread {
-                                                    if (response.isSuccessful) {
-                                                        immichStatus = "¡Servidor Immich arrancado correctamente! ✓"
-                                                    } else {
-                                                        immichStatus = "Error al iniciar Immich: HTTP ${response.code}"
-                                                    }
-                                                }
-                                            } catch (e: Exception) {
-                                                e.printStackTrace()
-                                                runOnUiThread {
-                                                    immichStatus = "Error de red: No se pudo contactar con Stream Deck local (puerto 3000)."
-                                                }
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = com.limelight.shared.ui.theme.MoonlightColors.Cyan.copy(alpha = 0.2f),
-                                        contentColor = com.limelight.shared.ui.theme.MoonlightColors.Cyan
-                                    ),
-                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
-                                ) {
-                                    Icon(androidx.compose.material.icons.Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(24.dp))
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text("ARRANCAR SERVIDOR IMMICH", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                                }
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                FilledTonalButton(
-                                    onClick = {
-                                        immichStatus = "Deteniendo Immich en el servidor..."
-                                        thread {
-                                            try {
-                                                val streamDeckUrl = "http://100.67.140.39:3000/api/run-script"
-                                                
-                                                val json = org.json.JSONObject()
-                                                json.put("carpeta", "07_Personalizacion")
-                                                json.put("archivo", "cerrar_fotos.bat")
-                                                
-                                                val mediaType = "application/json; charset=utf-8".toMediaType()
-                                                val body = json.toString().toRequestBody(mediaType)
-                                                
-                                                val request = okhttp3.Request.Builder()
-                                                    .url(streamDeckUrl)
-                                                    .post(body)
-                                                    .addHeader("Authorization", "Bearer CasaGerard")
-                                                    .build()
-                                                    
-                                                val client = okhttp3.OkHttpClient()
-                                                val response = client.newCall(request).execute()
-                                                
-                                                runOnUiThread {
-                                                    if (response.isSuccessful) {
-                                                        immichStatus = "¡Servidor Immich detenido correctamente! ✓"
-                                                    } else {
-                                                        immichStatus = "Error al detener Immich: HTTP ${response.code}"
-                                                    }
-                                                }
-                                            } catch (e: Exception) {
-                                                e.printStackTrace()
-                                                runOnUiThread {
-                                                    immichStatus = "Error de red: No se pudo contactar con Stream Deck local (puerto 3000)."
-                                                }
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = com.limelight.shared.ui.theme.MoonlightColors.Red.copy(alpha = 0.2f),
-                                        contentColor = com.limelight.shared.ui.theme.MoonlightColors.Red
-                                    ),
-                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
-                                ) {
-                                    Icon(androidx.compose.material.icons.Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(24.dp))
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text("APAGAR SERVIDOR IMMICH", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                                }
-                                
-                                immichStatus?.let { msg ->
-                                    Spacer(modifier = Modifier.height(24.dp))
-                                    val isError = msg.startsWith("Error")
-                                    androidx.compose.material3.Card(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                                        colors = androidx.compose.material3.CardDefaults.cardColors(
-                                            containerColor = if (isError) com.limelight.shared.ui.theme.MoonlightColors.Red.copy(alpha = 0.1f) else com.limelight.shared.ui.theme.MoonlightColors.Green.copy(alpha = 0.1f)
-                                        )
-                                    ) {
-                                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                if (isError) androidx.compose.material.icons.Icons.Default.Error else androidx.compose.material.icons.Icons.Default.CheckCircle,
-                                                contentDescription = null,
-                                                tint = if (isError) com.limelight.shared.ui.theme.MoonlightColors.Red else com.limelight.shared.ui.theme.MoonlightColors.Green,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(12.dp))
-                                            Text(msg, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                                        }
+                            var status by remember { mutableStateOf<String?>(null) }
+                            val client = remember { RemoteScriptClient("http://100.67.140.39:3000", "CasaGerard") }
+
+                            PhotoServerScreen(
+                                statusMessage = status,
+                                onBack = { nav.goBack() },
+                                onStartServer = {
+                                    status = "Iniciando servidor..."
+                                    thread {
+                                        val ok = client.runScript("07_Personalizacion", "fotos.bat")
+                                        runOnUiThread { status = if (ok) "¡Servidor arrancado! ✓" else "Error de conexión." }
+                                    }
+                                },
+                                onStopServer = {
+                                    status = "Deteniendo servidor..."
+                                    thread {
+                                        val ok = client.runScript("07_Personalizacion", "cerrar_fotos.bat")
+                                        runOnUiThread { status = if (ok) "¡Servidor detenido! ✓" else "Error de conexión." }
                                     }
                                 }
-                                
-                                Spacer(modifier = Modifier.height(48.dp))
-                                TextButton(onClick = { nav.goBack() }) {
-                                    Text("Volver", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
+                            )
                         }
                     }
                 }

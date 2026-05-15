@@ -1,7 +1,7 @@
-package com.limelight.ui.premium
+package com.limelight.shared.network
 
-import android.util.Log
-import org.json.JSONObject
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.*
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
@@ -12,11 +12,23 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
+@Serializable
+private data class AuthRequest(val identity: String? = null, val email: String? = null, val password: String)
+
+@Serializable
+private data class AuthResponse(val token: String)
+
+@Serializable
+private data class DeviceItem(val id: String, val name: String)
+
+@Serializable
+private data class DeviceListResponse(val items: List<DeviceItem>)
+
 /**
  * Client for the UpSnap Wake-on-LAN API.
  * 
  * Handles authentication via PocketBase JWT tokens and device wake requests.
- * Supports self-signed certificates for local/Tailscale networks.
+ * Uses standard Java HttpURLConnection for compatibility across Android and Desktop (JVM).
  */
 class UpSnapClient(
     private val serverUrl: String,
@@ -24,52 +36,31 @@ class UpSnapClient(
     private val password: String
 ) {
     companion object {
-        private const val TAG = "UpSnapClient"
-        private const val CONNECT_TIMEOUT = 10_000 // 10 seconds
-        private const val READ_TIMEOUT = 15_000    // 15 seconds
+        private const val CONNECT_TIMEOUT = 10_000
+        private const val READ_TIMEOUT = 15_000
+        private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     }
 
-    /**
-     * Result of a wake operation.
-     */
     sealed class WakeResult {
         data object Success : WakeResult()
         data class Error(val message: String) : WakeResult()
     }
 
-    /**
-     * Authenticate and wake the device in a single call.
-     * This method is blocking and should be called from a background thread.
-     */
     fun wakeDevice(deviceId: String): WakeResult {
         return try {
-            // Step 1: Authenticate to get JWT token (only if credentials provided)
-            val token = if (username.isNotBlank()) {
-                authenticate()
-            } else {
-                ""
-            }
+            val token = if (username.isNotBlank()) authenticate() else ""
             
             if (username.isNotBlank() && token.isEmpty()) {
                 return WakeResult.Error("Error de autenticación. Verifica usuario y contraseña.")
             }
 
-            // Step 2: Send wake request
             sendWakeRequest(deviceId, token)
-        } catch (e: java.net.ConnectException) {
-            WakeResult.Error("No se puede conectar al servidor UpSnap. ¿Está encendido?")
-        } catch (e: java.net.SocketTimeoutException) {
-            WakeResult.Error("Timeout al conectar con UpSnap. Verifica la red.")
         } catch (e: Exception) {
-            Log.e(TAG, "Wake failed", e)
-            WakeResult.Error("Error: ${e.localizedMessage ?: "desconocido"}")
+            println("[UpSnapClient] Wake failed: ${e.message}")
+            WakeResult.Error("Error: ${e.message ?: "desconocido"}")
         }
     }
 
-    /**
-     * Lists available devices on the UpSnap server.
-     * Returns a list of pairs (deviceId, deviceName).
-     */
     fun listDevices(): List<Pair<String, String>> {
         return try {
             val token = if (username.isNotBlank()) authenticate() else ""
@@ -81,37 +72,30 @@ class UpSnapClient(
             val url = URL("$base/api/collections/devices/records")
             val conn = createConnection(url)
             conn.requestMethod = "GET"
-            conn.setRequestProperty("Authorization", "Bearer $token")
+            if (token.isNotEmpty()) conn.setRequestProperty("Authorization", "Bearer $token")
             conn.connectTimeout = CONNECT_TIMEOUT
             conn.readTimeout = READ_TIMEOUT
 
             if (conn.responseCode == 200) {
                 val body = conn.inputStream.bufferedReader().readText()
-                val json = JSONObject(body)
-                val items = json.getJSONArray("items")
-                val result = mutableListOf<Pair<String, String>>()
-                for (i in 0 until items.length()) {
-                    val item = items.getJSONObject(i)
-                    result.add(Pair(item.getString("id"), item.getString("name")))
-                }
-                result
+                val response = json.decodeFromString<DeviceListResponse>(body)
+                response.items.map { it.id to it.name }
             } else {
                 emptyList()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "listDevices failed", e)
+            println("[UpSnapClient] listDevices failed: ${e.message}")
             emptyList()
         }
     }
 
-    private fun authenticate(url: URL? = null): String {
+    private fun authenticate(urlOverride: URL? = null): String {
         val authUrl = try {
             val base = serverUrl.trim().let { 
                 if (!it.startsWith("http")) "http://$it" else it 
             }.trimEnd('/')
-            url ?: URL("$base/api/collections/users/auth-with-password")
+            urlOverride ?: URL("$base/api/collections/users/auth-with-password")
         } catch (e: Exception) {
-            Log.e(TAG, "Invalid URL: $serverUrl", e)
             return ""
         }
         
@@ -123,52 +107,41 @@ class UpSnapClient(
         conn.connectTimeout = CONNECT_TIMEOUT
         conn.readTimeout = READ_TIMEOUT
 
-        val body = JSONObject().apply {
-            if (authUrl.toString().contains("/admins/")) {
-                put("email", username.trim())
-            } else {
-                put("identity", username.trim())
-            }
-            put("password", password)
+        val isSuperUser = authUrl.toString().contains("/_superusers/") || authUrl.toString().contains("/admins/")
+        val body = if (isSuperUser) {
+            json.encodeToString(AuthRequest.serializer(), AuthRequest(email = username.trim(), password = password))
+        } else {
+            json.encodeToString(AuthRequest.serializer(), AuthRequest(identity = username.trim(), password = password))
         }
 
         try {
-            OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
-                writer.write(body.toString())
-                writer.flush()
-            }
+            conn.outputStream.bufferedWriter().use { it.write(body) }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to write body to $authUrl", e)
             return ""
         }
 
         return if (conn.responseCode == 200) {
-            val response = BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8)).readText()
-            JSONObject(response).optString("token", "")
+            val response = conn.inputStream.bufferedReader().readText()
+            json.decodeFromString<AuthResponse>(response).token
         } else if (conn.responseCode == 400 && authUrl.toString().contains("/collections/users/")) {
-            // Try modern admin auth fallback (PocketBase v0.23+)
-            Log.i(TAG, "User auth 400, trying _superusers auth...")
             val superUserUrl = URL(authUrl.toString().replace("/collections/users/", "/collections/_superusers/"))
-            return authenticate(superUserUrl)
+            authenticate(superUserUrl)
         } else if (conn.responseCode == 404 && authUrl.toString().contains("/collections/_superusers/")) {
-            // Try legacy admin auth fallback (PocketBase < v0.23)
-            Log.i(TAG, "Superusers auth 404, trying legacy admins auth...")
             val adminUrl = URL(authUrl.toString().replace("/collections/_superusers/", "/admins/"))
-            return authenticate(adminUrl)
+            authenticate(adminUrl)
         } else {
-            val errorBody = try {
-                conn.errorStream?.bufferedReader()?.readText() ?: "No error body"
-            } catch (_: Exception) { "Error reading error body" }
-            Log.w(TAG, "Auth failed (${conn.responseCode}) at $authUrl: $errorBody")
             ""
         }
     }
 
     private fun sendWakeRequest(deviceId: String, token: String): WakeResult {
-        val url = URL("$serverUrl/api/upsnap/wake/$deviceId")
+        val base = serverUrl.trim().let { 
+            if (!it.startsWith("http")) "http://$it" else it 
+        }.trimEnd('/')
+        val url = URL("$base/api/upsnap/wake/$deviceId")
         val conn = createConnection(url)
         conn.requestMethod = "GET"
-        conn.setRequestProperty("Authorization", "Bearer $token")
+        if (token.isNotEmpty()) conn.setRequestProperty("Authorization", "Bearer $token")
         conn.connectTimeout = CONNECT_TIMEOUT
         conn.readTimeout = READ_TIMEOUT
 
@@ -176,37 +149,24 @@ class UpSnapClient(
             200, 204 -> WakeResult.Success
             401 -> WakeResult.Error("Contraseña incorrecta o usuario no válido.")
             403 -> WakeResult.Error("No tienes permiso para despertar este dispositivo.")
-            404 -> WakeResult.Error("ID de dispositivo no encontrado. Prueba a buscarlo de nuevo.")
-            else -> {
-                val errorBody = try {
-                    conn.errorStream?.bufferedReader()?.readText() ?: ""
-                } catch (_: Exception) { "" }
-                WakeResult.Error("Error del servidor (${conn.responseCode}): $errorBody")
-            }
+            404 -> WakeResult.Error("ID de dispositivo no encontrado.")
+            else -> WakeResult.Error("Error del servidor (${conn.responseCode})")
         }
     }
 
-    /**
-     * Creates an HTTP(S) connection that trusts self-signed certificates.
-     * This is safe because the connection goes through Tailscale's encrypted tunnel.
-     */
     private fun createConnection(url: URL): HttpURLConnection {
         val conn = url.openConnection() as HttpURLConnection
-
-        // For HTTPS connections over Tailscale with self-signed certs
         if (conn is HttpsURLConnection) {
             val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
                 override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
                 override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
                 override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
             })
-
             val sslContext = SSLContext.getInstance("TLS")
             sslContext.init(null, trustAllCerts, java.security.SecureRandom())
             conn.sslSocketFactory = sslContext.socketFactory
             conn.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
         }
-
         return conn
     }
 }

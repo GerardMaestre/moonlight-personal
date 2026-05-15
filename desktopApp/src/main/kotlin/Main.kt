@@ -61,9 +61,7 @@ fun main() = application {
                         DashboardScreen(
                             state = state,
                             actions = object : com.limelight.shared.platform.PlatformActions {
-                                override fun onAddPc() {
-                                    // Handled by shared UI dialog
-                                }
+                                override fun onAddPc() {}
                                 override fun onAddPcManual(ip: String) {
                                     state.updateComputer(com.limelight.shared.model.ComputerInfo(
                                         id = ip,
@@ -74,11 +72,10 @@ fun main() = application {
                                     ))
                                 }
                                 override fun onOpenSettings() {
-                                    state.showMessage("Abriendo ajustes de streaming...")
+                                    state.showMessage("Ajustes no disponibles en esta versión Desktop.")
                                 }
                                 override fun onPcClick(computerId: String, computerName: String) {
                                     state.selectedComputer = state.computers.find { it.id == computerId }
-                                    // Mock games for desktop
                                     state.games.clear()
                                     state.games.addAll(listOf(
                                         com.limelight.shared.model.GameInfo(1, "Steam", boxArtUrl = ""),
@@ -88,14 +85,12 @@ fun main() = application {
                                     nav.navigateTo(AppScreen.GAME_LIST)
                                 }
                                 override fun onPair(computerId: String) {
-                                    state.showMessage("Pairing not implemented on Desktop mock.")
+                                    state.showMessage("Emparejamiento no implementado en Desktop.")
                                 }
                                 override fun onApplyNetworkProfile(profileId: String) {}
                                 override fun onWakeOnLan(macAddress: String) {
-                                    state.showMessage("Enviando señal de encendido (WOL) a $macAddress...")
-                                    scope.launch(Dispatchers.IO) {
-                                        sendWolPacket(macAddress)
-                                    }
+                                    state.showMessage("Enviando WoL a $macAddress...")
+                                    scope.launch(Dispatchers.IO) { sendWolPacket(macAddress) }
                                 }
                                 override fun onNavigateBack() {
                                     nav.goBack()
@@ -113,22 +108,89 @@ fun main() = application {
                         )
                     }
                     AppScreen.POWER_CONTROL -> {
-                        // Placeholder for Power Control
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Modo: Mi PC (Encender/Apagar)", color = MaterialTheme.colorScheme.onBackground)
-                            Button(onClick = { nav.goBack() }, modifier = Modifier.padding(top = 100.dp)) {
-                                Text("Volver")
+                        val powerState = remember { com.limelight.shared.ui.screens.PowerControlState() }
+                        com.limelight.shared.ui.screens.PowerControlScreen(
+                            state = powerState,
+                            onBack = { nav.goBack() },
+                            onSaveConfig = { url, user, pass, deviceId ->
+                                powerState.isConfigured = true
+                                powerState.serverUrl = url
+                                powerState.username = user
+                                powerState.password = pass
+                                powerState.deviceId = deviceId
+                                powerState.showConfig = false
+                                powerState.statusMessage = "Configuración guardada ✓"
+                            },
+                            onWake = {
+                                powerState.isWaking = true
+                                powerState.statusMessage = null
+                                scope.launch(Dispatchers.IO) {
+                                    val client = com.limelight.shared.network.UpSnapClient(
+                                        powerState.serverUrl, powerState.username, powerState.password
+                                    )
+                                    val result = client.wakeDevice(powerState.deviceId)
+                                    withContext(Dispatchers.Main) {
+                                        powerState.isWaking = false
+                                        when (result) {
+                                            is com.limelight.shared.network.UpSnapClient.WakeResult.Success -> {
+                                                powerState.statusMessage = "Señal enviada con éxito ✓"
+                                            }
+                                            is com.limelight.shared.network.UpSnapClient.WakeResult.Error -> {
+                                                powerState.statusMessage = result.message
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            onClearConfig = {
+                                powerState.isConfigured = false
+                                powerState.showConfig = true
+                            },
+                            onTestConnection = { url, user, pass ->
+                                powerState.isTestingConnection = true
+                                scope.launch(Dispatchers.IO) {
+                                    val client = com.limelight.shared.network.UpSnapClient(url, user, pass)
+                                    val devices = client.listDevices()
+                                    withContext(Dispatchers.Main) {
+                                        powerState.isTestingConnection = false
+                                        if (devices.isNotEmpty()) {
+                                            powerState.availableDevices.clear()
+                                            powerState.availableDevices.addAll(devices)
+                                            powerState.statusMessage = "¡Dispositivos encontrados! Selecciona uno abajo ✓"
+                                        } else {
+                                            powerState.statusMessage = "Error: No se encontraron dispositivos."
+                                        }
+                                    }
+                                }
                             }
-                        }
+                        )
                     }
                     AppScreen.PHOTO_SERVER -> {
-                        // Placeholder for Photo Server
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Modo: Servidor de Fotos", color = MaterialTheme.colorScheme.onBackground)
-                            Button(onClick = { nav.goBack() }, modifier = Modifier.padding(top = 100.dp)) {
-                                Text("Volver")
+                        var status by remember { mutableStateOf<String?>(null) }
+                        val client = remember { com.limelight.shared.network.RemoteScriptClient("http://100.67.140.39:3000", "CasaGerard") }
+                        
+                        com.limelight.shared.ui.screens.PhotoServerScreen(
+                            statusMessage = status,
+                            onBack = { nav.goBack() },
+                            onStartServer = {
+                                status = "Iniciando servidor de fotos..."
+                                scope.launch(Dispatchers.IO) {
+                                    val ok = client.runScript("07_Personalizacion", "fotos.bat")
+                                    withContext(Dispatchers.Main) {
+                                        status = if (ok) "¡Servidor arrancado correctamente! ✓" else "Error: No se pudo conectar con el PC."
+                                    }
+                                }
+                            },
+                            onStopServer = {
+                                status = "Deteniendo servidor de fotos..."
+                                scope.launch(Dispatchers.IO) {
+                                    val ok = client.runScript("07_Personalizacion", "cerrar_fotos.bat")
+                                    withContext(Dispatchers.Main) {
+                                        status = if (ok) "¡Servidor detenido correctamente! ✓" else "Error: No se pudo conectar con el PC."
+                                    }
+                                }
                             }
-                        }
+                        )
                     }
                 }
             }

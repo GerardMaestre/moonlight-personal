@@ -14,5 +14,10 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "MainKt"
+        nativeDistributions {
+            targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe)
+            packageName = "MoonlightPersonal"
+            packageVersion = "1.0.0"
+        }
     }
 }

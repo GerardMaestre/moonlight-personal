@@ -1,4 +1,4 @@
-package com.limelight.ui.premium
+package com.limelight.shared.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -32,6 +32,7 @@ import com.limelight.shared.ui.theme.MoonlightColors
 /**
  * State holder for the Power Control screen.
  */
+@Stable
 class PowerControlState {
     var isConfigured by mutableStateOf(false)
     var serverUrl by mutableStateOf("")
@@ -44,8 +45,8 @@ class PowerControlState {
     var showConfig by mutableStateOf(false)
     var isEnabled by mutableStateOf(false)
     
-    // New: List of devices found on the server
-    var availableDevices = mutableStateListOf<Pair<String, String>>()
+    // List of devices found on the server
+    val availableDevices = mutableStateListOf<Pair<String, String>>()
     var isTestingConnection by mutableStateOf(false)
 }
 
@@ -117,7 +118,6 @@ private fun WakeSection(
     Spacer(modifier = Modifier.height(48.dp))
 
     if (!state.isConfigured) {
-        // Not configured state
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -144,7 +144,7 @@ private fun WakeSection(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "Pulsa el icono de ajustes ⚙ arriba para configurar tu servidor UpSnap y poder encender tu PC de forma remota.",
+                    "Configura tu servidor UpSnap para poder encender tu PC de forma remota.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -189,14 +189,12 @@ private fun WakeSection(
 
     Spacer(modifier = Modifier.height(48.dp))
 
-    // Power button
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(200.dp)
             .scale(if (!state.isWaking) pulseScale else 1f)
     ) {
-        // Outer glow ring
         Box(
             modifier = Modifier
                 .size(200.dp)
@@ -211,7 +209,6 @@ private fun WakeSection(
                 )
         )
 
-        // Main button
         FilledIconButton(
             onClick = { if (!state.isWaking) onWake() },
             modifier = Modifier.size(140.dp),
@@ -246,7 +243,6 @@ private fun WakeSection(
         color = if (state.isWaking) MoonlightColors.Amber else MaterialTheme.colorScheme.onSurfaceVariant
     )
 
-    // Status message
     state.statusMessage?.let { msg ->
         Spacer(modifier = Modifier.height(24.dp))
         val isError = msg.startsWith("Error") || msg.startsWith("No se") || msg.contains("incorrecta")
@@ -282,7 +278,6 @@ private fun WakeSection(
 
     Spacer(modifier = Modifier.height(32.dp))
 
-    // Security info
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -302,7 +297,7 @@ private fun WakeSection(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                "Conexión segura vía Tailscale. Credenciales cifradas con Android Keystore.",
+                "Conexión segura vía Tailscale.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -335,34 +330,6 @@ private fun ConfigSection(
 
     Spacer(modifier = Modifier.height(24.dp))
 
-    // Help box
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MoonlightColors.Purple.copy(alpha = 0.05f)
-        )
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                "GUÍA RÁPIDA:",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MoonlightColors.Purple
-            )
-            Text(
-                "1. Pon la IP de tu servidor UpSnap.\n" +
-                "2. Pon tu usuario y contraseña.\n" +
-                "3. Pulsa 'BUSCAR MIS DISPOSITIVOS'.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-
-    Spacer(modifier = Modifier.height(24.dp))
-
-    // Server URL
     OutlinedTextField(
         value = url,
         onValueChange = { url = it },
@@ -377,7 +344,6 @@ private fun ConfigSection(
 
     Spacer(modifier = Modifier.height(12.dp))
 
-    // Username
     OutlinedTextField(
         value = user,
         onValueChange = { user = it },
@@ -390,7 +356,6 @@ private fun ConfigSection(
 
     Spacer(modifier = Modifier.height(12.dp))
 
-    // Password
     OutlinedTextField(
         value = pass,
         onValueChange = { pass = it },
@@ -413,7 +378,6 @@ private fun ConfigSection(
 
     Spacer(modifier = Modifier.height(24.dp))
 
-    // Test connection / Fetch devices button
     Button(
         onClick = { onTestConnection(url.trim(), user.trim(), pass) },
         modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -432,7 +396,6 @@ private fun ConfigSection(
         }
     }
 
-    // Device selector (if devices found)
     AnimatedVisibility(
         visible = state.availableDevices.isNotEmpty(),
         enter = expandVertically() + fadeIn(),
@@ -487,7 +450,6 @@ private fun ConfigSection(
 
     Spacer(modifier = Modifier.height(32.dp))
 
-    // Final Save button
     Button(
         onClick = { onSave(url.trim(), user.trim(), pass, devId.trim()) },
         modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -505,7 +467,6 @@ private fun ConfigSection(
     if (state.isConfigured) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Clear configuration
         TextButton(
             onClick = onClear,
             modifier = Modifier.fillMaxWidth(),
