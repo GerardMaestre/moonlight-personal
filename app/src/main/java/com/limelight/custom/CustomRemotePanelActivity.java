@@ -175,11 +175,11 @@ public class CustomRemotePanelActivity extends Activity {
             public void run() {
                 try {
                     ComputerDetails details = config.createComputerDetails();
-                    StandardWolSender.INSTANCE.sendMagicPacket(details.macAddress, "255.255.255.255", 9);
+                    boolean sent = com.limelight.shared.network.WakeService.wakeUdp(details.macAddress, "255.255.255.255", 9);
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            setStatus(getString(R.string.wol_waking_msg));
+                            setStatus(getString(sent ? R.string.wol_waking_msg : R.string.wol_fail));
                         }
                     });
                 } catch (final Exception e) {
