@@ -21,6 +21,7 @@ import com.limelight.computers.ComputerManagerService
 import com.limelight.preferences.AddComputerManually
 import com.limelight.shared.network.RemoteScriptClient
 import com.limelight.shared.network.UpSnapClient
+import com.limelight.shared.network.WakeService
 import com.limelight.shared.ui.screens.PowerControlScreen
 import com.limelight.shared.platform.StartCommandResult
 import androidx.compose.foundation.layout.*
@@ -89,7 +90,7 @@ class PremiumDashboardActivity : ComponentActivity() {
 
                                              override fun onWakeOnLan(macAddress: String) {
                                                  thread {
-                                                     com.limelight.shared.network.StandardWolSender.sendMagicPacket(macAddress)
+                                                     com.limelight.shared.network.StandardWolSender.sendMagicPacketCompat(macAddress)
                                                  }
                                              }
                                              override fun onNavigateBack() {
@@ -169,15 +170,20 @@ class PremiumDashboardActivity : ComponentActivity() {
                                                     powerState.username,
                                                     powerState.password
                                                 )
-                                                val result = client.wakeDevice(powerState.deviceId)
+                                                // deviceId path (UpSnap) + optional UDP fallback (MAC not configured in this screen yet)
+                                                val result = WakeService.wakeWithFallback(
+                                                    upSnapClient = client,
+                                                    deviceId = powerState.deviceId,
+                                                    macAddress = null,
+                                                )
                                                 runOnUiThread {
                                                     powerState.isWaking = false
                                                     when (result) {
-                                                        is UpSnapClient.WakeResult.Success -> {
+                                                        is WakeService.WakeOutcome.Success -> {
                                                             powerState.statusMessage = "Señal enviada correctamente ✓"
                                                         }
-                                                        is UpSnapClient.WakeResult.Error -> {
-                                                            powerState.statusMessage = result.message
+                                                        is WakeService.WakeOutcome.Failure -> {
+                                                            powerState.statusMessage = result.reason
                                                         }
                                                     }
                                                 }

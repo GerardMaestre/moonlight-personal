@@ -563,12 +563,9 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
             @Override
             public void run() {
                 String message;
-                try {
-                    StandardWolSender.INSTANCE.sendMagicPacket(computer.macAddress, "255.255.255.255", 9);
-                    message = getResources().getString(R.string.wol_waking_msg);
-                } catch (Exception e) {
-                    message = getResources().getString(R.string.wol_fail);
-                }
+                boolean sent = StandardWolSender.sendMagicPacketCompat(computer.macAddress, "255.255.255.255", 9);
+                message = sent ? getResources().getString(R.string.wol_waking_msg)
+                        : getResources().getString(R.string.wol_fail);
 
                 final String toastMessage = message;
                 runOnUiThread(new Runnable() {
