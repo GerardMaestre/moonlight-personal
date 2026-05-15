@@ -15,6 +15,7 @@ import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import com.limelight.shared.model.ComputerInfo
 import com.limelight.shared.model.ComputerStatus
+import com.limelight.shared.platform.PhotoServerActions
 import com.limelight.shared.platform.PlatformActions
 import com.limelight.shared.ui.screens.*
 import com.limelight.shared.ui.theme.MoonlightTheme
@@ -28,6 +29,7 @@ import java.net.InetAddress
 fun main() = application {
     val controller = remember { AppController() }
     val scope = rememberCoroutineScope()
+    val photoServerManager = remember { DesktopPhotoServerManager(controller.photoServerState) }
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
@@ -75,10 +77,18 @@ fun main() = application {
                         onBack = { controller.navigation.goBack() },
                         onGameClick = { game -> controller.dashboardState.showMessage("Iniciando ${game.name}...") }
                     )
-                    AppScreen.POWER_CONTROL,
-                    AppScreen.PHOTO_SERVER -> FeatureStatusScreen(
-                        title = if (controller.navigation.currentScreen == AppScreen.POWER_CONTROL) "Mi PC" else "Servidor de Fotos",
+                    AppScreen.POWER_CONTROL -> FeatureStatusScreen(
+                        title = "Mi PC",
                         message = controller.featureMessage ?: "Módulo listo",
+                        onBack = { controller.navigation.goBack() }
+                    )
+                    AppScreen.PHOTO_SERVER -> PhotoServerScreen(
+                        state = controller.photoServerState,
+                        actions = object : PhotoServerActions {
+                            override fun startPhotoServer() = photoServerManager.start()
+                            override fun stopPhotoServer() = photoServerManager.stop()
+                            override fun restartPhotoServer() = photoServerManager.restart()
+                        },
                         onBack = { controller.navigation.goBack() }
                     )
                 }

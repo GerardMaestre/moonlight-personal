@@ -10,6 +10,7 @@ import com.limelight.nvstream.http.ComputerDetails
 import com.limelight.nvstream.wol.WakeOnLanSender
 import com.limelight.preferences.StreamSettings
 import kotlin.concurrent.thread
+import com.limelight.shared.platform.PhotoServerActions
 import com.limelight.shared.platform.PlatformActions
 import com.limelight.shared.ui.screens.DashboardScreen
 import com.limelight.shared.ui.screens.AppScreen
@@ -33,6 +34,7 @@ class PremiumDashboardActivity : ComponentActivity() {
         
         setContent {
             val controller = viewModel.controller
+            val photoServerManager = remember { AndroidPhotoServerManager(controller.photoServerState) }
 
             MoonlightTheme {
                 // Handle system back button
@@ -110,16 +112,25 @@ class PremiumDashboardActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        AppScreen.POWER_CONTROL,
-                        AppScreen.PHOTO_SERVER -> {
-                            val title = if (controller.navigation.currentScreen == AppScreen.POWER_CONTROL) "Mi PC" else "Servidor de Fotos"
+                        AppScreen.POWER_CONTROL -> {
                             AlertDialog(
                                 onDismissRequest = { controller.navigation.goBack() },
-                                title = { Text(title) },
+                                title = { Text("Mi PC") },
                                 text = { Text(controller.featureMessage ?: "Módulo listo") },
                                 confirmButton = {
                                     TextButton(onClick = { controller.navigation.goBack() }) { Text("Volver") }
                                 }
+                            )
+                        }
+                        AppScreen.PHOTO_SERVER -> {
+                            com.limelight.shared.ui.screens.PhotoServerScreen(
+                                state = controller.photoServerState,
+                                actions = object : PhotoServerActions {
+                                    override fun startPhotoServer() = photoServerManager.start()
+                                    override fun stopPhotoServer() = photoServerManager.stop()
+                                    override fun restartPhotoServer() = photoServerManager.restart()
+                                },
+                                onBack = { controller.navigation.goBack() }
                             )
                         }
                     }

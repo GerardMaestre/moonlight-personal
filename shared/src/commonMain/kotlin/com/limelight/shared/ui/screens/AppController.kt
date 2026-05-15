@@ -3,6 +3,7 @@ package com.limelight.shared.ui.screens
 import com.limelight.shared.model.ComputerInfo
 import com.limelight.shared.model.ComputerStatus
 import com.limelight.shared.model.GameInfo
+import com.limelight.shared.platform.PhotoServerState
 
 /**
  * Shared source of truth for non-streaming dashboard state + intents.
@@ -11,6 +12,7 @@ class AppController(
     val dashboardState: DashboardState = DashboardState(),
     val navigation: AppNavigation = AppNavigation()
 ) {
+    val photoServerState: PhotoServerState = PhotoServerState()
     var featureMessage: String? = null
         private set
 
@@ -20,7 +22,6 @@ class AppController(
         navigation.navigateTo(AppScreen.POWER_CONTROL)
     }
     fun openPhotoServer() {
-        featureMessage = "Servidor de fotos disponible desde esta capa compartida."
         navigation.navigateTo(AppScreen.PHOTO_SERVER)
     }
 
