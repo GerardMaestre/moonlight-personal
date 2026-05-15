@@ -7,6 +7,8 @@ import android.preference.PreferenceManager;
 import com.limelight.nvstream.http.ComputerDetails;
 import com.limelight.nvstream.http.NvHTTP;
 
+import okhttp3.HttpUrl;
+
 public class CustomRemoteConfig {
     public static final String BRIDGE_METHOD_GET = "GET";
     public static final String BRIDGE_METHOD_POST = "POST";
@@ -21,6 +23,7 @@ public class CustomRemoteConfig {
     private static final String KEY_BRIDGE_URL = "custom_remote_bridge_url";
     private static final String KEY_BRIDGE_METHOD = "custom_remote_bridge_method";
     private static final String KEY_BRIDGE_TIMEOUT_MS = "custom_remote_bridge_timeout_ms";
+    private static final String KEY_BRIDGE_ALLOW_UNSAFE_TARGET = "custom_remote_bridge_allow_unsafe_target";
 
     public static final String DEFAULT_HOST_NAME = "Custom Remote PC";
     public static final int DEFAULT_HTTP_PORT = NvHTTP.DEFAULT_HTTP_PORT;
@@ -37,6 +40,7 @@ public class CustomRemoteConfig {
     public final String bridgeUrl;
     public final String bridgeMethod;
     public final int bridgeTimeoutMs;
+    public final boolean bridgeAllowUnsafeTarget;
 
     private CustomRemoteConfig(SharedPreferences prefs) {
         enabled = prefs.getBoolean(KEY_ENABLED, false);
@@ -49,6 +53,7 @@ public class CustomRemoteConfig {
         bridgeUrl = getTrimmedString(prefs, KEY_BRIDGE_URL, "");
         bridgeMethod = sanitizeBridgeMethod(prefs.getString(KEY_BRIDGE_METHOD, BRIDGE_METHOD_GET));
         bridgeTimeoutMs = Math.max(1000, prefs.getInt(KEY_BRIDGE_TIMEOUT_MS, DEFAULT_BRIDGE_TIMEOUT_MS));
+        bridgeAllowUnsafeTarget = prefs.getBoolean(KEY_BRIDGE_ALLOW_UNSAFE_TARGET, false);
     }
 
     public static CustomRemoteConfig read(Context context) {
@@ -66,7 +71,7 @@ public class CustomRemoteConfig {
                 .putInt(KEY_HTTPS_PORT, sanitizePort(httpsPort, DEFAULT_HTTPS_PORT))
                 .putString(KEY_MAC_ADDRESS, trimOrDefault(macAddress, ""))
                 .putBoolean(KEY_BRIDGE_ENABLED, bridgeEnabled)
-                .putString(KEY_BRIDGE_URL, trimOrDefault(bridgeUrl, ""))
+                .putString(KEY_BRIDGE_URL, sanitizeBridgeUrl(bridgeUrl))
                 .putString(KEY_BRIDGE_METHOD, sanitizeBridgeMethod(bridgeMethod))
                 .putInt(KEY_BRIDGE_TIMEOUT_MS, Math.max(1000, bridgeTimeoutMs))
                 .apply();
@@ -115,5 +120,19 @@ public class CustomRemoteConfig {
             return BRIDGE_METHOD_POST;
         }
         return BRIDGE_METHOD_GET;
+    }
+
+    private static String sanitizeBridgeUrl(String bridgeUrl) {
+        String trimmed = trimOrDefault(bridgeUrl, "");
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+
+        HttpUrl parsed = HttpUrl.parse(trimmed);
+        if (parsed == null && !trimmed.contains("://")) {
+            parsed = HttpUrl.parse("https://" + trimmed);
+        }
+
+        return parsed != null ? parsed.toString() : trimmed;
     }
 }
