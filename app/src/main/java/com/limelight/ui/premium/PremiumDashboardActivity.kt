@@ -12,7 +12,6 @@ import com.limelight.preferences.StreamSettings
 import kotlin.concurrent.thread
 import com.limelight.shared.platform.PlatformActions
 import com.limelight.shared.ui.screens.DashboardScreen
-import com.limelight.shared.ui.screens.AppNavigation
 import com.limelight.shared.ui.screens.AppScreen
 import com.limelight.shared.ui.screens.MainMenuScreen
 import com.limelight.shared.ui.screens.GameListScreen
@@ -33,27 +32,27 @@ class PremiumDashboardActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         setContent {
-            val nav = androidx.compose.runtime.remember { AppNavigation() }
+            val controller = viewModel.controller
 
             MoonlightTheme {
                 // Handle system back button
-                androidx.activity.compose.BackHandler(enabled = nav.currentScreen != AppScreen.MAIN_MENU) {
-                    nav.goBack()
+                androidx.activity.compose.BackHandler(enabled = controller.navigation.currentScreen != AppScreen.MAIN_MENU) {
+                    controller.navigation.goBack()
                 }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    when (nav.currentScreen) {
+                    when (controller.navigation.currentScreen) {
                         AppScreen.MAIN_MENU -> {
                             MainMenuScreen(
-                                onNavigate = { screen -> nav.navigateTo(screen) }
+                                onNavigate = { screen -> controller.navigation.navigateTo(screen) }
                             )
                         }
                         AppScreen.MOONLIGHT -> {
                             DashboardScreen(
-                                state = viewModel.dashboardState,
+                                state = controller.dashboardState,
                                 actions = object : PlatformActions {
                                     override fun onAddPc() {}
                                     override fun onAddPcManual(ip: String) { viewModel.addComputer(ip) }
@@ -63,7 +62,7 @@ class PremiumDashboardActivity : ComponentActivity() {
                                     }
                                      override fun onPcClick(id: String, name: String) {
                                          viewModel.selectComputer(id)
-                                         nav.navigateTo(AppScreen.GAME_LIST)
+                                         controller.openComputer(id)
                                      }
                                      override fun onPair(id: String) {
                                          viewModel.pair(id, this@PremiumDashboardActivity)
@@ -79,18 +78,18 @@ class PremiumDashboardActivity : ComponentActivity() {
                                          }
                                      }
                                      override fun onNavigateBack() {
-                                         nav.goBack()
+                                         controller.navigation.goBack()
                                      }
                                 }
                             )
                         }
                         AppScreen.GAME_LIST -> {
                             GameListScreen(
-                                state = viewModel.dashboardState,
-                                onBack = { nav.goBack() },
+                                state = controller.dashboardState,
+                                onBack = { controller.navigation.goBack() },
                                 onGameClick = { game ->
                                      val binder = viewModel.getBinder()
-                                     val computer = viewModel.dashboardState.selectedComputer
+                                     val computer = controller.dashboardState.selectedComputer
                                      if (binder != null && computer != null) {
                                          val computerDetails = binder.getComputer(computer.id)
                                          if (computerDetails != null) {
@@ -111,21 +110,17 @@ class PremiumDashboardActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        AppScreen.POWER_CONTROL -> {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Modo: Mi PC (Encender/Apagar)", color = MaterialTheme.colorScheme.onBackground)
-                                Button(onClick = { nav.goBack() }, modifier = Modifier.padding(top = 100.dp)) {
-                                    Text("Volver")
-                                }
-                            }
-                        }
+                        AppScreen.POWER_CONTROL,
                         AppScreen.PHOTO_SERVER -> {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Modo: Servidor de Fotos", color = MaterialTheme.colorScheme.onBackground)
-                                Button(onClick = { nav.goBack() }, modifier = Modifier.padding(top = 100.dp)) {
-                                    Text("Volver")
+                            val title = if (controller.navigation.currentScreen == AppScreen.POWER_CONTROL) "Mi PC" else "Servidor de Fotos"
+                            AlertDialog(
+                                onDismissRequest = { controller.navigation.goBack() },
+                                title = { Text(title) },
+                                text = { Text(controller.featureMessage ?: "Módulo listo") },
+                                confirmButton = {
+                                    TextButton(onClick = { controller.navigation.goBack() }) { Text("Volver") }
                                 }
-                            }
+                            )
                         }
                     }
                 }
