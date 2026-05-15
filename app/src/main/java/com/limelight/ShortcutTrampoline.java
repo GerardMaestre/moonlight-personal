@@ -94,7 +94,7 @@ public class ShortcutTrampoline extends Activity {
                             if (details.state == ComputerDetails.State.OFFLINE && details.macAddress != null && --wakeHostTries >= 0) {
                                 try {
                                     // Make a best effort attempt to wake the target PC
-                                    StandardWolSender.INSTANCE.sendMagicPacket(computer.macAddress, "255.255.255.255", 9);
+                                    com.limelight.shared.network.WakeService.wakeUdp(computer.macAddress, "255.255.255.255", 9);
 
                                     // If we sent at least one WoL packet, reset the computer state
                                     // to force ComputerManager to poll it again.
