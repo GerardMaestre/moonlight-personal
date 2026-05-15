@@ -59,3 +59,43 @@ Customized and maintained by **Gerard Maestre**.
 
 ## ⚖️ License
 This project is licensed under the GPLv3 License. See [LICENSE.txt](LICENSE.txt) for details. Based on the original [Moonlight Android](https://github.com/moonlight-stream/moonlight-android).
+
+## 🪟 Configuración de servidor en Windows (desktopMain)
+
+### Objetivo
+- La app de escritorio ahora soporta ejecución **headless** del servidor de fotos (`--server`) sin abrir UI.
+- La UI puede iniciar/detener el servidor y recibir estado (`running/failed`) en pantalla.
+- Se publica endpoint `/health` y logging local para verificar que el proceso sigue vivo incluso con sesión bloqueada.
+
+### Ejecución manual
+1. Iniciar UI normal:
+   ```bash
+   ./gradlew :desktopApp:run
+   ```
+2. Iniciar solo servidor (sin UI):
+   ```bash
+   ./gradlew :desktopApp:run --args="--server"
+   ```
+
+### Autoarranque (Task Scheduler recomendado)
+- En Windows, el modo `--server` intenta registrar tarea `MoonlightPhotoServer` usando `schtasks`.
+- Para ejecutar aunque la sesión esté cerrada, configure la tarea en el Programador de tareas con:
+  - **Run whether user is logged on or not**
+  - **Run with highest privileges** (si necesita puertos/permisos elevados)
+- Trigger sugerido: `At log on` o `At startup` según su política.
+
+### Logs y healthcheck
+- Archivo de log local:
+  - `%USERPROFILE%\\.moonlight\\photo-server.log`
+- Endpoint de salud:
+  - `http://<host>:<puerto>/health`
+- La pantalla “Servidor de Fotos” muestra:
+  - último resultado de inicio
+  - healthcheck periódico
+  - logs recientes
+
+### Limitaciones (UAC / permisos / sesión bloqueada)
+- Registrar tareas en `Task Scheduler` puede requerir permisos de administrador (UAC).
+- Si se selecciona “Run whether user is logged on or not”, el proceso corre en contexto no interactivo (sin UI).
+- Reglas de firewall pueden bloquear puertos aunque el proceso esté activo.
+- Credenciales de la tarea (password expirado/cambiado) pueden causar fallo en arranque en background.
