@@ -7,7 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import com.limelight.AppView
 import com.limelight.nvstream.http.ComputerDetails
-import com.limelight.shared.network.StandardWolSender
 import com.limelight.preferences.StreamSettings
 import kotlin.concurrent.thread
 import com.limelight.shared.platform.PhotoServerActions
@@ -20,7 +19,10 @@ import com.limelight.shared.ui.theme.MoonlightTheme
 import com.limelight.computers.ComputerManagerService
 import com.limelight.preferences.AddComputerManually
 import com.limelight.shared.network.RemoteScriptClient
-import com.limelight.shared.network.UpSnapClient
+import com.limelight.shared.network.WakeService
+import com.limelight.di.UpSnapClientFactory
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import com.limelight.shared.ui.screens.PowerControlScreen
 import com.limelight.shared.platform.StartCommandResult
 import androidx.compose.foundation.layout.*
@@ -30,7 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+@AndroidEntryPoint
 class PremiumDashboardActivity : ComponentActivity() {
+    @Inject lateinit var upSnapClientFactory: UpSnapClientFactory
     private val viewModel: PremiumDashboardViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,7 +93,7 @@ class PremiumDashboardActivity : ComponentActivity() {
 
                                              override fun onWakeOnLan(macAddress: String) {
                                                  thread {
-                                                     com.limelight.shared.network.StandardWolSender.sendMagicPacket(macAddress)
+                                                     WakeService.wakeUdp(macAddress)
                                                  }
                                              }
                                              override fun onNavigateBack() {
@@ -164,20 +168,25 @@ class PremiumDashboardActivity : ComponentActivity() {
                                             powerState.isWaking = true
                                             powerState.statusMessage = null
                                             thread {
-                                                val client = UpSnapClient(
+                                                val client = upSnapClientFactory.create(
                                                     powerState.serverUrl,
                                                     powerState.username,
                                                     powerState.password
                                                 )
-                                                val result = client.wakeDevice(powerState.deviceId)
+                                                // deviceId path (UpSnap) + optional UDP fallback (MAC not configured in this screen yet)
+                                                val result = WakeService.wakeWithFallback(
+                                                    upSnapClient = client,
+                                                    deviceId = powerState.deviceId,
+                                                    macAddress = null,
+                                                )
                                                 runOnUiThread {
                                                     powerState.isWaking = false
                                                     when (result) {
-                                                        is UpSnapClient.WakeResult.Success -> {
+                                                        is WakeService.WakeOutcome.Success -> {
                                                             powerState.statusMessage = "Señal enviada correctamente ✓"
                                                         }
-                                                        is UpSnapClient.WakeResult.Error -> {
-                                                            powerState.statusMessage = result.message
+                                                        is WakeService.WakeOutcome.Failure -> {
+                                                            powerState.statusMessage = result.reason
                                                         }
                                                     }
                                                 }
@@ -193,7 +202,7 @@ class PremiumDashboardActivity : ComponentActivity() {
                                             powerState.statusMessage = null
                                             thread {
                                                 try {
-                                                    val client = UpSnapClient(url, user, password)
+                                                    val client = upSnapClientFactory.create(url, user, password)
                                                     val devices = client.listDevices()
                                                     runOnUiThread {
                                                         powerState.isTestingConnection = false
