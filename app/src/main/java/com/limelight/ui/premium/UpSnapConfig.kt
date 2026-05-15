@@ -4,6 +4,7 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import com.limelight.shared.network.UpSnapUrlValidator
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -29,6 +30,7 @@ class UpSnapConfig private constructor(private val context: Context) {
         private const val KEY_IV_PASSWORD = "iv_password"
         private const val KEY_ENABLED = "enabled"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+        private const val ALLOW_LEGACY_HTTP_URLS = false
 
         fun getInstance(context: Context): UpSnapConfig {
             return UpSnapConfig(context.applicationContext)
@@ -45,12 +47,16 @@ class UpSnapConfig private constructor(private val context: Context) {
     var serverUrl: String
         get() = prefs.getString(KEY_SERVER_URL, "") ?: ""
         set(value) {
-            var formattedUrl = value.trim().trimEnd('/')
-            if (formattedUrl.isNotBlank() && !formattedUrl.startsWith("http://") && !formattedUrl.startsWith("https://")) {
-                formattedUrl = "http://$formattedUrl"
+            val formattedUrl = value.trim().trimEnd('/')
+            if (!isValidServerUrl(formattedUrl)) {
+                throw IllegalArgumentException("Invalid UpSnap server URL. HTTPS is required.")
             }
             prefs.edit().putString(KEY_SERVER_URL, formattedUrl).apply()
         }
+
+    fun isValidServerUrl(value: String): Boolean {
+        return UpSnapUrlValidator.isValidServerUrl(value, allowLegacyHttp = ALLOW_LEGACY_HTTP_URLS)
+    }
 
     var deviceId: String
         get() = prefs.getString(KEY_DEVICE_ID, "") ?: ""
