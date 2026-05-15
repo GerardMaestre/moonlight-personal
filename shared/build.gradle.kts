@@ -26,6 +26,10 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
         }
 
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
+
         androidMain.dependencies {
             implementation(compose.uiTooling)
         }

@@ -43,6 +43,20 @@ For non-streaming UI architecture, reusable UI states/components, and migration/
 
 - [`docs/ui/non-streaming-ui-guidelines.md`](docs/ui/non-streaming-ui-guidelines.md)
 
+## 🧱 Regla de arquitectura multiplataforma
+
+- Toda la lógica funcional compartida (descubrimiento, WOL, estado de servidor, navegación y reglas de negocio) debe vivir en `shared/src/commonMain`.
+- `shared/src/androidMain` y `shared/src/desktopMain` deben contener solo:
+  - integraciones nativas
+  - permisos/plataforma
+  - arranque de actividad/ventana
+
+### ✅ Checklist de PR (obligatorio)
+
+- [ ] ¿Este cambio afecta a ambas plataformas?
+- [ ] ¿Está la lógica en `shared/src/commonMain`?
+- [ ] ¿Se actualizó Desktop y Android cuando aplica?
+
 ---
 
 ## 👨‍💻 Author & Contributions
