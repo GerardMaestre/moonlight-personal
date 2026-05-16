@@ -2,8 +2,10 @@ package com.limelight.shared.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,21 +14,33 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.network.NetworkHeaders
+import coil3.network.httpHeaders
+import coil3.request.ImageRequest
+import com.limelight.shared.data.immich.ImmichGalleryState
+import com.limelight.shared.data.immich.ImmichPhotoAsset
+import com.limelight.shared.data.immich.ImmichServerSummary
 import com.limelight.shared.platform.PhotoServerActions
 import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PhotoServerStatus
 import com.limelight.shared.platform.PreviewPhotoServerActions
 import com.limelight.shared.ui.components.*
 import com.limelight.shared.ui.theme.MoonlightColors
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +49,8 @@ fun PhotoServerScreen(
     actions: PhotoServerActions = PreviewPhotoServerActions,
     onBack: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
+
     AetherisScreen(primaryGlowAlignment = Alignment.TopStart, secondaryGlowAlignment = Alignment.BottomEnd) {
         Scaffold(topBar = { HomeHubTopBar(onBack = onBack) }, containerColor = Color.Transparent) { padding ->
             Column(
@@ -43,33 +59,38 @@ fun PhotoServerScreen(
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 28.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text("Multimedia", style = MaterialTheme.typography.headlineLarge.copy(fontSize = 42.sp), color = MoonlightColors.OnSurface, textAlign = TextAlign.Center)
                 Spacer(Modifier.height(8.dp))
-                Text("Servidor de sincronización de fotos Immich con respaldo automático.", style = MaterialTheme.typography.bodyLarge, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center)
+                Text("Cliente nativo de Immich conectado a la API REST real.", style = MaterialTheme.typography.bodyLarge, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center)
                 Spacer(Modifier.height(24.dp))
 
                 BoxWithConstraints(Modifier.fillMaxWidth()) {
                     if (maxWidth > 840.dp) {
                         Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.fillMaxWidth()) {
-                            ControlCard(state, actions, Modifier.weight(2f))
-                            Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.weight(1f)) {
-                                MetricCard("Almacenamiento", "1.2 TB", "/ 4 TB", "30% Utilizado", Icons.Default.Storage, 0.30f, MoonlightColors.PrimaryContainer)
-                                MetricCard("Sincronización", "14,392", "Fotos", "Última sync hace 2 min", Icons.Default.CloudSync, 1f, MoonlightColors.Tertiary)
+                            Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.weight(2f)) {
+                                ConnectionCard(state, actions)
+                                ControlCard(state, actions)
                             }
+                            SummaryColumn(state.galleryState, Modifier.weight(1f))
                         }
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
+                            ConnectionCard(state, actions)
                             ControlCard(state, actions)
-                            MetricCard("Almacenamiento", "1.2 TB", "/ 4 TB", "30% Utilizado", Icons.Default.Storage, 0.30f, MoonlightColors.PrimaryContainer)
-                            MetricCard("Sincronización", "14,392", "Fotos", "Última sync hace 2 min", Icons.Default.CloudSync, 1f, MoonlightColors.Tertiary)
+                            SummaryColumn(state.galleryState)
                         }
                     }
                 }
 
                 Spacer(Modifier.height(24.dp))
-                ActivityCard(state.recentLogs)
+                GalleryCard(
+                    galleryState = state.galleryState,
+                    config = state.connectionConfig,
+                    logs = state.recentLogs,
+                    onRefresh = { scope.launch { actions.refreshImmich() } },
+                )
                 Spacer(Modifier.height(110.dp))
             }
         }
@@ -77,7 +98,41 @@ fun PhotoServerScreen(
 }
 
 @Composable
+private fun ConnectionCard(state: PhotoServerState, actions: PhotoServerActions, modifier: Modifier = Modifier) {
+    val scope = rememberCoroutineScope()
+    GlassCard(contentPadding = PaddingValues(22.dp), modifier = modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("Conexión Immich", style = MaterialTheme.typography.headlineMedium, color = MoonlightColors.OnSurface)
+            Text("Introduce la URL de tu instancia y una API Key con permisos asset.read/server.*.", style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant)
+            OutlinedTextField(
+                value = state.connectionConfig.baseUrl,
+                onValueChange = { state.updateConnection(baseUrl = it, apiKey = state.connectionConfig.apiKey) },
+                label = { Text("URL base (https://immich.tu-dominio.com)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = state.connectionConfig.apiKey,
+                onValueChange = { state.updateConnection(baseUrl = state.connectionConfig.baseUrl, apiKey = it) },
+                label = { Text("API Key") },
+                visualTransformation = PasswordVisualTransformation(),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            PrimaryGlassButton(
+                text = "Conectar y cargar galería",
+                icon = Icons.Default.CloudSync,
+                onClick = { scope.launch { actions.startPhotoServer() } },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = state.status != PhotoServerStatus.Starting && state.galleryState !is ImmichGalleryState.Loading,
+            )
+        }
+    }
+}
+
+@Composable
 private fun ControlCard(state: PhotoServerState, actions: PhotoServerActions, modifier: Modifier = Modifier) {
+    val scope = rememberCoroutineScope()
     val running = state.status is PhotoServerStatus.Running
     val starting = state.status == PhotoServerStatus.Starting
     val accent = when (state.status) {
@@ -86,17 +141,17 @@ private fun ControlCard(state: PhotoServerState, actions: PhotoServerActions, mo
         is PhotoServerStatus.Running -> MoonlightColors.Tertiary
         is PhotoServerStatus.Error -> MoonlightColors.Error
     }
-    GlassCard(modifier = modifier.fillMaxWidth(), contentPadding = PaddingValues(28.dp)) {
+
+    GlassCard(contentPadding = PaddingValues(28.dp), modifier = modifier.fillMaxWidth()) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(190.dp)) {
-                Box(Modifier.size(188.dp).clip(CircleShape).border(1.dp, MoonlightColors.Primary.copy(alpha = 0.24f), CircleShape).background(MoonlightColors.SurfaceContainerHighest.copy(alpha = 0.35f)))
-                Box(Modifier.size(150.dp).clip(CircleShape).border(1.dp, MoonlightColors.Tertiary.copy(alpha = 0.22f), CircleShape))
+            Box(Modifier.size(132.dp).clip(CircleShape).background(accent.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(94.dp).clip(CircleShape).background(accent.copy(alpha = 0.22f), CircleShape))
                 Icon(if (running) Icons.Default.CloudDone else if (starting) Icons.Default.CloudSync else Icons.Default.CloudOff, null, tint = accent, modifier = Modifier.size(78.dp))
             }
             Spacer(Modifier.height(18.dp))
-            StatusPill(if (running) "Immich Core" else if (starting) "Arrancando" else "Standby", accent)
+            StatusPill(if (running) "Immich API" else if (starting) "Conectando" else "Sin sesión", accent)
             Spacer(Modifier.height(12.dp))
-            Text(if (running) "Servidor Activo" else "Servidor Multimedia", style = MaterialTheme.typography.headlineLarge, color = MoonlightColors.OnSurface)
+            Text(if (running) "Servidor Activo" else "Cliente Multimedia", style = MaterialTheme.typography.headlineLarge, color = MoonlightColors.OnSurface)
             Spacer(Modifier.height(8.dp))
             Text(state.healthMessage, style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center)
             state.lastError?.let {
@@ -105,18 +160,28 @@ private fun ControlCard(state: PhotoServerState, actions: PhotoServerActions, mo
             }
             Spacer(Modifier.height(22.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                PrimaryGlassButton(if (running) "Activo" else "Arrancar", Icons.Default.PowerSettingsNew, { actions.startPhotoServer() }, Modifier.weight(1f), enabled = !starting)
-                ErrorGlassButton("Apagar", Icons.Default.StopCircle, { actions.stopPhotoServer() }, Modifier.weight(1f), enabled = running || state.status is PhotoServerStatus.Error)
+                PrimaryGlassButton(if (running) "Recargar" else "Conectar", Icons.Default.PowerSettingsNew, { scope.launch { actions.startPhotoServer() } }, Modifier.weight(1f), enabled = !starting)
+                ErrorGlassButton("Cerrar", Icons.Default.StopCircle, { actions.stopPhotoServer() }, Modifier.weight(1f), enabled = running || state.status is PhotoServerStatus.Error)
             }
             if (running || state.status is PhotoServerStatus.Error) {
                 Spacer(Modifier.height(12.dp))
-                OutlinedButton(onClick = { actions.restartPhotoServer() }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(999.dp)) {
+                OutlinedButton(onClick = { scope.launch { actions.restartPhotoServer() } }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(999.dp)) {
                     Icon(Icons.Default.Refresh, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Reiniciar")
+                    Text("Reconectar")
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SummaryColumn(galleryState: ImmichGalleryState, modifier: Modifier = Modifier) {
+    val summary = (galleryState as? ImmichGalleryState.Success)?.summary ?: ImmichServerSummary()
+    Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = modifier.fillMaxWidth()) {
+        MetricCard("Fotos", summary.images.toString(), "Imágenes", "Total real desde Immich", Icons.Default.PhotoLibrary, progressFrom(summary.images, summary.totalAssets), MoonlightColors.Tertiary)
+        MetricCard("Vídeos", summary.videos.toString(), "Clips", "API /search/statistics", Icons.Default.VideoLibrary, progressFrom(summary.videos, summary.totalAssets), MoonlightColors.PrimaryContainer)
+        MetricCard("Almacenamiento", formatBytes(summary.quotaUsageBytes), quotaSuffix(summary.quotaSizeBytes), summary.userName ?: "Usuario autenticado", Icons.Default.Storage, quotaProgress(summary), MoonlightColors.Secondary)
     }
 }
 
@@ -144,15 +209,25 @@ private fun MetricCard(title: String, value: String, suffix: String, footer: Str
 }
 
 @Composable
-private fun ActivityCard(logs: List<String>) {
+private fun GalleryCard(galleryState: ImmichGalleryState, config: com.limelight.shared.data.immich.ImmichConnectionConfig, logs: List<String>, onRefresh: () -> Unit) {
     GlassCard(contentPadding = PaddingValues(22.dp), modifier = Modifier.fillMaxWidth()) {
         Column {
-            Text("Actividad Reciente", style = MaterialTheme.typography.headlineMedium, color = MoonlightColors.OnSurface)
-            Spacer(Modifier.height(4.dp))
-            Text("Archivos indexados recientemente", style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Galería Immich", style = MaterialTheme.typography.headlineMedium, color = MoonlightColors.OnSurface)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Miniaturas reales cargadas desde /api/assets/{id}/thumbnail", style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant)
+                }
+                IconButton(onClick = onRefresh, enabled = galleryState !is ImmichGalleryState.Loading && galleryState !is ImmichGalleryState.Idle) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Actualizar galería", tint = MoonlightColors.Primary)
+                }
+            }
             Spacer(Modifier.height(16.dp))
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                listOf("JPG", "MP4", "HEIC", "JPG", "RAW").forEachIndexed { index, type -> GalleryTile(type, index) }
+            when (galleryState) {
+                ImmichGalleryState.Idle -> EmptyGalleryMessage("Configura la conexión para cargar fotos reales de Immich.")
+                ImmichGalleryState.Loading -> LoadingGallery()
+                is ImmichGalleryState.Error -> EmptyGalleryMessage(galleryState.message, isError = true)
+                is ImmichGalleryState.Success -> PhotoGrid(galleryState.photos, config)
             }
             if (logs.isNotEmpty()) {
                 Spacer(Modifier.height(18.dp))
@@ -163,10 +238,105 @@ private fun ActivityCard(logs: List<String>) {
 }
 
 @Composable
-private fun GalleryTile(type: String, index: Int) {
-    val colors = listOf(MoonlightColors.Primary, MoonlightColors.Tertiary, MoonlightColors.Secondary, MoonlightColors.PrimaryContainer, MoonlightColors.Error)
-    Box(Modifier.size(148.dp).clip(RoundedCornerShape(24.dp)).background(MoonlightColors.SurfaceContainerHighest).border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(24.dp))) {
-        Box(Modifier.matchParentSize().background(Brush.radialGradient(listOf(colors[index % colors.size].copy(alpha = 0.24f), Color.Transparent))))
-        Text(type, modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp).clip(RoundedCornerShape(8.dp)).background(MoonlightColors.Surface.copy(alpha = 0.82f)).padding(horizontal = 8.dp, vertical = 4.dp), color = MoonlightColors.OnSurface, style = MaterialTheme.typography.labelSmall)
+private fun PhotoGrid(photos: List<ImmichPhotoAsset>, config: com.limelight.shared.data.immich.ImmichConnectionConfig) {
+    if (photos.isEmpty()) {
+        EmptyGalleryMessage("Immich respondió correctamente, pero no devolvió fotos para esta API Key.")
+    } else {
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(148.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(max = 620.dp),
+            userScrollEnabled = false,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            items(photos, key = { it.id }) { photo ->
+                GalleryTile(photo, config)
+            }
+        }
     }
+}
+
+@Composable
+private fun GalleryTile(photo: ImmichPhotoAsset, config: com.limelight.shared.data.immich.ImmichConnectionConfig) {
+    val context = LocalPlatformContext.current
+    val headers = NetworkHeaders.Builder().apply {
+        when {
+            config.apiKey.isNotBlank() -> set("x-api-key", config.apiKey)
+            config.bearerToken.isNotBlank() -> set("Authorization", "Bearer ${config.bearerToken}")
+        }
+    }.build()
+    val imageRequest = ImageRequest.Builder(context)
+        .data(photo.thumbnailUrl)
+        .httpHeaders(headers)
+        .build()
+    Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(MoonlightColors.SurfaceContainerHighest).border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(24.dp))) {
+        AsyncImage(
+            model = imageRequest,
+            contentDescription = photo.name,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.matchParentSize(),
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .background(MoonlightColors.Surface.copy(alpha = 0.82f))
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (photo.isFavorite) {
+                    Icon(Icons.Default.Favorite, null, tint = MoonlightColors.Error, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                }
+                Text(photo.name, color = MoonlightColors.OnSurface, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+            }
+            photo.location?.let { Text(it, color = MoonlightColors.OnSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+    }
+}
+
+@Composable
+private fun LoadingGallery() {
+    Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(color = MoonlightColors.Primary)
+            Spacer(Modifier.height(12.dp))
+            Text("Cargando galería real de Immich...", color = MoonlightColors.OnSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+private fun EmptyGalleryMessage(message: String, isError: Boolean = false) {
+    Box(Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(24.dp)).background(MoonlightColors.SurfaceContainerHighest), contentAlignment = Alignment.Center) {
+        Text(message, color = if (isError) MoonlightColors.Error else MoonlightColors.OnSurfaceVariant, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(20.dp))
+    }
+}
+
+private fun progressFrom(value: Int, total: Int): Float = when {
+    total <= 0 -> 0f
+    else -> (value.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+}
+
+private fun quotaProgress(summary: ImmichServerSummary): Float {
+    val usage = summary.quotaUsageBytes ?: return 0f
+    val size = summary.quotaSizeBytes ?: return 0f
+    return when {
+        size <= 0L -> 0f
+        else -> (usage.toFloat() / size.toFloat()).coerceIn(0f, 1f)
+    }
+}
+
+private fun quotaSuffix(quotaSizeBytes: Long?): String = quotaSizeBytes?.let { "/ ${formatBytes(it)}" } ?: "Sin cuota"
+
+private fun formatBytes(bytes: Long?): String {
+    val value = bytes ?: return "—"
+    val units = listOf("B", "KB", "MB", "GB", "TB")
+    val sequence = generateSequence(value.toDouble() to 0) { (current, index) ->
+        when {
+            current >= 1024.0 && index < units.lastIndex -> current / 1024.0 to index + 1
+            else -> null
+        }
+    }.last()
+    return "${(sequence.first * 10).toInt() / 10.0} ${units[sequence.second]}"
 }

@@ -147,7 +147,9 @@ class DesktopPhotoServerManager(private val state: PhotoServerState) {
                     val code = conn.responseCode
                     if (code == 200) {
                         val host = InetAddress.getLocalHost().hostAddress ?: "127.0.0.1"
-                        state.updateStatus(PhotoServerStatus.Running(immichPort, "http://$host:$immichPort"))
+                        val urlText = "http://$host:$immichPort"
+                        state.updateConnection(baseUrl = urlText, apiKey = state.connectionConfig.apiKey)
+                        state.updateStatus(PhotoServerStatus.Running(immichPort, urlText))
                         state.healthMessage = "Online - ${Instant.now()}"
                     } else {
                         state.healthMessage = "Status $code - ${Instant.now()}"
