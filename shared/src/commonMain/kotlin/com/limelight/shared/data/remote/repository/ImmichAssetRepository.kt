@@ -11,24 +11,14 @@ import com.limelight.shared.domain.media.TimelinePage
 import com.limelight.shared.network.immich.ImmichApiClient
 import com.limelight.shared.network.immich.normalizedBaseUrl
 import com.limelight.platform.Logger
-import io.ktor.http.Headers
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.plugins.HttpRequestTimeoutException
-import io.ktor.client.plugins.ServerResponseException
-import io.ktor.client.plugins.ConnectTimeoutException
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.parameter
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.HttpHeaders
-import io.ktor.http.URLBuilder
-import io.ktor.http.appendPathSegments
-import io.ktor.http.isSuccess
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.plugins.*
+import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
+import io.ktor.http.*
+import kotlinx.serialization.json.*
 import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.writeFully
 import kotlinx.coroutines.delay
@@ -109,10 +99,54 @@ fun uploadAssetMultipartFlow(fileName: String, bytes: ByteArray, mimeType: Strin
         } else false
     }
 
-    private suspend fun loadAssetPage(page: Int?, cursor: String?, size: Int): AssetsResponseDto = request("/api/assets") {
-        parameter("page", page ?: 1)
-        parameter("size", size)
-        cursor?.let { parameter("cursor", it) }
+    private suspend fun loadAssetPage(page: Int?, cursor: String?, size: Int): AssetsResponseDto {
+        return try {
+            val requestBody = com.limelight.shared.network.immich.ImmichSearchAssetsRequest(page = page ?: 1, size = size)
+            val responseElement: kotlinx.serialization.json.JsonElement = httpClient.post(normalizedBaseUrl(config.baseUrl) + "/api/search/metadata") {
+                authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
+                contentType(ContentType.Application.Json)
+                setBody(requestBody)
+            }.body()
+            
+            val pageData = when {
+                responseElement is JsonObject && responseElement.containsKey("assets") -> {
+                    val searchResponse = com.limelight.shared.network.immich.ImmichJson.decodeFromJsonElement<com.limelight.shared.network.immich.ImmichSearchAssetsResponse>(responseElement)
+                    searchResponse.assets ?: com.limelight.shared.network.immich.ImmichAssetPage()
+                }
+                responseElement is JsonObject && responseElement.containsKey("items") -> {
+                    com.limelight.shared.network.immich.ImmichJson.decodeFromJsonElement<com.limelight.shared.network.immich.ImmichAssetPage>(responseElement)
+                }
+                else -> com.limelight.shared.network.immich.ImmichAssetPage()
+            }
+            AssetsResponseDto(
+                count = pageData.count,
+                total = pageData.total,
+                nextPage = pageData.nextPage,
+                items = pageData.items.map { 
+                    AssetDto(
+                        id = it.id,
+                        type = it.type,
+                        originalFileName = it.originalFileName,
+                        originalMimeType = it.originalMimeType,
+                        fileCreatedAt = it.fileCreatedAt,
+                        updatedAt = it.updatedAt,
+                        isFavorite = it.isFavorite,
+                        exifInfo = it.exifInfo?.let { exif -> com.limelight.shared.data.remote.dto.ExifInfoDto(city = exif.city, country = exif.country) }
+                    ) 
+                }
+            )
+        } catch (error: io.ktor.client.plugins.ClientRequestException) {
+            val mapped = when (error.response.status.value) {
+                401 -> DataError.Validation("401 no autorizado: API Key o token inválido.")
+                403 -> DataError.Validation("403 prohibido: credenciales sin permisos para este recurso.")
+                else -> DataError.Network(error)
+            }
+            logger.error(tag, "loadAssetPage failed with client status ${error.response.status.value}", error)
+            throw mapped
+        } catch (error: Exception) {
+            logger.error(tag, "loadAssetPage failed", error)
+            throw DataError.Unknown(error)
+        }
     }
 
     private suspend inline fun <reified T> request(path: String, crossinline block: io.ktor.client.request.HttpRequestBuilder.() -> Unit = {}): T {

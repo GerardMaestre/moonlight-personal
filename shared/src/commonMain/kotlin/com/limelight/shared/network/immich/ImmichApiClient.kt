@@ -58,13 +58,8 @@ class ImmichApiClient(
         val stats = runCatching { searchStatistics(config) }.getOrDefault(ImmichAssetStatisticsResponse())
         
         val photos = try {
-            val element = get<JsonElement>(config, "/api/assets")
-            val assets = when {
-                element is JsonArray -> ImmichJson.decodeFromJsonElement<List<ImmichAssetResponse>>(element)
-                element is JsonObject && element.containsKey("items") ->
-                    ImmichJson.decodeFromJsonElement<List<ImmichAssetResponse>>(element["items"]!!)
-                else -> searchAssets(config, pageSize = pageSize).items
-            }
+            val assets = searchAssets(config, pageSize = pageSize).items
+            logger.debug(tag, "Mapeados ${assets.size} assets")
             assets.map { it.toPhotoAsset(config) }
         } catch (error: Throwable) {
             val mapped = mapImmichConnectionError(error)
@@ -108,12 +103,22 @@ class ImmichApiClient(
         get(config, "/api/assets")
 
     suspend fun searchAssets(config: ImmichConnectionConfig, page: Int = 1, pageSize: Int = 60): ImmichAssetPage {
-        val response = post<ImmichSearchAssetsRequest, ImmichSearchAssetsResponse>(
+        val element = post<ImmichSearchAssetsRequest, JsonElement>(
             config = config,
-            path = "/api/search/assets",
+            path = "/api/search/metadata",
             body = ImmichSearchAssetsRequest(page = page, size = pageSize.coerceIn(1, 1000)),
         )
-        return response.assets ?: ImmichAssetPage()
+        logger.debug(tag, "Respuesta raw de /api/search/metadata: $element")
+        
+        return when {
+            element is JsonObject && element.containsKey("assets") -> {
+                ImmichJson.decodeFromJsonElement<ImmichSearchAssetsResponse>(element).assets ?: ImmichAssetPage()
+            }
+            element is JsonObject && element.containsKey("items") -> {
+                ImmichJson.decodeFromJsonElement<ImmichAssetPage>(element)
+            }
+            else -> ImmichAssetPage()
+        }
     }
 
     fun thumbnailUrl(config: ImmichConnectionConfig, assetId: String): String = URLBuilder(normalizedBaseUrl(config.baseUrl)).apply {
@@ -144,3 +149,29 @@ data class ImmichOverview(
 )
 
 fun normalizedBaseUrl(baseUrl: String): String = baseUrl.trim().trimEnd('/').removeSuffix("/api")
+
+suspend fun <T> executeImmichRequest(block: suspend () -> T): T {
+    return try {
+        block()
+    } catch (error: Throwable) {
+        throw mapImmichConnectionError(error)
+    }
+}
+
+fun mapImmichConnectionError(error: Throwable): Throwable {
+    return when (error) {
+        is ConnectTimeoutException, is HttpRequestTimeoutException -> 
+            IllegalStateException("Timeout de conexión con Immich. Revisa la URL y tu red.", error)
+        is ClientRequestException -> {
+            when (error.response.status.value) {
+                401 -> IllegalStateException("401 No autorizado: API Key o token inválido.", error)
+                403 -> IllegalStateException("403 Prohibido: No tienes permisos para este recurso.", error)
+                else -> error
+            }
+        }
+        is ServerResponseException -> 
+            IllegalStateException("Error del servidor Immich (${error.response.status.value}).", error)
+        else -> error
+    }
+}
+
