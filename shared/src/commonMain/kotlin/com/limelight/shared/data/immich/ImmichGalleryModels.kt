@@ -26,6 +26,8 @@ data class ImmichPhotoAsset(
     val createdAt: String? = null,
     val location: String? = null,
     val isFavorite: Boolean = false,
+    val isVideo: Boolean = false,
+    val isAnimated: Boolean = false,
 )
 
 sealed interface ImmichGalleryState {

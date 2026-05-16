@@ -136,6 +136,8 @@ class ImmichApiClient(
         createdAt = localDateTime ?: fileCreatedAt,
         location = listOfNotNull(exifInfo?.city, exifInfo?.country).joinToString(", ").ifBlank { null },
         isFavorite = isFavorite,
+        isVideo = type.equals("VIDEO", ignoreCase = true) || (originalMimeType?.startsWith("video/") == true),
+        isAnimated = (originalMimeType?.lowercase() in setOf("image/gif", "image/webp", "image/apng")),
     )
 
     companion object {
@@ -174,4 +176,3 @@ fun mapImmichConnectionError(error: Throwable): Throwable {
         else -> error
     }
 }
-
