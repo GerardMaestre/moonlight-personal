@@ -7,7 +7,8 @@ enum class AppScreen {
     MOONLIGHT,
     GAME_LIST,
     POWER_CONTROL,
-    PHOTO_SERVER
+    PHOTO_SERVER,
+    IMMICH_HOME
 }
 
 class AppNavigation {

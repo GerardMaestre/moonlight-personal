@@ -24,6 +24,7 @@ import com.limelight.shared.platform.StartCommandResult
 import com.limelight.shared.ui.screens.AppScreen
 import com.limelight.shared.ui.screens.DashboardScreen
 import com.limelight.shared.ui.screens.GameListScreen
+import com.limelight.shared.ui.screens.ImmichHomeScreen
 import com.limelight.shared.ui.screens.MainMenuScreen
 import com.limelight.shared.ui.screens.PhotoServerScreen
 import com.limelight.shared.ui.screens.PowerControlScreen
@@ -269,6 +270,11 @@ class PremiumDashboardActivity : ComponentActivity() {
                                                 thread { photoManager.refreshImmich() }
                                             }
                                         },
+                                        onBack = { navigateBackOrHome() }
+                                    )
+                                }
+                                AppScreen.IMMICH_HOME -> {
+                                    ImmichHomeScreen(
                                         onBack = { navigateBackOrHome() }
                                     )
                                 }
