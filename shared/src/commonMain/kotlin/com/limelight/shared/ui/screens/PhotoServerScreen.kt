@@ -21,20 +21,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.network.NetworkHeaders
-import coil3.network.httpHeaders
-import coil3.request.CachePolicy
-import coil3.request.ImageRequest
-import coil3.size.Size
 import com.limelight.shared.data.immich.ImmichGalleryState
 import com.limelight.shared.data.immich.ImmichPhotoAsset
 import com.limelight.shared.data.immich.ImmichServerSummary
@@ -289,25 +281,12 @@ private fun SectionGrid(section: TimelineSection, config: com.limelight.shared.d
 
 @Composable
 private fun GalleryTile(photo: ImmichPhotoAsset, config: com.limelight.shared.data.immich.ImmichConnectionConfig) {
-    val context = LocalPlatformContext.current
-    val headers = NetworkHeaders.Builder().apply {
-        when {
-            config.apiKey.isNotBlank() -> set("x-api-key", config.apiKey)
-            config.bearerToken.isNotBlank() -> set("Authorization", "Bearer ${config.bearerToken}")
-        }
-    }.build()
-    val imageRequest = ImageRequest.Builder(context)
-        .data(photo.thumbnailUrl)
-        .httpHeaders(headers)
-        .size(Size(512, 512))
-        .memoryCachePolicy(CachePolicy.ENABLED)
-        .diskCachePolicy(CachePolicy.ENABLED)
-        .build()
     Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(MoonlightColors.SurfaceContainerHighest).border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(24.dp))) {
-        AsyncImage(
-            model = imageRequest,
+        ThumbnailImage(
+            assetId = photo.id,
             contentDescription = photo.name,
-            contentScale = ContentScale.Crop,
+            config = config,
+            cellSize = 148.dp,
             modifier = Modifier.matchParentSize(),
         )
         Column(
