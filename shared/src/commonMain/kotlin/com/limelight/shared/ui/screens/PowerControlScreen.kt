@@ -173,15 +173,19 @@ private fun WakeSection(
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(240.dp)
+            .size(300.dp)
             .scale(if (!state.isWaking) pulseScale else 1f)
     ) {
         // Outer Glow
         Box(
             modifier = Modifier
-                .size(220.dp)
-                .blur(40.dp)
-                .background(buttonColor.copy(alpha = 0.15f), CircleShape)
+                .size(280.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(buttonColor.copy(alpha = 0.22f), Color.Transparent)
+                    ),
+                    CircleShape
+                )
         )
         
         Box(

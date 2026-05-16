@@ -118,10 +118,13 @@ fun AetherisGlow(
     Box(
         modifier = modifier
             .size(size)
-            .blur(110.dp)
             .background(
                 Brush.radialGradient(
-                    colors = listOf(color.copy(alpha = alpha), Color.Transparent)
+                    colors = listOf(
+                        color.copy(alpha = alpha),
+                        color.copy(alpha = alpha * 0.4f),
+                        Color.Transparent
+                    )
                 ),
                 CircleShape
             )
