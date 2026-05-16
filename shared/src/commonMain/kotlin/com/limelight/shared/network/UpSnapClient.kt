@@ -62,6 +62,7 @@ class UpSnapClient(
     }
 
     fun listDevices(): List<Pair<String, String>> {
+        println("[UpSnapClient] Listing devices for URL: $serverUrl")
         val token = if (username.isNotBlank()) authenticate() else ""
         
         val base = serverUrl.trim().let { 
@@ -77,6 +78,7 @@ class UpSnapClient(
         val responseCode = conn.responseCode
         if (responseCode == 200) {
             val body = conn.inputStream.bufferedReader().readText()
+            println("[UpSnapClient] Raw response: $body")
             val response = json.decodeFromString<DeviceListResponse>(body)
             return response.items.map { it.id to it.name }
         } else {
@@ -109,30 +111,51 @@ class UpSnapClient(
 
         val isSuperUser = authUrl.toString().contains("/_superusers/") || authUrl.toString().contains("/admins/")
         val body = if (isSuperUser) {
-            json.encodeToString(AuthRequest.serializer(), AuthRequest(email = username.trim(), password = password))
+            // Newer PocketBase versions (0.23+) use identity for superusers too, but older ones used email.
+            // We send both for maximum compatibility.
+            json.encodeToString(AuthRequest.serializer(), AuthRequest(identity = username.trim(), email = username.trim(), password = password))
         } else {
             json.encodeToString(AuthRequest.serializer(), AuthRequest(identity = username.trim(), password = password))
         }
+        
+        println("[UpSnapClient] Sending auth request to $authUrl with identity: ${username.trim()}")
 
         conn.outputStream.bufferedWriter().use { it.write(body) }
 
-        val responseCode = conn.responseCode
-        return if (responseCode == 200) {
-            val response = conn.inputStream.bufferedReader().readText()
-            json.decodeFromString<AuthResponse>(response).token
-        } else if (responseCode == 400 && authUrl.toString().contains("/collections/users/")) {
-            val superUserUrl = URL(authUrl.toString().replace("/collections/users/", "/collections/_superusers/"))
-            authenticate(superUserUrl)
-        } else if (responseCode == 404 && authUrl.toString().contains("/collections/_superusers/")) {
-            val adminUrl = URL(authUrl.toString().replace("/collections/_superusers/", "/admins/"))
-            authenticate(adminUrl)
-        } else {
-            val errorMsg = try {
-                conn.errorStream?.bufferedReader()?.readText() ?: "Sin respuesta"
-            } catch (ex: Exception) {
-                "Fallo HTTP $responseCode"
+        try {
+            val responseCode = conn.responseCode
+            println("[UpSnapClient] Auth response code: $responseCode for $authUrl")
+            return if (responseCode == 200) {
+                val response = conn.inputStream.bufferedReader().readText()
+                val token = json.decodeFromString<AuthResponse>(response).token
+                println("[UpSnapClient] Auth success, token length: ${token.length}")
+                token
+            } else if (responseCode == 400 && authUrl.toString().contains("/collections/users/")) {
+                println("[UpSnapClient] Trying SuperUser auth fallback...")
+                val superUserUrl = URL(authUrl.toString().replace("/collections/users/", "/collections/_superusers/"))
+                authenticate(superUserUrl)
+            } else if (responseCode == 404 && authUrl.toString().contains("/collections/_superusers/")) {
+                println("[UpSnapClient] Trying Admin auth fallback...")
+                val adminUrl = URL(authUrl.toString().replace("/collections/_superusers/", "/admins/"))
+                authenticate(adminUrl)
+            } else {
+                val errorMsg = try {
+                    conn.errorStream?.bufferedReader()?.readText() ?: "Sin respuesta"
+                } catch (ex: Exception) {
+                    "Fallo HTTP $responseCode"
+                }
+                println("[UpSnapClient] Auth failed ($responseCode): $errorMsg")
+                throw Exception("Fallo de autenticación ($responseCode): $errorMsg")
             }
-            throw Exception("Fallo de autenticación ($responseCode): $errorMsg")
+        } catch (e: java.net.SocketTimeoutException) {
+            println("[UpSnapClient] Auth TIMEOUT for $authUrl")
+            throw Exception("Timeout de conexión con el servidor")
+        } catch (e: java.net.ConnectException) {
+            println("[UpSnapClient] Auth CONNECTION REFUSED for $authUrl")
+            throw Exception("Conexión rechazada. ¿Está el servidor encendido?")
+        } catch (e: Exception) {
+            println("[UpSnapClient] Auth unexpected error: ${e.message}")
+            throw e
         }
     }
 

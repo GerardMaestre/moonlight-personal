@@ -13,14 +13,18 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.limelight.shared.ui.components.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -62,51 +66,59 @@ fun PowerControlScreen(
     onClearConfig: () -> Unit,
     onTestConnection: (url: String, user: String, pass: String) -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        "MI PC",
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 3.sp
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { state.showConfig = !state.showConfig }) {
-                        Icon(
-                            if (state.showConfig) Icons.Default.Close else Icons.Default.Settings,
-                            contentDescription = "Configuración"
+    Box(modifier = Modifier.fillMaxSize().background(MoonlightColors.Background)) {
+        // Background Glows
+        AetherisGlow(
+            modifier = Modifier.align(Alignment.BottomEnd).offset(x = 100.dp, y = 100.dp),
+            color = MoonlightColors.Secondary
+        )
+
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            "POWER HUB",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
-                    titleContentColor = MoonlightColors.TertiaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MoonlightColors.OnSurface)
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { state.showConfig = !state.showConfig }) {
+                            Icon(
+                                if (state.showConfig) Icons.Default.Close else Icons.Default.Settings,
+                                contentDescription = "Configuración",
+                                tint = MoonlightColors.OnSurface
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MoonlightColors.OnSurface,
+                    )
                 )
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (state.showConfig) {
-                ConfigSection(state, onSaveConfig, onClearConfig, onTestConnection)
-            } else {
-                WakeSection(state, onWake)
+            },
+            containerColor = Color.Transparent
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (state.showConfig) {
+                    ConfigSection(state, onSaveConfig, onClearConfig, onTestConnection)
+                } else {
+                    WakeSection(state, onWake)
+                }
             }
         }
     }
@@ -120,35 +132,29 @@ private fun WakeSection(
     Spacer(modifier = Modifier.height(24.dp))
 
     if (!state.isConfigured) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-            )
-        ) {
+        GlassCard(modifier = Modifier.padding(top = 24.dp)) {
             Column(
-                modifier = Modifier.padding(32.dp),
+                modifier = Modifier.padding(40.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Icon(
                     Icons.Default.SettingsSuggest,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = MoonlightColors.Outline
+                    tint = MoonlightColors.Outline.copy(alpha = 0.5f)
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    "UpSnap no configurado",
+                    "PROVISIONING REQUIRED",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MoonlightColors.OnSurface
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    "Configura tu servidor UpSnap para poder encender tu PC de forma remota.",
+                    "Please configure your UpSnap credentials to enable remote power orchestration.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MoonlightColors.OnSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
             }
@@ -160,108 +166,90 @@ private fun WakeSection(
     val pulseAnim = rememberInfiniteTransition(label = "pulse")
     val pulseScale by pulseAnim.animateFloat(
         initialValue = 1f,
-        targetValue = 1.06f,
+        targetValue = 1.08f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = EaseInOutCubic),
+            animation = tween(1500, easing = EaseInOutCubic),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulseScale"
     )
 
-    val buttonColor by animateColorAsState(
-        targetValue = if (state.isWaking) MoonlightColors.Secondary else MoonlightColors.Secondary,
-        animationSpec = tween(500),
-        label = "buttonColor"
-    )
+    val buttonColor = if (state.isWaking) MoonlightColors.Secondary else MoonlightColors.Primary
 
     Text(
-        state.deviceName.ifEmpty { "Mi PC" },
-        style = MaterialTheme.typography.headlineSmall,
+        state.deviceName.uppercase(),
+        style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground
+        color = MoonlightColors.OnSurface,
+        letterSpacing = 1.sp
     )
 
     Spacer(modifier = Modifier.height(8.dp))
 
     Text(
-        "Control de Energía vía UpSnap",
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+        "UPSNAP REMOTE ORCHESTRATOR",
+        style = MaterialTheme.typography.labelSmall,
+        color = MoonlightColors.Primary,
+        fontWeight = FontWeight.Bold
     )
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(64.dp))
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(200.dp)
+            .size(240.dp)
             .scale(if (!state.isWaking) pulseScale else 1f)
     ) {
-        val glowColor = buttonColor.copy(alpha = 0.5f)
+        // Outer Glow
+        Box(
+            modifier = Modifier
+                .size(220.dp)
+                .blur(40.dp)
+                .background(buttonColor.copy(alpha = 0.15f), CircleShape)
+        )
         
         Box(
             modifier = Modifier
-                .size(192.dp)
+                .size(180.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .border(1.dp, glowColor, CircleShape)
-                .clickable { if (!state.isWaking) onWake() }
+                .background(Color.White.copy(alpha = 0.05f))
+                .border(2.dp, buttonColor.copy(alpha = 0.3f), CircleShape)
+                .clickable { if (!state.isWaking) onWake() },
+            contentAlignment = Alignment.Center
         ) {
-            // Shadow simulation
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(buttonColor.copy(alpha = 0.3f), Color.Transparent),
-                            radius = 400f
-                        )
-                    )
-            )
-            
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                if (state.isWaking) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(48.dp),
-                        color = buttonColor,
-                        strokeWidth = 3.dp
-                    )
-                } else {
-                    Icon(
-                        Icons.Default.PowerSettingsNew,
-                        contentDescription = "Encender PC",
-                        modifier = Modifier.size(80.dp),
-                        tint = buttonColor
-                    )
-                }
+            if (state.isWaking) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(64.dp),
+                    color = buttonColor,
+                    strokeWidth = 4.dp
+                )
+            } else {
+                Icon(
+                    Icons.Default.PowerSettingsNew,
+                    contentDescription = "Encender PC",
+                    modifier = Modifier.size(80.dp),
+                    tint = buttonColor
+                )
             }
         }
     }
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(64.dp))
 
     Text(
-        if (state.isWaking) "Enviando señal de encendido..." else "Pulsa para encender",
+        if (state.isWaking) "EMITTING WOL PACKET..." else "READY TO BOOT SYSTEM",
         style = MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Medium,
-        color = if (state.isWaking) MoonlightColors.Secondary else MaterialTheme.colorScheme.onSurfaceVariant
+        fontWeight = FontWeight.Bold,
+        color = if (state.isWaking) MoonlightColors.Secondary else MoonlightColors.OnSurfaceVariant
     )
 
     state.statusMessage?.let { msg ->
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
         val isError = msg.startsWith("Error") || msg.startsWith("No se") || msg.contains("incorrecta")
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isError)
-                    MoonlightColors.Error.copy(alpha = 0.1f)
-                else
-                    MoonlightColors.Secondary.copy(alpha = 0.1f)
-            )
-        ) {
+        GlassCard {
             Row(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -270,42 +258,37 @@ private fun WakeSection(
                     tint = if (isError) MoonlightColors.Error else MoonlightColors.Secondary,
                     modifier = Modifier.size(24.dp)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     msg,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MoonlightColors.OnSurface
                 )
             }
         }
     }
 
-    Spacer(modifier = Modifier.height(32.dp))
+    Spacer(modifier = Modifier.height(48.dp))
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.03f))
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Icon(
-                Icons.Default.Lock,
-                contentDescription = null,
-                tint = MoonlightColors.PrimaryContainer,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                "Conexión segura vía Tailscale.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Icon(
+            Icons.Default.Shield,
+            contentDescription = null,
+            tint = MoonlightColors.Secondary,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            "SECURED VIA TAILSCALE MESH NETWORK",
+            style = MaterialTheme.typography.labelSmall,
+            color = MoonlightColors.OnSurfaceVariant.copy(alpha = 0.6f)
+        )
     }
 }
 
@@ -325,85 +308,80 @@ private fun ConfigSection(
 
     Spacer(modifier = Modifier.height(16.dp))
 
-    Text(
-        "CONFIGURACIÓN UPSNAP",
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Black,
-        letterSpacing = 2.sp,
-        color = MoonlightColors.PrimaryContainer
-    )
+    GlassCard {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                "UPSNAP AUTHENTICATION",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+                color = MoonlightColors.Primary
+            )
 
-    Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-    OutlinedTextField(
-        value = url,
-        onValueChange = { url = it },
-        label = { Text("URL del servidor") },
-        placeholder = { Text("Ej: https://100.69.149.17:8090") },
-        leadingIcon = { Icon(Icons.Default.Dns, contentDescription = null) },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-        isError = url.isNotBlank() && !isHttpsUrlValid,
-        supportingText = {
-            if (url.isNotBlank() && !isHttpsUrlValid) {
-                Text("URL inválida: usa HTTPS (https://) y un host válido")
+            OutlinedTextField(
+                value = url,
+                onValueChange = { url = it },
+                label = { Text("Server URL") },
+                placeholder = { Text("https://100.x.y.z:8090") },
+                leadingIcon = { Icon(Icons.Default.Dns, contentDescription = null, tint = MoonlightColors.Primary) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                singleLine = true,
+                isError = url.isNotBlank() && !isHttpsUrlValid
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = user,
+                onValueChange = { user = it },
+                label = { Text("Username") },
+                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = MoonlightColors.Primary) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = pass,
+                onValueChange = { pass = it },
+                label = { Text("Password") },
+                leadingIcon = { Icon(Icons.Default.Key, contentDescription = null, tint = MoonlightColors.Primary) },
+                trailingIcon = {
+                    IconButton(onClick = { showPassword = !showPassword }) {
+                        Icon(
+                            if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = "Toggle password"
+                        )
+                    }
+                },
+                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = { onTestConnection(url.trim(), user.trim(), pass) },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MoonlightColors.Primary),
+                enabled = !state.isTestingConnection && isHttpsUrlValid && user.isNotBlank() && pass.isNotBlank()
+            ) {
+                if (state.isTestingConnection) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MoonlightColors.OnPrimaryContainer, strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("SCAN FOR DEVICES", fontWeight = FontWeight.Bold)
+                }
             }
-        }
-    )
-
-    Spacer(modifier = Modifier.height(12.dp))
-
-    OutlinedTextField(
-        value = user,
-        onValueChange = { user = it },
-        label = { Text("Usuario") },
-        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        singleLine = true
-    )
-
-    Spacer(modifier = Modifier.height(12.dp))
-
-    OutlinedTextField(
-        value = pass,
-        onValueChange = { pass = it },
-        label = { Text("Contraseña") },
-        leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
-        trailingIcon = {
-            IconButton(onClick = { showPassword = !showPassword }) {
-                Icon(
-                    if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    contentDescription = "Toggle password"
-                )
-            }
-        },
-        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-    )
-
-    Spacer(modifier = Modifier.height(24.dp))
-
-    Button(
-        onClick = { onTestConnection(url.trim(), user.trim(), pass) },
-        modifier = Modifier.fillMaxWidth().height(52.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MoonlightColors.PrimaryContainer
-        ),
-        enabled = !state.isTestingConnection && isHttpsUrlValid && user.isNotBlank() && pass.isNotBlank()
-    ) {
-        if (state.isTestingConnection) {
-            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
-        } else {
-            Icon(Icons.Default.Search, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("BUSCAR MIS DISPOSITIVOS", fontWeight = FontWeight.Black)
         }
     }
 
@@ -414,7 +392,7 @@ private fun ConfigSection(
     ) {
         Column(modifier = Modifier.padding(top = 24.dp)) {
             Text(
-                "SELECCIONA TU PC:",
+                "SELECT TARGET INFRASTRUCTURE:",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = MoonlightColors.Secondary
@@ -425,19 +403,17 @@ private fun ConfigSection(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp)
+                        .padding(vertical = 6.dp)
                         .clickable { 
                             devId = id
                             state.deviceId = id
                             state.deviceName = name
                         },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) 
-                            MoonlightColors.Secondary.copy(alpha = 0.15f) 
-                        else 
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
+                        containerColor = if (isSelected) MoonlightColors.Secondary.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.03f)
+                    ),
+                    border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, MoonlightColors.Secondary.copy(alpha = 0.3f)) else null
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -446,12 +422,12 @@ private fun ConfigSection(
                         Icon(
                             if (isSelected) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
                             contentDescription = null,
-                            tint = if (isSelected) MoonlightColors.Secondary else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (isSelected) MoonlightColors.Secondary else MoonlightColors.OnSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
-                            Text(name, fontWeight = FontWeight.Bold)
-                            Text("ID: $id", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(name, fontWeight = FontWeight.Bold, color = MoonlightColors.OnSurface)
+                            Text("NODE ID: $id", style = MaterialTheme.typography.labelSmall, color = MoonlightColors.OnSurfaceVariant)
                         }
                     }
                 }
@@ -463,16 +439,14 @@ private fun ConfigSection(
 
     Button(
         onClick = { onSave(url.trim(), user.trim(), pass, devId.trim()) },
-        modifier = Modifier.fillMaxWidth().height(56.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MoonlightColors.Secondary
-        ),
+        modifier = Modifier.fillMaxWidth().height(60.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = MoonlightColors.Secondary),
         enabled = isHttpsUrlValid && user.isNotBlank() && pass.isNotBlank() && devId.isNotBlank()
     ) {
         Icon(Icons.Default.Check, contentDescription = null)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text("GUARDAR Y FINALIZAR", fontWeight = FontWeight.Black)
+        Spacer(modifier = Modifier.width(12.dp))
+        Text("COMMIT CONFIGURATION", fontWeight = FontWeight.Bold)
     }
 
     if (state.isConfigured) {
@@ -481,15 +455,13 @@ private fun ConfigSection(
         TextButton(
             onClick = onClear,
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.textButtonColors(
-                contentColor = MoonlightColors.Error
-            )
+            colors = ButtonDefaults.textButtonColors(contentColor = MoonlightColors.Error)
         ) {
-            Icon(Icons.Default.DeleteForever, contentDescription = null)
+            Icon(Icons.Default.DeleteSweep, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Borrar toda la configuración")
+            Text("WIPE LOCAL DATA")
         }
     }
 
-    Spacer(modifier = Modifier.height(32.dp))
+    Spacer(modifier = Modifier.height(100.dp))
 }

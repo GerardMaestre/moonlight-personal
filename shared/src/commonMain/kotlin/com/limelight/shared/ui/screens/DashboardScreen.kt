@@ -1,5 +1,6 @@
 package com.limelight.shared.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,6 +9,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Hub
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,7 +22,7 @@ import com.limelight.shared.model.ComputerInfo
 import com.limelight.shared.model.ComputerStatus
 import com.limelight.shared.platform.PlatformActions
 import com.limelight.shared.platform.PreviewPlatformActions
-import com.limelight.shared.ui.components.PcCard
+import com.limelight.shared.ui.components.*
 import com.limelight.shared.ui.theme.MoonlightColors
 import com.limelight.shared.ui.theme.MoonlightTheme
 
@@ -30,58 +33,72 @@ fun DashboardScreen(
     actions: PlatformActions = PreviewPlatformActions,
 ) {
     // MoonlightTheme is already provided by the Activity
-    Scaffold(
+    Box(modifier = Modifier.fillMaxSize().background(MoonlightColors.Background)) {
+        // Background Glows
+        AetherisGlow(
+            modifier = Modifier.align(Alignment.TopEnd).offset(x = 100.dp, y = (-100).dp),
+            color = MoonlightColors.Primary
+        )
+        AetherisGlow(
+            modifier = Modifier.align(Alignment.BottomStart).offset(x = (-150).dp, y = 150.dp),
+            color = MoonlightColors.Tertiary
+        )
+
+        Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
-                        Text(
-                            "MOONLIGHT",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Hub,
+                                contentDescription = null,
+                                tint = MoonlightColors.Primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "HOME HUB",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
+                        }
                     },
                     navigationIcon = {
                         IconButton(onClick = { actions.onNavigateBack() }) {
                             Icon(
                                 Icons.Default.ArrowBack,
-                                contentDescription = "Back"
+                                contentDescription = "Back",
+                                tint = MoonlightColors.OnSurface
                             )
                         }
                     },
                     actions = {
                         IconButton(onClick = { state.isAddPcDialogOpen = true }) {
-                            Icon(Icons.Default.Add, contentDescription = "Add PC")
-                        }
-                        IconButton(onClick = actions::onOpenSettings) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                            Icon(Icons.Default.Add, contentDescription = "Add PC", tint = MoonlightColors.OnSurface)
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                        containerColor = Color.Transparent,
+                        titleContentColor = MoonlightColors.OnSurface,
                     )
                 )
             },
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = Color.Transparent
         ) { padding ->
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // ── Section: Gaming PCs ─────────────────────────────
                 item {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     SectionHeader(
                         title = "Your Gaming PCs",
-                        subtitle = "${state.computers.count { it.isOnline }} online"
+                        subtitle = "${state.computers.count { it.isOnline }} DEVICES ONLINE"
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 items(
@@ -104,10 +121,11 @@ fun DashboardScreen(
 
                 // Bottom spacing for FAB
                 item {
-                    Spacer(modifier = Modifier.height(80.dp))
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
             }
         }
+    }
 
         // Action Feedback Dialog
         state.lastActionMessage?.let { message ->

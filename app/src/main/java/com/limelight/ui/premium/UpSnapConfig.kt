@@ -30,7 +30,7 @@ class UpSnapConfig private constructor(private val context: Context) {
         private const val KEY_IV_PASSWORD = "iv_password"
         private const val KEY_ENABLED = "enabled"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        private const val ALLOW_LEGACY_HTTP_URLS = false
+        private const val ALLOW_HTTP_URLS = true
 
         fun getInstance(context: Context): UpSnapConfig {
             return UpSnapConfig(context.applicationContext)
@@ -55,7 +55,7 @@ class UpSnapConfig private constructor(private val context: Context) {
         }
 
     fun isValidServerUrl(value: String): Boolean {
-        return UpSnapUrlValidator.isValidServerUrl(value, allowLegacyHttp = ALLOW_LEGACY_HTTP_URLS)
+        return UpSnapUrlValidator.isValidServerUrl(value, allowHttp = ALLOW_HTTP_URLS)
     }
 
     var deviceId: String

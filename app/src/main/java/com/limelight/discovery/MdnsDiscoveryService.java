@@ -14,7 +14,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 
-public class DiscoveryService extends Service {
+public class MdnsDiscoveryService extends Service {
 
     private MdnsDiscoveryAgent discoveryAgent;
     private MdnsDiscoveryListener boundListener;

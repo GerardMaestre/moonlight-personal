@@ -39,6 +39,7 @@ class PremiumDashboardActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.limelight.utils.UiHelper.setImmersiveMode(this)
         
         setContent {
             val controller = viewModel.controller
@@ -174,11 +175,11 @@ class PremiumDashboardActivity : ComponentActivity() {
                                                     powerState.password
                                                 )
                                                 // deviceId path (UpSnap) + optional UDP fallback (MAC not configured in this screen yet)
-                                                val result = WakeService.wakeWithFallback(
+                                                 val result = WakeService.wakeWithFallback(
                                                     upSnapClient = client,
                                                     deviceId = powerState.deviceId,
-                                                    macAddress = null,
-                                                )
+                                                    macAddress = controller.dashboardState.selectedComputer?.macAddress,
+                                                 )
                                                 runOnUiThread {
                                                     powerState.isWaking = false
                                                     when (result) {
@@ -215,6 +216,7 @@ class PremiumDashboardActivity : ComponentActivity() {
                                                         }
                                                     }
                                                 } catch (e: Exception) {
+                                                    println("UpSnap Test Error: ${e.message}")
                                                     runOnUiThread {
                                                         powerState.isTestingConnection = false
                                                         powerState.statusMessage = "Error: ${e.message}"
@@ -229,21 +231,36 @@ class PremiumDashboardActivity : ComponentActivity() {
                                     val remoteClient = remember(config.serverUrl, config.token) { 
                                         RemoteScriptClient(config.serverUrl, config.token) 
                                     }
+                                    val photoManager = remember { AndroidPhotoServerManager(controller.photoServerState) }
+                                    // Extract PC IP from the StreamDeck server URL for Immich health checks
+                                    val pcIp = remember(config.serverUrl) {
+                                        try {
+                                            java.net.URL(config.serverUrl).host
+                                        } catch (_: Exception) { "100.67.140.39" }
+                                    }
+
+                                    // Auto-check Immich health on screen open
+                                    LaunchedEffect(Unit) {
+                                        thread { photoManager.checkHealth(pcIp) }
+                                    }
+
                                     com.limelight.shared.ui.screens.PhotoServerScreen(
                                         state = controller.photoServerState,
                                         actions = object : PhotoServerActions {
                                             override fun startPhotoServer(): StartCommandResult {
-                                                thread { remoteClient.runScript("07_Personalizacion", "fotos.bat") }
+                                                thread {
+                                                    photoManager.start(remoteClient, pcIp)
+                                                }
                                                 return StartCommandResult.Success
                                             }
                                             override fun stopPhotoServer() {
-                                                thread { remoteClient.runScript("07_Personalizacion", "cerrar_fotos.bat") }
+                                                thread {
+                                                    photoManager.stop(remoteClient)
+                                                }
                                             }
                                             override fun restartPhotoServer() {
                                                 thread {
-                                                    remoteClient.runScript("07_Personalizacion", "cerrar_fotos.bat")
-                                                    Thread.sleep(2000)
-                                                    remoteClient.runScript("07_Personalizacion", "fotos.bat")
+                                                    photoManager.restart(remoteClient, pcIp)
                                                 }
                                             }
                                         },

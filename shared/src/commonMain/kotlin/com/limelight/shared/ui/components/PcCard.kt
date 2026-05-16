@@ -38,49 +38,32 @@ fun PcCard(
     val isOnline = computer.isOnline
     
     val statusColor = if (isOnline) MoonlightColors.Secondary else MaterialTheme.colorScheme.onSurfaceVariant
-    val containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isOnline) 1f else 0.6f)
+    val iconBackground = if (isOnline) MoonlightColors.Primary.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.05f)
     
-    val glowBrush = if (isOnline) {
-        Brush.linearGradient(
-            colors = listOf(MoonlightColors.PrimaryContainer, MoonlightColors.TertiaryContainer)
-        )
-    } else null
-
-    Card(
+    GlassCard(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .then(
-                if (glowBrush != null) Modifier.border(2.dp, glowBrush, RoundedCornerShape(24.dp))
-                else Modifier.border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(24.dp))
-            )
-            .clickable(enabled = isOnline && computer.isPaired) { onClick() },
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            .clickable(enabled = isOnline && computer.isPaired) { onClick() }
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(20.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Icon
             Box(
                 modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (isOnline) statusColor.copy(alpha = 0.1f) 
-                        else MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                    ),
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(iconBackground),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (computer.isStreaming) Icons.Default.PlayArrow else Icons.Default.DesktopWindows,
                     contentDescription = null,
-                    tint = statusColor,
-                    modifier = Modifier.size(32.dp)
+                    tint = if (isOnline) MoonlightColors.Primary else statusColor,
+                    modifier = Modifier.size(28.dp)
                 )
             }
 
@@ -95,64 +78,54 @@ fun PcCard(
                     text = computer.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MoonlightColors.OnSurface,
                     maxLines = 1
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 
-                val statusText = if (isOnline && !computer.isPaired) "Needs pairing" else computer.statusLabel
-                val statusTextColor = if (isOnline && !computer.isPaired) MoonlightColors.Error else statusColor
-                
-                Text(
-                    text = statusText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = statusTextColor,
-                    maxLines = 1
-                )
-                if (computer.localAddress != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(statusColor)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = computer.localAddress,
+                        text = if (isOnline && !computer.isPaired) "Needs pairing" else computer.statusLabel,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        color = if (isOnline && !computer.isPaired) MoonlightColors.Error else statusColor,
                         maxLines = 1
                     )
                 }
             }
 
-            // Buttons / Status
+            // Action Button
             if (isOnline && !computer.isPaired && onPair != null) {
                 Button(
                     onClick = onPair,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MoonlightColors.PrimaryContainer.copy(alpha = 0.2f),
-                        contentColor = MoonlightColors.PrimaryContainer
+                        containerColor = MoonlightColors.Primary,
+                        contentColor = MoonlightColors.OnPrimaryContainer
                     ),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    modifier = Modifier.height(32.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    modifier = Modifier.height(36.dp)
                 ) {
-                    Text("PAIR", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    Text("PAIR", style = MaterialTheme.typography.labelSmall)
                 }
             } else {
-                val chipBg = if (isOnline) statusColor.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                val chipText = if (isOnline) "ONLINE" else "WAKE"
-                
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = chipBg,
+                IconButton(
+                    onClick = { if (!isOnline) onWakeOnLan?.invoke() else onClick() },
                     modifier = Modifier
-                        .padding(start = 8.dp)
-                        .then(
-                            if (!isOnline && onWakeOnLan != null) Modifier.clickable { onWakeOnLan() }
-                            else Modifier
-                        )
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.05f))
                 ) {
-                    Text(
-                        text = chipText,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = statusColor,
-                        fontWeight = FontWeight.Bold
+                    Icon(
+                        imageVector = if (isOnline) Icons.Default.PlayArrow else Icons.Default.PowerSettingsNew,
+                        contentDescription = null,
+                        tint = if (isOnline) MoonlightColors.Primary else MoonlightColors.OnSurfaceVariant
                     )
                 }
             }

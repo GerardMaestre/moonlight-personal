@@ -12,23 +12,28 @@ import androidx.compose.ui.unit.sp
 
 // ── Color Palette ──────────────────────────────────────────────────────────
 object MoonlightColors {
-    val Background = Color(0xFF131315)
-    val Surface = Color(0xFF131315)
+    val Background = Color(0xFF10131B)
+    val Surface = Color(0xFF1A1C1E)
     val SurfaceVariant = Color(0xFF1C1C1E)
-    val OnBackground = Color(0xFFe4e2e4)
-    val OnSurface = Color(0xFFe4e2e4)
-    val OnSurfaceVariant = Color(0xFFc1c6d7)
-    val Primary = Color(0xFFadc6ff)
-    val PrimaryContainer = Color(0xFF4b8eff)
-    val OnPrimaryContainer = Color(0xFF00285c)
-    val Secondary = Color(0xFF53e16f)
-    val SecondaryContainer = Color(0xFF05b046)
-    val Tertiary = Color(0xFFe8b3ff)
-    val TertiaryContainer = Color(0xFFc567f4)
-    val Outline = Color(0xFF8b90a0)
-    val Error = Color(0xFFffb4ab)
-    val ErrorContainer = Color(0xFF93000a)
-    val OnErrorContainer = Color(0xFFffdad6)
+    val OnBackground = Color(0xFFE0E2ED)
+    val OnSurface = Color(0xFFE0E2ED)
+    val OnSurfaceVariant = Color(0xFFC1C6D7)
+    val Primary = Color(0xFFADC6FF)
+    val PrimaryContainer = Color(0xFF4B8EFF)
+    val OnPrimaryContainer = Color(0xFF00285C)
+    val Secondary = Color(0xFF53E16F)
+    val SecondaryContainer = Color(0xFF05B046)
+    val Tertiary = Color(0xFFE8B3FF)
+    val TertiaryContainer = Color(0xFFC567F4)
+    val Outline = Color(0xFF8B90A0)
+    val Error = Color(0xFFFFB4AB)
+    val ErrorContainer = Color(0xFF93000A)
+    val OnErrorContainer = Color(0xFFFFDAD6)
+    
+    // Aetheris Specials
+    val GlowPrimary = Color(0x26ADC6FF) // 15% opacity
+    val GlassBackground = Color(0x6610131B) // 40% opacity
+    val GlassBorder = Color(0x1AFFFFFF) // 10% opacity
 }
 
 private val DarkColorScheme = darkColorScheme(
@@ -56,48 +61,46 @@ private val MoonlightTypography = Typography(
     headlineLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
-        fontSize = 34.sp,
-        lineHeight = 41.sp,
-        letterSpacing = (-0.4).sp
+        fontSize = 32.sp,
+        lineHeight = 40.sp,
+        letterSpacing = (-0.5).sp
     ),
     headlineMedium = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 28.sp,
-        lineHeight = 34.sp
+        fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
+        letterSpacing = (-0.2).sp
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.35.sp
+        fontSize = 20.sp,
+        lineHeight = 28.sp
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        lineHeight = 26.sp
+        fontSize = 18.sp,
+        lineHeight = 24.sp
     ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
-        fontSize = 17.sp,
-        lineHeight = 22.sp,
-        letterSpacing = (-0.4).sp
+        fontSize = 16.sp,
+        lineHeight = 24.sp
     ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
-        fontSize = 15.sp,
-        lineHeight = 20.sp,
-        letterSpacing = (-0.2).sp
+        fontSize = 14.sp,
+        lineHeight = 20.sp
     ),
     labelSmall = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
+        fontWeight = FontWeight.Bold,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
         letterSpacing = 0.5.sp
     )
 )

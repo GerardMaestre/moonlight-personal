@@ -184,7 +184,7 @@
         </activity>
 
         <service
-            android:name=".discovery.DiscoveryService"
+            android:name=".discovery.MdnsDiscoveryService"
             android:label="mDNS PC Auto-Discovery Service" />
         <service
             android:name=".computers.ComputerManagerService"

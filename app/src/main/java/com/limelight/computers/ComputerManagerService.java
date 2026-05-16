@@ -15,7 +15,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.limelight.LimeLog;
 import com.limelight.binding.PlatformBinding;
-import com.limelight.discovery.DiscoveryService;
+import com.limelight.discovery.MdnsDiscoveryService;
 import com.limelight.nvstream.NvConnection;
 import com.limelight.nvstream.http.ComputerDetails;
 import com.limelight.nvstream.http.NvApp;
@@ -66,11 +66,11 @@ public class ComputerManagerService extends Service {
 
     private ConnectivityManager.NetworkCallback networkCallback;
 
-    private volatile DiscoveryService.DiscoveryBinder discoveryBinder;
+    private volatile MdnsDiscoveryService.DiscoveryBinder discoveryBinder;
     private final ServiceConnection discoveryServiceConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder binder) {
             synchronized (discoveryServiceConnection) {
-                DiscoveryService.DiscoveryBinder privateBinder = ((DiscoveryService.DiscoveryBinder)binder);
+                MdnsDiscoveryService.DiscoveryBinder privateBinder = ((MdnsDiscoveryService.DiscoveryBinder)binder);
 
                 // Set us as the event listener
                 privateBinder.setListener(createDiscoveryListener());
@@ -202,7 +202,7 @@ public class ComputerManagerService extends Service {
             ComputerManagerService.this.listener = listener;
 
             // Start mDNS autodiscovery too
-            DiscoveryService.DiscoveryBinder localDiscoveryBinder = discoveryBinder;
+            MdnsDiscoveryService.DiscoveryBinder localDiscoveryBinder = discoveryBinder;
             if (localDiscoveryBinder != null) {
                 localDiscoveryBinder.startDiscovery(MDNS_QUERY_PERIOD_MS);
             } else {
@@ -312,7 +312,7 @@ public class ComputerManagerService extends Service {
 
     @Override
     public boolean onUnbind(Intent intent) {
-        DiscoveryService.DiscoveryBinder localDiscoveryBinder = discoveryBinder;
+        MdnsDiscoveryService.DiscoveryBinder localDiscoveryBinder = discoveryBinder;
         if (localDiscoveryBinder != null) {
             // Stop mDNS autodiscovery
             localDiscoveryBinder.stopDiscovery();
@@ -722,7 +722,7 @@ public class ComputerManagerService extends Service {
     @Override
     public void onCreate() {
         // Bind to the discovery service
-        bindService(new Intent(this, DiscoveryService.class),
+        bindService(new Intent(this, MdnsDiscoveryService.class),
                 discoveryServiceConnection, Service.BIND_AUTO_CREATE);
 
         // Lookup or generate this device's UID

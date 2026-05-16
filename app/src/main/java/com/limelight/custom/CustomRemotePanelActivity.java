@@ -35,6 +35,7 @@ public class CustomRemotePanelActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_custom_remote_panel);
         UiHelper.notifyNewRootView(this);
+        UiHelper.setImmersiveMode(this);
 
         enableDirectHost = findViewById(R.id.customEnableDirectHost);
         hostName = findViewById(R.id.customHostName);

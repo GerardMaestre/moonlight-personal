@@ -102,37 +102,37 @@ fun MainMenuScreen(
                         )
                     }
                 } else {
-                    // Mobile / Portrait mode: Stacked and Scrollable
+                    // Mobile / Portrait mode: Stacked and Fixed
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .verticalScroll(rememberScrollState()),
+                            .fillMaxHeight(),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Spacer(modifier = Modifier.height(8.dp))
                         MenuCard(
                             title = "Moonlight",
                             subtitle = "Streaming de Juegos",
                             icon = Icons.Default.Games,
                             onClick = { onNavigate(AppScreen.MOONLIGHT) },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
                         MenuCard(
                             title = "Mi PC",
                             subtitle = "Control de Energía",
                             icon = Icons.Default.Computer,
                             onClick = { onNavigate(AppScreen.POWER_CONTROL) },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
                         MenuCard(
                             title = "Fotos",
                             subtitle = "Servidor Multimedia",
                             icon = Icons.Default.PhotoAlbum,
                             onClick = { onNavigate(AppScreen.PHOTO_SERVER) },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
                         )
-                        Spacer(modifier = Modifier.height(80.dp))
                     }
                 }
             }
