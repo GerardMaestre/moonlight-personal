@@ -1,10 +1,11 @@
 package com.limelight.shared.ui.screens
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,7 +25,6 @@ import com.limelight.shared.platform.PhotoServerActions
 import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PhotoServerStatus
 import com.limelight.shared.platform.PreviewPhotoServerActions
-import com.limelight.shared.platform.StartCommandResult
 import com.limelight.shared.ui.components.*
 import com.limelight.shared.ui.theme.MoonlightColors
 
@@ -35,237 +35,138 @@ fun PhotoServerScreen(
     actions: PhotoServerActions = PreviewPhotoServerActions,
     onBack: () -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxSize().background(MoonlightColors.Background)) {
-        // Background Glows
-        AetherisGlow(
-            modifier = Modifier.align(Alignment.TopStart).offset(x = (-100).dp, y = (-100).dp),
-            color = MoonlightColors.Tertiary
-        )
-        AetherisGlow(
-            modifier = Modifier.align(Alignment.CenterEnd).offset(x = 150.dp, y = 0.dp),
-            color = MoonlightColors.Primary
-        )
-
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            "MEDIA HUB",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = MoonlightColors.OnSurface)
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = MoonlightColors.OnSurface,
-                    )
-                )
-            },
-            containerColor = Color.Transparent
-        ) { padding ->
+    AetherisScreen(primaryGlowAlignment = Alignment.TopStart, secondaryGlowAlignment = Alignment.BottomEnd) {
+        Scaffold(topBar = { HomeHubTopBar(onBack = onBack) }, containerColor = Color.Transparent) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = 20.dp, vertical = 28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Icon and Status Header
-                StatusHeader(state.status)
+                Text("Multimedia", style = MaterialTheme.typography.headlineLarge.copy(fontSize = 42.sp), color = MoonlightColors.OnSurface, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(8.dp))
+                Text("Servidor de sincronización de fotos Immich con respaldo automático.", style = MaterialTheme.typography.bodyLarge, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(24.dp))
 
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Main Info Card
-                InfoCard(state)
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Logs Section
-                if (state.recentLogs.isNotEmpty()) {
-                    LogsCard(state.recentLogs)
-                    Spacer(modifier = Modifier.height(24.dp))
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    if (maxWidth > 840.dp) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.fillMaxWidth()) {
+                            ControlCard(state, actions, Modifier.weight(2f))
+                            Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.weight(1f)) {
+                                MetricCard("Almacenamiento", "1.2 TB", "/ 4 TB", "30% Utilizado", Icons.Default.Storage, 0.30f, MoonlightColors.PrimaryContainer)
+                                MetricCard("Sincronización", "14,392", "Fotos", "Última sync hace 2 min", Icons.Default.CloudSync, 1f, MoonlightColors.Tertiary)
+                            }
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
+                            ControlCard(state, actions)
+                            MetricCard("Almacenamiento", "1.2 TB", "/ 4 TB", "30% Utilizado", Icons.Default.Storage, 0.30f, MoonlightColors.PrimaryContainer)
+                            MetricCard("Sincronización", "14,392", "Fotos", "Última sync hace 2 min", Icons.Default.CloudSync, 1f, MoonlightColors.Tertiary)
+                        }
+                    }
                 }
 
-                // Actions Section
-                ActionButtons(state.status, actions)
-                
-                Spacer(modifier = Modifier.height(100.dp))
+                Spacer(Modifier.height(24.dp))
+                ActivityCard(state.recentLogs)
+                Spacer(Modifier.height(110.dp))
             }
         }
     }
 }
 
 @Composable
-private fun StatusHeader(status: PhotoServerStatus) {
-    val (color, icon, text) = when (status) {
-        PhotoServerStatus.Stopped -> Triple(MoonlightColors.Outline, Icons.Default.CloudOff, "DISCONNECTED")
-        PhotoServerStatus.Starting -> Triple(MoonlightColors.Secondary, Icons.Default.CloudSync, "WAKING UP...")
-        is PhotoServerStatus.Running -> Triple(MoonlightColors.Primary, Icons.Default.CloudDone, "SYSTEM ACTIVE")
-        is PhotoServerStatus.Error -> Triple(MoonlightColors.Error, Icons.Default.Error, "CONNECTION ERROR")
+private fun ControlCard(state: PhotoServerState, actions: PhotoServerActions, modifier: Modifier = Modifier) {
+    val running = state.status is PhotoServerStatus.Running
+    val starting = state.status == PhotoServerStatus.Starting
+    val accent = when (state.status) {
+        PhotoServerStatus.Stopped -> MoonlightColors.Outline
+        PhotoServerStatus.Starting -> MoonlightColors.Tertiary
+        is PhotoServerStatus.Running -> MoonlightColors.Tertiary
+        is PhotoServerStatus.Error -> MoonlightColors.Error
     }
-
-    Box(contentAlignment = Alignment.Center) {
-        Box(
-            modifier = Modifier
-                .size(120.dp)
-                .clip(RoundedCornerShape(32.dp))
-                .background(color.copy(alpha = 0.05f))
-                .border(1.dp, color.copy(alpha = 0.1f), RoundedCornerShape(32.dp))
-        )
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(56.dp),
-            tint = color
-        )
-    }
-    
-    Spacer(modifier = Modifier.height(20.dp))
-    
-    Text(
-        text,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = color,
-        letterSpacing = 1.sp
-    )
-}
-
-@Composable
-private fun InfoCard(state: PhotoServerState) {
-    GlassCard {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Info, contentDescription = null, tint = MoonlightColors.Primary, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(10.dp))
-                Text("SERVER INFRASTRUCTURE", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MoonlightColors.OnSurfaceVariant)
+    GlassCard(modifier = modifier.fillMaxWidth(), contentPadding = PaddingValues(28.dp)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(190.dp)) {
+                Box(Modifier.size(188.dp).clip(CircleShape).border(1.dp, MoonlightColors.Primary.copy(alpha = 0.24f), CircleShape).background(MoonlightColors.SurfaceContainerHighest.copy(alpha = 0.35f)))
+                Box(Modifier.size(150.dp).clip(CircleShape).border(1.dp, MoonlightColors.Tertiary.copy(alpha = 0.22f), CircleShape))
+                Icon(if (running) Icons.Default.CloudDone else if (starting) Icons.Default.CloudSync else Icons.Default.CloudOff, null, tint = accent, modifier = Modifier.size(78.dp))
             }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            DetailRow("Backend Service", "Immich Engine")
-            DetailRow("Network Status", state.healthMessage)
-            
-            if (state.status is PhotoServerStatus.Running) {
-                val s = state.status as PhotoServerStatus.Running
-                DetailRow("Host Port", s.port.toString())
-                DetailRow("Virtual IP", s.url)
-            }
-            
+            Spacer(Modifier.height(18.dp))
+            StatusPill(if (running) "Immich Core" else if (starting) "Arrancando" else "Standby", accent)
+            Spacer(Modifier.height(12.dp))
+            Text(if (running) "Servidor Activo" else "Servidor Multimedia", style = MaterialTheme.typography.headlineLarge, color = MoonlightColors.OnSurface)
+            Spacer(Modifier.height(8.dp))
+            Text(state.healthMessage, style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center)
             state.lastError?.let {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    it,
-                    color = MoonlightColors.Error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MoonlightColors.Error.copy(alpha = 0.05f))
-                        .padding(12.dp)
-                )
+                Spacer(Modifier.height(10.dp))
+                Text(it, color = MoonlightColors.Error, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
             }
-        }
-    }
-}
-
-@Composable
-private fun DetailRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MoonlightColors.OnSurface)
-    }
-}
-
-@Composable
-private fun LogsCard(logs: List<String>) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = Color.Black.copy(alpha = 0.4f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text("LIVE TERMINAL LOGS", style = MaterialTheme.typography.labelSmall, color = MoonlightColors.Primary, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(12.dp))
-            logs.takeLast(4).forEach { log ->
-                Text(
-                    "> $log",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.LightGray.copy(alpha = 0.7f),
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                    modifier = Modifier.padding(vertical = 3.dp),
-                    maxLines = 1
-                )
+            Spacer(Modifier.height(22.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                PrimaryGlassButton(if (running) "Activo" else "Arrancar", Icons.Default.PowerSettingsNew, { actions.startPhotoServer() }, Modifier.weight(1f), enabled = !starting)
+                ErrorGlassButton("Apagar", Icons.Default.StopCircle, { actions.stopPhotoServer() }, Modifier.weight(1f), enabled = running || state.status is PhotoServerStatus.Error)
             }
-        }
-    }
-}
-
-@Composable
-private fun ActionButtons(status: PhotoServerStatus, actions: PhotoServerActions) {
-    val isRunning = status is PhotoServerStatus.Running
-    val isStarting = status == PhotoServerStatus.Starting
-
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Button(
-            onClick = { actions.startPhotoServer() },
-            modifier = Modifier.fillMaxWidth().height(60.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isRunning) MoonlightColors.Surface else MoonlightColors.Primary,
-                contentColor = if (isRunning) MoonlightColors.OnSurface else MoonlightColors.OnPrimaryContainer
-            ),
-            enabled = !isStarting
-        ) {
-            if (isStarting) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MoonlightColors.OnPrimaryContainer, strokeWidth = 2.dp)
-                Spacer(modifier = Modifier.width(12.dp))
-                Text("PROVISIONING DOCKER...", fontWeight = FontWeight.Bold)
-            } else {
-                Icon(if (isRunning) Icons.Default.CheckCircle else Icons.Default.PlayArrow, contentDescription = null)
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(if (isRunning) "IMMICH IS RUNNING" else "BOOT IMMICH SERVER", fontWeight = FontWeight.Bold)
-            }
-        }
-
-        if (isRunning || status is PhotoServerStatus.Error) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedButton(
-                    onClick = { actions.restartPhotoServer() },
-                    modifier = Modifier.weight(1f).height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MoonlightColors.Outline.copy(alpha = 0.3f))
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, tint = MoonlightColors.OnSurface)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("RESTART", fontWeight = FontWeight.Bold, color = MoonlightColors.OnSurface)
-                }
-                
-                Button(
-                    onClick = { actions.stopPhotoServer() },
-                    modifier = Modifier.weight(1f).height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MoonlightColors.Error.copy(alpha = 0.1f), contentColor = MoonlightColors.Error)
-                ) {
-                    Icon(Icons.Default.PowerSettingsNew, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("SHUTDOWN", fontWeight = FontWeight.Bold)
+            if (running || state.status is PhotoServerStatus.Error) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(onClick = { actions.restartPhotoServer() }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(999.dp)) {
+                    Icon(Icons.Default.Refresh, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Reiniciar")
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MetricCard(title: String, value: String, suffix: String, footer: String, icon: androidx.compose.ui.graphics.vector.ImageVector, progress: Float, color: Color) {
+    GlassCard(contentPadding = PaddingValues(22.dp), modifier = Modifier.fillMaxWidth()) {
+        Column {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                Column {
+                    Text(title.uppercase(), style = MaterialTheme.typography.labelSmall, color = MoonlightColors.OnSurfaceVariant, letterSpacing = 1.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Text(value, style = MaterialTheme.typography.headlineMedium, color = MoonlightColors.OnSurface)
+                    Text(suffix, style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.Outline)
+                }
+                Icon(icon, null, tint = color, modifier = Modifier.size(34.dp))
+            }
+            Spacer(Modifier.height(18.dp))
+            Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(999.dp)).background(MoonlightColors.SurfaceContainerHighest)) {
+                Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(RoundedCornerShape(999.dp)).background(color))
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(footer, style = MaterialTheme.typography.labelSmall, color = if (progress >= 1f) MoonlightColors.Tertiary else MoonlightColors.Outline, modifier = Modifier.align(Alignment.End))
+        }
+    }
+}
+
+@Composable
+private fun ActivityCard(logs: List<String>) {
+    GlassCard(contentPadding = PaddingValues(22.dp), modifier = Modifier.fillMaxWidth()) {
+        Column {
+            Text("Actividad Reciente", style = MaterialTheme.typography.headlineMedium, color = MoonlightColors.OnSurface)
+            Spacer(Modifier.height(4.dp))
+            Text("Archivos indexados recientemente", style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant)
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                listOf("JPG", "MP4", "HEIC", "JPG", "RAW").forEachIndexed { index, type -> GalleryTile(type, index) }
+            }
+            if (logs.isNotEmpty()) {
+                Spacer(Modifier.height(18.dp))
+                logs.takeLast(3).forEach { Text("> $it", color = MoonlightColors.OnSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GalleryTile(type: String, index: Int) {
+    val colors = listOf(MoonlightColors.Primary, MoonlightColors.Tertiary, MoonlightColors.Secondary, MoonlightColors.PrimaryContainer, MoonlightColors.Error)
+    Box(Modifier.size(148.dp).clip(RoundedCornerShape(24.dp)).background(MoonlightColors.SurfaceContainerHighest).border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(24.dp))) {
+        Box(Modifier.matchParentSize().background(Brush.radialGradient(listOf(colors[index % colors.size].copy(alpha = 0.24f), Color.Transparent))))
+        Text(type, modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp).clip(RoundedCornerShape(8.dp)).background(MoonlightColors.Surface.copy(alpha = 0.82f)).padding(horizontal = 8.dp, vertical = 4.dp), color = MoonlightColors.OnSurface, style = MaterialTheme.typography.labelSmall)
     }
 }

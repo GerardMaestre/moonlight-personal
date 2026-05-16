@@ -66,43 +66,18 @@ fun PowerControlScreen(
     onClearConfig: () -> Unit,
     onTestConnection: (url: String, user: String, pass: String) -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxSize().background(MoonlightColors.Background)) {
-        // Background Glows
-        AetherisGlow(
-            modifier = Modifier.align(Alignment.BottomEnd).offset(x = 100.dp, y = 100.dp),
-            color = MoonlightColors.Secondary
-        )
-
+    AetherisScreen(primaryGlowAlignment = Alignment.TopStart, secondaryGlowAlignment = Alignment.BottomEnd) {
         Scaffold(
             topBar = {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            "POWER HUB",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp
+                HomeHubTopBar(onBack = onBack) {
+                    IconButton(onClick = { state.showConfig = !state.showConfig }) {
+                        Icon(
+                            if (state.showConfig) Icons.Default.Close else Icons.Default.Settings,
+                            contentDescription = "Configuración",
+                            tint = MoonlightColors.OnSurface
                         )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MoonlightColors.OnSurface)
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { state.showConfig = !state.showConfig }) {
-                            Icon(
-                                if (state.showConfig) Icons.Default.Close else Icons.Default.Settings,
-                                contentDescription = "Configuración",
-                                tint = MoonlightColors.OnSurface
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = MoonlightColors.OnSurface,
-                    )
-                )
+                    }
+                }
             },
             containerColor = Color.Transparent
         ) { padding ->

@@ -1,21 +1,17 @@
 package com.limelight.shared.ui.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DesktopWindows
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,8 +19,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.limelight.shared.model.ComputerInfo
-import com.limelight.shared.model.ComputerStatus
 import com.limelight.shared.ui.theme.MoonlightColors
 
 @Composable
@@ -36,97 +32,79 @@ fun PcCard(
     modifier: Modifier = Modifier
 ) {
     val isOnline = computer.isOnline
-    
-    val statusColor = if (isOnline) MoonlightColors.Secondary else MaterialTheme.colorScheme.onSurfaceVariant
-    val iconBackground = if (isOnline) MoonlightColors.Primary.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.05f)
-    
+    val statusColor = when {
+        isOnline && !computer.isPaired -> MoonlightColors.Error
+        isOnline -> MoonlightColors.TertiaryFixed
+        else -> MoonlightColors.Outline
+    }
+
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(enabled = isOnline && computer.isPaired) { onClick() }
+            .heightIn(min = 176.dp)
+            .clickable(enabled = isOnline && computer.isPaired) { onClick() },
+        contentPadding = PaddingValues(24.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .padding(20.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Icon
+        Box(Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(iconBackground),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (computer.isStreaming) Icons.Default.PlayArrow else Icons.Default.DesktopWindows,
-                    contentDescription = null,
-                    tint = if (isOnline) MoonlightColors.Primary else statusColor,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Details
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = computer.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MoonlightColors.OnSurface,
-                    maxLines = 1
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(statusColor)
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            listOf(MoonlightColors.Primary.copy(alpha = if (isOnline) 0.16f else 0.04f), Color.Transparent)
+                        )
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (isOnline && !computer.isPaired) "Needs pairing" else computer.statusLabel,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isOnline && !computer.isPaired) MoonlightColors.Error else statusColor,
-                        maxLines = 1
-                    )
-                }
-            }
-
-            // Action Button
-            if (isOnline && !computer.isPaired && onPair != null) {
-                Button(
-                    onClick = onPair,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MoonlightColors.Primary,
-                        contentColor = MoonlightColors.OnPrimaryContainer
-                    ),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    modifier = Modifier.height(36.dp)
+            )
+            Column(Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("PAIR", style = MaterialTheme.typography.labelSmall)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .size(58.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(if (isOnline) MoonlightColors.Primary.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.05f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (computer.isStreaming) Icons.Default.PlayArrow else Icons.Default.DesktopWindows,
+                                contentDescription = null,
+                                tint = if (isOnline) MoonlightColors.Primary else MoonlightColors.Outline,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column {
+                            Text(computer.name, style = MaterialTheme.typography.headlineMedium, color = if (isOnline) MoonlightColors.OnSurface else MoonlightColors.OnSurfaceVariant, maxLines = 1)
+                            Spacer(Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(8.dp).clip(CircleShape).background(statusColor))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    if (isOnline && !computer.isPaired) "Needs pairing" else computer.statusLabel,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = statusColor,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                    if (computer.isStreaming) {
+                        StatusPill("Streaming", MoonlightColors.Tertiary, leadingDot = false)
+                    }
                 }
-            } else {
-                IconButton(
-                    onClick = { if (!isOnline) onWakeOnLan?.invoke() else onClick() },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.05f))
-                ) {
-                    Icon(
-                        imageVector = if (isOnline) Icons.Default.PlayArrow else Icons.Default.PowerSettingsNew,
-                        contentDescription = null,
-                        tint = if (isOnline) MoonlightColors.Primary else MoonlightColors.OnSurfaceVariant
-                    )
+
+                Spacer(Modifier.height(26.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    when {
+                        isOnline && !computer.isPaired && onPair != null -> PrimaryGlassButton("Pair", Icons.Default.Lock, onPair, Modifier.weight(1f))
+                        isOnline -> PrimaryGlassButton("Resume Stream", Icons.Default.PlayArrow, onClick, Modifier.weight(1f))
+                        else -> PrimaryGlassButton("Wake PC", Icons.Default.PowerSettingsNew, { onWakeOnLan?.invoke() }, Modifier.weight(1f), enabled = onWakeOnLan != null)
+                    }
                 }
             }
         }

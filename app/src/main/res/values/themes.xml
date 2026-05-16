@@ -9,6 +9,8 @@
         <item name="colorOnSecondary">@color/ml_on_secondary</item>
         <item name="colorSecondaryContainer">@color/ml_secondary_container</item>
         <item name="colorOnSecondaryContainer">@color/ml_on_secondary_container</item>
+        <item name="colorTertiary">@color/ml_tertiary</item>
+        <item name="colorOnTertiary">@color/ml_on_tertiary</item>
         <item name="android:colorBackground">@color/ml_background</item>
         <item name="colorOnBackground">@color/ml_on_background</item>
         <item name="colorSurface">@color/ml_surface</item>
@@ -16,6 +18,9 @@
         <item name="colorSurfaceVariant">@color/ml_surface_variant</item>
         <item name="colorOnSurfaceVariant">@color/ml_on_surface_variant</item>
         <item name="colorOutline">@color/ml_outline</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@color/ml_background</item>
+        <item name="android:colorAccent">@color/ml_primary</item>
         <item name="colorError">@color/ml_error</item>
         <item name="colorOnError">@color/ml_on_error</item>
 

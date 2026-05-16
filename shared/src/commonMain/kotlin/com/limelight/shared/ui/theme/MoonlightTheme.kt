@@ -12,28 +12,55 @@ import androidx.compose.ui.unit.sp
 
 // ── Color Palette ──────────────────────────────────────────────────────────
 object MoonlightColors {
-    val Background = Color(0xFF10131B)
-    val Surface = Color(0xFF1A1C1E)
-    val SurfaceVariant = Color(0xFF1C1C1E)
-    val OnBackground = Color(0xFFE0E2ED)
-    val OnSurface = Color(0xFFE0E2ED)
-    val OnSurfaceVariant = Color(0xFFC1C6D7)
-    val Primary = Color(0xFFADC6FF)
-    val PrimaryContainer = Color(0xFF4B8EFF)
-    val OnPrimaryContainer = Color(0xFF00285C)
-    val Secondary = Color(0xFF53E16F)
-    val SecondaryContainer = Color(0xFF05B046)
-    val Tertiary = Color(0xFFE8B3FF)
-    val TertiaryContainer = Color(0xFFC567F4)
-    val Outline = Color(0xFF8B90A0)
     val Error = Color(0xFFFFB4AB)
-    val ErrorContainer = Color(0xFF93000A)
+    val SecondaryFixedDim = Color(0xFFD1BCFF)
+    val TertiaryFixed = Color(0xFF7DF4FF)
     val OnErrorContainer = Color(0xFFFFDAD6)
-    
-    // Aetheris Specials
-    val GlowPrimary = Color(0x26ADC6FF) // 15% opacity
-    val GlassBackground = Color(0x6610131B) // 40% opacity
-    val GlassBorder = Color(0x1AFFFFFF) // 10% opacity
+    val InversePrimary = Color(0xFF005BC1)
+    val OnBackground = Color(0xFFE0E2ED)
+    val Surface = Color(0xFF10131B)
+    val OutlineVariant = Color(0xFF414755)
+    val Primary = Color(0xFFADC6FF)
+    val TertiaryFixedDim = Color(0xFF00DBE9)
+    val OnError = Color(0xFF690005)
+    val Tertiary = Color(0xFF00DBE9)
+    val InverseSurface = Color(0xFFE0E2ED)
+    val OnSecondary = Color(0xFF3C0090)
+    val SurfaceContainerLowest = Color(0xFF0B0E16)
+    val SurfaceVariant = Color(0xFF31353D)
+    val PrimaryContainer = Color(0xFF4B8EFF)
+    val OnSecondaryContainer = Color(0xFFDDCDFF)
+    val OnTertiaryContainer = Color(0xFF002F33)
+    val OnTertiary = Color(0xFF00363A)
+    val InverseOnSurface = Color(0xFF2D3039)
+    val OnPrimary = Color(0xFF002E69)
+    val SecondaryContainer = Color(0xFF7000FF)
+    val OnPrimaryContainer = Color(0xFF00285C)
+    val SurfaceBright = Color(0xFF363942)
+    val PrimaryFixed = Color(0xFFD8E2FF)
+    val SurfaceDim = Color(0xFF10131B)
+    val SecondaryFixed = Color(0xFFE9DDFF)
+    val PrimaryFixedDim = Color(0xFFADC6FF)
+    val SurfaceTint = Color(0xFFADC6FF)
+    val Background = Color(0xFF10131B)
+    val OnSurfaceVariant = Color(0xFFC1C6D7)
+    val OnPrimaryFixed = Color(0xFF001A41)
+    val TertiaryContainer = Color(0xFF00A0AA)
+    val SurfaceContainerHigh = Color(0xFF272A32)
+    val SurfaceContainer = Color(0xFF1C2028)
+    val Outline = Color(0xFF8B90A0)
+    val SurfaceContainerHighest = Color(0xFF31353D)
+    val ErrorContainer = Color(0xFF93000A)
+    val SurfaceContainerLow = Color(0xFF181C23)
+    val OnSurface = Color(0xFFE0E2ED)
+    val Secondary = Color(0xFFD1BCFF)
+
+    val GlowPrimary = Color(0x26ADC6FF)
+    val GlowSecondary = Color(0x1A7000FF)
+    val GlowTertiary = Color(0x2600DBE9)
+    val GlassBackground = Color(0x6610131B)
+    val GlassBorder = Color(0x1AFFFFFF)
+    val GlassHighlight = Color(0x0FFFFFFF)
 }
 
 private val DarkColorScheme = darkColorScheme(
@@ -60,14 +87,14 @@ private val DarkColorScheme = darkColorScheme(
 private val MoonlightTypography = Typography(
     headlineLarge = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 32.sp,
         lineHeight = 40.sp,
         letterSpacing = (-0.5).sp
     ),
     headlineMedium = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 24.sp,
         lineHeight = 32.sp,
         letterSpacing = (-0.2).sp

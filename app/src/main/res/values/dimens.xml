@@ -11,11 +11,11 @@
     <dimen name="ml_space_xl">24dp</dimen>
 
     <dimen name="ml_radius_sm">8dp</dimen>
-    <dimen name="ml_radius_md">12dp</dimen>
-    <dimen name="ml_radius_lg">18dp</dimen>
+    <dimen name="ml_radius_md">24dp</dimen>
+    <dimen name="ml_radius_lg">32dp</dimen>
 
     <dimen name="ml_elevation_1">2dp</dimen>
-    <dimen name="ml_elevation_2">6dp</dimen>
+    <dimen name="ml_elevation_2">0dp</dimen>
     <dimen name="ml_elevation_3">12dp</dimen>
 
     <dimen name="ml_text_body">14sp</dimen>
@@ -24,8 +24,8 @@
 
     <!-- PC view semantic dimensions -->
     <dimen name="pc_view_outer_padding">20dp</dimen>
-    <dimen name="pc_view_section_spacing">16dp</dimen>
-    <dimen name="pc_view_card_padding">16dp</dimen>
+    <dimen name="pc_view_section_spacing">24dp</dimen>
+    <dimen name="pc_view_card_padding">24dp</dimen>
     <dimen name="pc_view_toolbar_icon_button_size">48dp</dimen>
     <dimen name="pc_view_toolbar_icon_size">24dp</dimen>
     <dimen name="pc_view_loading_indicator_size">56dp</dimen>
