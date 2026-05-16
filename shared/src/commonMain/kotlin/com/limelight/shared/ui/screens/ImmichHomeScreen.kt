@@ -1,6 +1,10 @@
 package com.limelight.shared.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,8 +32,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,6 +45,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.limelight.shared.ui.components.AetherisScreen
 import com.limelight.shared.ui.theme.MoonlightColors
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 private data class ImmichTab(
     val id: String,
@@ -55,9 +65,31 @@ private val immichTabs = listOf(
 
 private const val defaultImmichTabId = "fotos"
 
+private data class ImmichHomeUiState(
+    val selectedTabIndex: Int = 0,
+)
+
+private class ImmichHomeStateHolder(
+    initialState: ImmichHomeUiState = ImmichHomeUiState(),
+) {
+    private val _uiState = MutableStateFlow(initialState)
+    val uiState: StateFlow<ImmichHomeUiState> = _uiState.asStateFlow()
+
+    fun setSelectedTabIndex(index: Int) {
+        _uiState.update { it.copy(selectedTabIndex = index) }
+    }
+}
+
 @Composable
 fun ImmichHomeScreen(onBack: () -> Unit) {
-    var selectedTabId by rememberSaveable { mutableStateOf(defaultImmichTabId) }
+    var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
+    val stateHolder = remember(selectedTabIndex) {
+        ImmichHomeStateHolder(
+            initialState = ImmichHomeUiState(selectedTabIndex = selectedTabIndex)
+        )
+    }
+    val uiState by stateHolder.uiState.collectAsState()
+    val selectedTabId = immichTabs.getOrNull(uiState.selectedTabIndex)?.id ?: defaultImmichTabId
 
     AetherisScreen {
         Scaffold(
@@ -74,9 +106,13 @@ fun ImmichHomeScreen(onBack: () -> Unit) {
             bottomBar = {
                 NavigationBar {
                     immichTabs.forEach { tab ->
+                        val tabIndex = immichTabs.indexOf(tab)
                         NavigationBarItem(
-                            selected = selectedTabId == tab.id,
-                            onClick = { selectedTabId = tab.id },
+                            selected = uiState.selectedTabIndex == tabIndex,
+                            onClick = {
+                                selectedTabIndex = tabIndex
+                                stateHolder.setSelectedTabIndex(tabIndex)
+                            },
                             icon = {
                                 Icon(
                                     imageVector = tab.icon,
@@ -101,6 +137,9 @@ fun ImmichHomeScreen(onBack: () -> Unit) {
 
 @Composable
 private fun ImmichPhotosTab(modifier: Modifier = Modifier) {
+    val photosGridState = rememberLazyGridState()
+    val photoItems = remember { List(60) { "Foto #${it + 1}" } }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -157,11 +196,30 @@ private fun ImmichPhotosTab(modifier: Modifier = Modifier) {
             }
         }
 
-        ImmichTabPlaceholder(
-            title = "Fotos",
-            subtitle = "Vista principal de la galería de Immich.",
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            state = photosGridState,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.weight(1f)
-        )
+        ) {
+            items(photoItems) { label ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(110.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MoonlightColors.Surface),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MoonlightColors.OnSurfaceVariant
+                    )
+                }
+            }
+        }
     }
 }
 
