@@ -51,6 +51,7 @@ fun PhotoServerScreen(
     state: PhotoServerState,
     actions: PhotoServerActions = PreviewPhotoServerActions,
     onBack: () -> Unit,
+    onOpenImmich: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -76,14 +77,14 @@ fun PhotoServerScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.fillMaxWidth()) {
                                 Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.weight(2f)) {
                                     ConnectionCard(state, actions)
-                                    ControlCard(state, actions)
+                                    ControlCard(state, actions, onOpenImmich = onOpenImmich)
                                 }
                                 SummaryColumn(state.galleryState, Modifier.weight(1f))
                             }
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
                                 ConnectionCard(state, actions)
-                                ControlCard(state, actions)
+                                ControlCard(state, actions, onOpenImmich = onOpenImmich)
                                 SummaryColumn(state.galleryState)
                             }
                         }
@@ -140,9 +141,14 @@ private fun ConnectionCard(state: PhotoServerState, actions: PhotoServerActions,
 }
 
 @Composable
-private fun ControlCard(state: PhotoServerState, actions: PhotoServerActions, modifier: Modifier = Modifier) {
+private fun ControlCard(
+    state: PhotoServerState,
+    actions: PhotoServerActions,
+    onOpenImmich: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val scope = rememberCoroutineScope()
-    val running = state.status is PhotoServerStatus.Running
+    val isOnline = state.status is PhotoServerStatus.Running
     val starting = state.status == PhotoServerStatus.Starting
     val accent = when (state.status) {
         PhotoServerStatus.Stopped -> MoonlightColors.Outline
@@ -155,12 +161,12 @@ private fun ControlCard(state: PhotoServerState, actions: PhotoServerActions, mo
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(Modifier.size(132.dp).clip(CircleShape).background(accent.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
                 Box(Modifier.size(94.dp).clip(CircleShape).background(accent.copy(alpha = 0.22f), CircleShape))
-                Icon(if (running) Icons.Default.CloudDone else if (starting) Icons.Default.CloudSync else Icons.Default.CloudOff, null, tint = accent, modifier = Modifier.size(78.dp))
+                Icon(if (isOnline) Icons.Default.CloudDone else if (starting) Icons.Default.CloudSync else Icons.Default.CloudOff, null, tint = accent, modifier = Modifier.size(78.dp))
             }
             Spacer(Modifier.height(18.dp))
-            StatusPill(if (running) "Immich API" else if (starting) "Conectando" else "Sin sesión", accent)
+            StatusPill(if (isOnline) "Immich API" else if (starting) "Conectando" else "Sin sesión", accent)
             Spacer(Modifier.height(12.dp))
-            Text(if (running) "Servidor Activo" else "Cliente Multimedia", style = MaterialTheme.typography.headlineLarge, color = MoonlightColors.OnSurface)
+            Text(if (isOnline) "Servidor Activo" else "Cliente Multimedia", style = MaterialTheme.typography.headlineLarge, color = MoonlightColors.OnSurface)
             Spacer(Modifier.height(8.dp))
             Text(state.healthMessage, style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center)
             state.lastError?.let {
@@ -169,10 +175,21 @@ private fun ControlCard(state: PhotoServerState, actions: PhotoServerActions, mo
             }
             Spacer(Modifier.height(22.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                PrimaryGlassButton(if (running) "Recargar" else "Conectar", Icons.Default.PowerSettingsNew, { scope.launch { actions.startPhotoServer() } }, Modifier.weight(1f), enabled = !starting)
-                ErrorGlassButton("Cerrar", Icons.Default.StopCircle, { actions.stopPhotoServer() }, Modifier.weight(1f), enabled = running || state.status is PhotoServerStatus.Error)
+                PrimaryGlassButton(if (isOnline) "Recargar" else "Conectar", Icons.Default.PowerSettingsNew, { scope.launch { actions.startPhotoServer() } }, Modifier.weight(1f), enabled = !starting)
+                ErrorGlassButton("Cerrar", Icons.Default.StopCircle, { actions.stopPhotoServer() }, Modifier.weight(1f), enabled = isOnline || state.status is PhotoServerStatus.Error)
             }
-            if (running || state.status is PhotoServerStatus.Error) {
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onOpenImmich,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(999.dp),
+                enabled = isOnline,
+            ) {
+                Icon(Icons.Default.PhotoLibrary, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Immich")
+            }
+            if (isOnline || state.status is PhotoServerStatus.Error) {
                 Spacer(Modifier.height(12.dp))
                 OutlinedButton(onClick = { scope.launch { actions.restartPhotoServer() } }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(999.dp)) {
                     Icon(Icons.Default.Refresh, null)

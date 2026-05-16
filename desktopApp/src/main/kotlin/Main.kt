@@ -176,7 +176,8 @@ private fun runDesktopUi() = application {
                                         com.limelight.shared.platform.ImmichPhotoServerActions(controller.photoServerState).refreshImmich()
                                     }
                                 },
-                                onBack = { controller.navigation.goBack() }
+                                onBack = { controller.navigation.goBack() },
+                                onOpenImmich = { controller.navigation.navigateTo(AppScreen.IMMICH_HOME) }
                             )
                             AppScreen.IMMICH_HOME -> ImmichHomeScreen(
                                 onBack = { controller.navigation.goBack() }
