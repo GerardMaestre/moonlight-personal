@@ -44,4 +44,27 @@ class AppControllerTest {
             controller.dashboardState.lastActionMessage
         )
     }
+
+    @Test
+    fun `navigation avoids duplicate destinations`() {
+        val controller = AppController()
+
+        controller.openMoonlight()
+        controller.openMoonlight()
+        controller.navigation.goBack()
+
+        assertEquals(AppScreen.MAIN_MENU, controller.navigation.currentScreen)
+    }
+
+    @Test
+    fun `root navigation replaces nested stack`() {
+        val navigation = AppNavigation()
+
+        navigation.navigateTo(AppScreen.MOONLIGHT)
+        navigation.navigateTo(AppScreen.GAME_LIST)
+        navigation.navigateRoot(AppScreen.POWER_CONTROL)
+        navigation.goBack()
+
+        assertEquals(AppScreen.POWER_CONTROL, navigation.currentScreen)
+    }
 }

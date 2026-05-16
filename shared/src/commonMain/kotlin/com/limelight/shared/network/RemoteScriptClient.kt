@@ -2,7 +2,6 @@ package com.limelight.shared.network
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -36,17 +35,23 @@ class RemoteScriptClient(private val baseUrl: String, private val token: String)
             log("Sending body: $body")
             conn.outputStream.bufferedWriter().use { it.write(body) }
 
-            val code = conn.responseCode
-            val responseBody = try {
-                if (code == 200) {
-                    conn.inputStream.bufferedReader().readText()
-                } else {
-                    conn.errorStream?.bufferedReader()?.readText() ?: "No response body"
+            try {
+                val code = conn.responseCode
+                val responseBody = try {
+                    if (code == 200) {
+                        conn.inputStream.bufferedReader().readText()
+                    } else {
+                        conn.errorStream?.bufferedReader()?.readText() ?: "No response body"
+                    }
+                } catch (e: Exception) {
+                    "Could not read response"
                 }
-            } catch (e: Exception) { "Could not read response" }
-            
-            log("Response: $code - $responseBody")
-            code == 200
+
+                log("Response: $code - $responseBody")
+                code == 200
+            } finally {
+                conn.disconnect()
+            }
         } catch (e: java.net.SocketTimeoutException) {
             log("TIMEOUT connecting to StreamDeck server at $baseUrl")
             false

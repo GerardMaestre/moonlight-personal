@@ -2,9 +2,6 @@ package com.limelight.shared.network
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
@@ -75,19 +72,19 @@ class UpSnapClient(
         conn.connectTimeout = CONNECT_TIMEOUT
         conn.readTimeout = READ_TIMEOUT
 
-        val responseCode = conn.responseCode
-        if (responseCode == 200) {
-            val body = conn.inputStream.bufferedReader().readText()
-            println("[UpSnapClient] Raw response: $body")
-            val response = json.decodeFromString<DeviceListResponse>(body)
-            return response.items.map { it.id to it.name }
-        } else {
-            val errorBody = try {
-                conn.errorStream?.bufferedReader()?.readText() ?: "Código $responseCode"
-            } catch (ex: Exception) {
-                "Código $responseCode"
+        try {
+            val responseCode = conn.responseCode
+            if (responseCode == 200) {
+                val body = conn.inputStream.bufferedReader().readText()
+                println("[UpSnapClient] Raw response: $body")
+                val response = json.decodeFromString<DeviceListResponse>(body)
+                return response.items.map { it.id to it.name }
+            } else {
+                val errorBody = readErrorBody(conn, responseCode)
+                throw Exception("Error del servidor ($responseCode): $errorBody")
             }
-            throw Exception("Error del servidor ($responseCode): $errorBody")
+        } finally {
+            conn.disconnect()
         }
     }
 
@@ -139,11 +136,7 @@ class UpSnapClient(
                 val adminUrl = URL(authUrl.toString().replace("/collections/_superusers/", "/admins/"))
                 authenticate(adminUrl)
             } else {
-                val errorMsg = try {
-                    conn.errorStream?.bufferedReader()?.readText() ?: "Sin respuesta"
-                } catch (ex: Exception) {
-                    "Fallo HTTP $responseCode"
-                }
+                val errorMsg = readErrorBody(conn, responseCode)
                 println("[UpSnapClient] Auth failed ($responseCode): $errorMsg")
                 throw Exception("Fallo de autenticación ($responseCode): $errorMsg")
             }
@@ -156,6 +149,8 @@ class UpSnapClient(
         } catch (e: Exception) {
             println("[UpSnapClient] Auth unexpected error: ${e.message}")
             throw e
+        } finally {
+            conn.disconnect()
         }
     }
 
@@ -170,12 +165,24 @@ class UpSnapClient(
         conn.connectTimeout = CONNECT_TIMEOUT
         conn.readTimeout = READ_TIMEOUT
 
-        return when (conn.responseCode) {
-            200, 204 -> WakeResult.Success
-            401 -> WakeResult.Error("Contraseña incorrecta o usuario no válido.")
-            403 -> WakeResult.Error("No tienes permiso para despertar este dispositivo.")
-            404 -> WakeResult.Error("ID de dispositivo no encontrado.")
-            else -> WakeResult.Error("Error del servidor (${conn.responseCode})")
+        return try {
+            when (val responseCode = conn.responseCode) {
+                200, 204 -> WakeResult.Success
+                401 -> WakeResult.Error("Contraseña incorrecta o usuario no válido.")
+                403 -> WakeResult.Error("No tienes permiso para despertar este dispositivo.")
+                404 -> WakeResult.Error("ID de dispositivo no encontrado.")
+                else -> WakeResult.Error("Error del servidor ($responseCode): ${readErrorBody(conn, responseCode)}")
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    private fun readErrorBody(conn: HttpURLConnection, responseCode: Int): String {
+        return try {
+            conn.errorStream?.bufferedReader()?.readText()?.takeIf { it.isNotBlank() } ?: "Código $responseCode"
+        } catch (e: Exception) {
+            "Código $responseCode"
         }
     }
 
