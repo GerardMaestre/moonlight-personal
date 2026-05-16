@@ -4,8 +4,14 @@ import com.limelight.shared.data.immich.ImmichConnectionConfig
 import com.limelight.shared.data.immich.ImmichPhotoAsset
 import com.limelight.shared.data.immich.ImmichServerSummary
 import com.limelight.shared.data.session.AuthHeaderProvider
+import com.limelight.platform.Logger
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.plugins.ResponseException
+import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.serialization.json.*
@@ -18,7 +24,10 @@ internal val ImmichJson = Json {
 class ImmichApiClient(
     private val httpClient: HttpClient = defaultHttpClient(),
     private val authHeaderProvider: AuthHeaderProvider = AuthHeaderProvider(),
+    private val logger: Logger = Logger(),
 ) {
+    private val tag = "ImmichApiClient"
+
 
     private suspend inline fun <reified T> get(config: ImmichConnectionConfig, path: String): T {
         return httpClient.get(normalizedBaseUrl(config.baseUrl) + path) {
@@ -48,23 +57,20 @@ class ImmichApiClient(
         val user = runCatching { getCurrentUser(config) }.getOrNull()
         val stats = runCatching { searchStatistics(config) }.getOrDefault(ImmichAssetStatisticsResponse())
         
-        val photos = runCatching { 
+        val photos = try {
             val element = get<JsonElement>(config, "/api/assets")
-            when {
-                element is JsonArray -> {
-                    ImmichJson.decodeFromJsonElement<List<ImmichAssetResponse>>(element)
-                }
-                element is JsonObject && element.containsKey("items") -> {
+            val assets = when {
+                element is JsonArray -> ImmichJson.decodeFromJsonElement<List<ImmichAssetResponse>>(element)
+                element is JsonObject && element.containsKey("items") ->
                     ImmichJson.decodeFromJsonElement<List<ImmichAssetResponse>>(element["items"]!!)
-                }
-                else -> emptyList()
+                else -> searchAssets(config, pageSize = pageSize).items
             }
-        }.onFailure { 
-            println("ImmichApiClient getAssets error: ${it.message}")
-            it.printStackTrace() 
-        }.getOrElse { 
-            searchAssets(config, pageSize = pageSize).items 
-        }.map { it.toPhotoAsset(config) }
+            assets.map { it.toPhotoAsset(config) }
+        } catch (error: Throwable) {
+            val mapped = mapImmichConnectionError(error)
+            logger.error(tag, "loadOverview failed while requesting assets: ${mapped.message}", error)
+            throw mapped
+        }
 
         val total = when {
             stats.total > 0 -> stats.total

@@ -10,10 +10,14 @@ import com.limelight.shared.domain.media.Asset
 import com.limelight.shared.domain.media.TimelinePage
 import com.limelight.shared.network.immich.ImmichApiClient
 import com.limelight.shared.network.immich.normalizedBaseUrl
+import com.limelight.platform.Logger
 import io.ktor.http.Headers
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.plugins.ServerResponseException
+import io.ktor.client.plugins.ConnectTimeoutException
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.get
@@ -36,7 +40,9 @@ class ImmichAssetRepository(
     private val config: ImmichConnectionConfig,
     private val httpClient: HttpClient = ImmichApiClient.defaultHttpClient(),
     private val authHeaderProvider: AuthHeaderProvider = AuthHeaderProvider(),
+    private val logger: Logger = Logger(),
 ) {
+    private val tag = "ImmichAssetRepository"
     private val pagingSource = AssetPagingSource(loader = ::loadAssetPage)
 
     suspend fun getTimelinePage(page: Int?, cursor: String?, size: Int): TimelinePage =
@@ -116,11 +122,42 @@ fun uploadAssetMultipartFlow(fileName: String, bytes: ByteArray, mimeType: Strin
                 block()
             }.body()
         } catch (error: ClientRequestException) {
-            throw if (error.response.status.value == 401) DataError.Unauthorized(error) else DataError.Network(error)
+            val mapped = when (error.response.status.value) {
+                401 -> DataError.Validation("401 no autorizado: API Key o token inválido.")
+                403 -> DataError.Validation("403 prohibido: credenciales sin permisos para este recurso.")
+                else -> DataError.Network(error)
+            }
+            logger.error(tag, "request failed with client status ${error.response.status.value}: ${mapped.message}", error)
+            throw mapped
+        } catch (error: ServerResponseException) {
+            logger.error(tag, "request failed with server status ${error.response.status.value}", error)
+            throw DataError.Validation("Immich devolvió ${error.response.status.value}. Reintenta más tarde.")
+        } catch (error: ConnectTimeoutException) {
+            logger.error(tag, "request timeout while connecting to Immich", error)
+            throw DataError.Validation("Timeout de conexión con Immich. Revisa URL y red.")
+        } catch (error: HttpRequestTimeoutException) {
+            logger.error(tag, "request timeout waiting Immich response", error)
+            throw DataError.Validation("Timeout de respuesta de Immich. Reintenta en unos segundos.")
         } catch (error: IllegalArgumentException) {
+            logger.error(tag, "request validation failed: ${error.message}", error)
             throw DataError.Validation(error.message ?: "Invalid request")
         } catch (error: Exception) {
+            if (error.hasCauseNamed("SSLHandshakeException") || error.hasCauseNamed("TLSException")) {
+                logger.error(tag, "request TLS/certificate failure", error)
+                throw DataError.Validation("Error TLS/certificado. Verifica certificado y fecha del sistema.")
+            }
+            logger.error(tag, "request failed with unknown error", error)
             throw DataError.Unknown(error)
         }
     }
 }
+
+private fun Throwable.hasCauseNamed(simpleName: String): Boolean {
+    var current: Throwable? = this
+    while (current != null) {
+        if (current::class.simpleName == simpleName) return true
+        current = current.cause
+    }
+    return false
+}
+
