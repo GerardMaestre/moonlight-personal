@@ -270,7 +270,8 @@ class PremiumDashboardActivity : ComponentActivity() {
                                                 thread { photoManager.refreshImmich() }
                                             }
                                         },
-                                        onBack = { navigateBackOrHome() }
+                                        onBack = { navigateBackOrHome() },
+                                        onOpenImmich = { viewModel.controller.navigation.navigateTo(AppScreen.IMMICH_HOME) }
                                     )
                                 }
                                 AppScreen.IMMICH_HOME -> {
