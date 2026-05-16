@@ -6,7 +6,7 @@ data class ImmichConnectionConfig(
     val bearerToken: String = "",
 ) {
     val hasCredentials: Boolean
-        get() = apiKey.isNotBlank() || bearerToken.isNotBlank()
+        get() = apiKey.trim().isNotBlank() || bearerToken.trim().isNotBlank()
 }
 
 data class ImmichServerSummary(

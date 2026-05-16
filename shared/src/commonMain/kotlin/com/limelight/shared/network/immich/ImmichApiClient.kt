@@ -3,6 +3,7 @@ package com.limelight.shared.network.immich
 import com.limelight.shared.data.immich.ImmichConnectionConfig
 import com.limelight.shared.data.immich.ImmichPhotoAsset
 import com.limelight.shared.data.immich.ImmichServerSummary
+import com.limelight.shared.data.session.AuthHeaderProvider
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -16,18 +17,19 @@ internal val ImmichJson = Json {
 
 class ImmichApiClient(
     private val httpClient: HttpClient = defaultHttpClient(),
+    private val authHeaderProvider: AuthHeaderProvider = AuthHeaderProvider(),
 ) {
 
     private suspend inline fun <reified T> get(config: ImmichConnectionConfig, path: String): T {
         return httpClient.get(normalizedBaseUrl(config.baseUrl) + path) {
-            applyAuthentication(config)
+            authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
             accept(ContentType.Application.Json)
         }.body()
     }
 
     private suspend inline fun <reified B, reified T> post(config: ImmichConnectionConfig, path: String, body: B): T {
         return httpClient.post(normalizedBaseUrl(config.baseUrl) + path) {
-            applyAuthentication(config)
+            authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
             contentType(ContentType.Application.Json)
             accept(ContentType.Application.Json)
             setBody(body)
@@ -124,13 +126,6 @@ class ImmichApiClient(
         location = listOfNotNull(exifInfo?.city, exifInfo?.country).joinToString(", ").ifBlank { null },
         isFavorite = isFavorite,
     )
-
-    private fun HttpRequestBuilder.applyAuthentication(config: ImmichConnectionConfig) {
-        when {
-            config.apiKey.isNotBlank() -> header("x-api-key", config.apiKey)
-            config.bearerToken.isNotBlank() -> bearerAuth(config.bearerToken)
-        }
-    }
 
     companion object {
         fun defaultHttpClient(): HttpClient = platformImmichHttpClient(ImmichJson)

@@ -5,6 +5,7 @@ import com.limelight.shared.data.remote.dto.AssetDto
 import com.limelight.shared.data.remote.dto.AssetsResponseDto
 import com.limelight.shared.data.remote.mapper.AssetMapper
 import com.limelight.shared.data.remote.paging.AssetPagingSource
+import com.limelight.shared.data.session.AuthHeaderProvider
 import com.limelight.shared.domain.media.Asset
 import com.limelight.shared.domain.media.TimelinePage
 import com.limelight.shared.network.immich.ImmichApiClient
@@ -13,7 +14,6 @@ import io.ktor.http.Headers
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.get
@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.retryWhen
 class ImmichAssetRepository(
     private val config: ImmichConnectionConfig,
     private val httpClient: HttpClient = ImmichApiClient.defaultHttpClient(),
+    private val authHeaderProvider: AuthHeaderProvider = AuthHeaderProvider(),
 ) {
     private val pagingSource = AssetPagingSource(loader = ::loadAssetPage)
 
@@ -53,7 +54,7 @@ class ImmichAssetRepository(
 
     suspend fun uploadAssetMultipart(fileName: String, bytes: ByteArray, mimeType: String): String {
         val response = httpClient.post(normalizedBaseUrl(config.baseUrl) + "/api/assets") {
-            applyAuth()
+            authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
             setBody(MultiPartFormDataContent(formData {
                 append("assetData", buildPacket { writeFully(bytes) }, headers = Headers.build {
                     append(HttpHeaders.ContentDisposition, "filename=\"$fileName\"")
@@ -111,7 +112,7 @@ fun uploadAssetMultipartFlow(fileName: String, bytes: ByteArray, mimeType: Strin
     private suspend inline fun <reified T> request(path: String, crossinline block: io.ktor.client.request.HttpRequestBuilder.() -> Unit = {}): T {
         return try {
             httpClient.get(normalizedBaseUrl(config.baseUrl) + path) {
-                applyAuth()
+                authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
                 block()
             }.body()
         } catch (error: ClientRequestException) {
@@ -120,13 +121,6 @@ fun uploadAssetMultipartFlow(fileName: String, bytes: ByteArray, mimeType: Strin
             throw DataError.Validation(error.message ?: "Invalid request")
         } catch (error: Exception) {
             throw DataError.Unknown(error)
-        }
-    }
-
-    private fun io.ktor.client.request.HttpRequestBuilder.applyAuth() {
-        when {
-            config.apiKey.isNotBlank() -> header("x-api-key", config.apiKey)
-            config.bearerToken.isNotBlank() -> bearerAuth(config.bearerToken)
         }
     }
 }
