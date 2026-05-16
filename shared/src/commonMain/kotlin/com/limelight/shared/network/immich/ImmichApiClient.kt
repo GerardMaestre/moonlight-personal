@@ -5,11 +5,8 @@ import com.limelight.shared.data.immich.ImmichPhotoAsset
 import com.limelight.shared.data.immich.ImmichServerSummary
 import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.*
 
 internal val ImmichJson = Json {
@@ -136,14 +133,7 @@ class ImmichApiClient(
     }
 
     companion object {
-        fun defaultHttpClient(): HttpClient = HttpClient {
-            install(ContentNegotiation) {
-                json(ImmichJson)
-            }
-            defaultRequest {
-                header(HttpHeaders.CacheControl, "no-cache")
-            }
-        }
+        fun defaultHttpClient(): HttpClient = platformImmichHttpClient(ImmichJson)
     }
 }
 
