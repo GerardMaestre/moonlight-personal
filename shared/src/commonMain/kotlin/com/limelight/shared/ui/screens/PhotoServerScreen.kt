@@ -2,6 +2,9 @@ package com.limelight.shared.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -20,6 +23,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -37,6 +42,7 @@ import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PhotoServerStatus
 import com.limelight.shared.platform.PreviewPhotoServerActions
 import com.limelight.shared.ui.components.*
+import kotlin.math.max
 import com.limelight.shared.ui.theme.MoonlightColors
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -253,12 +259,16 @@ private fun PhotoTimeline(timeline: TimelineUiModel, config: com.limelight.share
             .filter { index -> index >= (listState.layoutInfo.totalItemsCount - 1 - preloadThreshold).coerceAtLeast(0) }
             .collect { onLoadMore() }
     }
+    var selectedAssetId by remember { mutableStateOf<String?>(null) }
     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 620.dp), state = listState, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         timeline.sections.forEach { section ->
             stickyHeader(key = "header-${section.dayKey}") { TimelineHeader(section.dayKey) }
-            item(key = "grid-${section.dayKey}") { SectionGrid(section = section, config = config) }
+            item(key = "grid-${section.dayKey}") { SectionGrid(section = section, config = config, onAssetClick = { selectedAssetId = it }) }
         }
         if (loadingMore) item(key = "loading-more") { LoadingGalleryGrid() }
+    }
+    selectedAssetId?.let { id ->
+        AssetDetailScreen(initialAssetId = id, timeline = timeline.sections.flatMap { it.items }.map { it.asset }, config = config, onDismiss = { selectedAssetId = null })
     }
 }
 
@@ -273,15 +283,15 @@ private fun TimelineHeader(dayKey: String) {
 }
 
 @Composable
-private fun SectionGrid(section: TimelineSection, config: com.limelight.shared.data.immich.ImmichConnectionConfig) {
+private fun SectionGrid(section: TimelineSection, config: com.limelight.shared.data.immich.ImmichConnectionConfig, onAssetClick: (String) -> Unit) {
     LazyVerticalGrid(columns = GridCells.Adaptive(148.dp), userScrollEnabled = false, horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth().heightIn(max = 10000.dp)) {
-        items(section.items, key = { it.id }) { item -> GalleryTile(item.asset, config) }
+        items(section.items, key = { it.id }) { item -> GalleryTile(item.asset, config, onAssetClick) }
     }
 }
 
 @Composable
-private fun GalleryTile(photo: ImmichPhotoAsset, config: com.limelight.shared.data.immich.ImmichConnectionConfig) {
-    Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(MoonlightColors.SurfaceContainerHighest).border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(24.dp))) {
+private fun GalleryTile(photo: ImmichPhotoAsset, config: com.limelight.shared.data.immich.ImmichConnectionConfig, onAssetClick: (String) -> Unit) {
+    Box(Modifier.aspectRatio(1f).clickable { onAssetClick(photo.id) }.clip(RoundedCornerShape(24.dp)).background(MoonlightColors.SurfaceContainerHighest).border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(24.dp))) {
         ThumbnailImage(
             assetId = photo.id,
             contentDescription = photo.name,
@@ -304,6 +314,40 @@ private fun GalleryTile(photo: ImmichPhotoAsset, config: com.limelight.shared.da
                 Text(photo.name, color = MoonlightColors.OnSurface, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
             }
             photo.location?.let { Text(it, color = MoonlightColors.OnSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+    }
+}
+
+
+@Composable
+private fun AssetDetailScreen(initialAssetId: String, timeline: List<ImmichPhotoAsset>, config: com.limelight.shared.data.immich.ImmichConnectionConfig, onDismiss: () -> Unit) {
+    val vm = remember { AssetDetailViewModel() }
+    LaunchedEffect(initialAssetId, timeline.size) { vm.load(initialAssetId, timeline, config) }
+    val st = vm.state
+    val asset = st.currentAsset ?: return
+    var scale by remember { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    val maxScale = 4f
+    val transform = rememberTransformableState { zoomChange, panChange, _ ->
+        scale = (scale * zoomChange).coerceIn(1f, maxScale)
+        val limit = max(0f, (scale - 1f) * 300f)
+        offset = Offset((offset.x + panChange.x).coerceIn(-limit, limit), (offset.y + panChange.y).coerceIn(-limit, limit))
+    }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.fillMaxWidth().height(360.dp).clip(RoundedCornerShape(16.dp)).background(MoonlightColors.SurfaceContainerHighest), contentAlignment = Alignment.Center) {
+                if (asset.name.substringAfterLast('.', "").lowercase() in listOf("mp4","mov","mkv")) {
+                    PlatformVideoPlayer(streamingUrl = "${config.baseUrl.trimEnd('/')}/api/assets/${asset.id}/original", authConfig = config, isPlaying = st.isPlaying, onDurationKnown = {}, onPositionChanged = {}, modifier = Modifier.fillMaxSize())
+                } else {
+                    ThumbnailImage(asset.id, asset.name, config, 600.dp, Modifier.fillMaxSize().graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y).transformable(transform), cornerRadius = 0.dp)
+                }
+            }
+            Row { IconButton(onClick = { vm.previous() }) { Icon(Icons.Default.NavigateBefore, null)}; IconButton(onClick = { vm.playPause() }) { Icon(if (st.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, null)}; IconButton(onClick = { vm.next() }) { Icon(Icons.Default.NavigateNext, null)} }
+            Slider(value = st.playbackProgress, onValueChange = vm::seekTo)
+            OutlinedButton(onClick = { vm.showMetadata(!st.showMetadata) }) { Text("Metadatos") }
+            if (st.showMetadata) {
+                Text("Cámara: —\nUbicación: ${asset.location ?: "—"}\nFecha: ${asset.createdAt ?: "—"}\nTamaño: —\nDimensiones: —\nDuración: —")
+            }
         }
     }
 }
