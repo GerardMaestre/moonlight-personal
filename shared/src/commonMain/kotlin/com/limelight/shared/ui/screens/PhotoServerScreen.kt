@@ -3,9 +3,12 @@ package com.limelight.shared.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.stickyHeader
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,8 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,17 +32,24 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.network.NetworkHeaders
 import coil3.network.httpHeaders
+import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.size.Size
 import com.limelight.shared.data.immich.ImmichGalleryState
 import com.limelight.shared.data.immich.ImmichPhotoAsset
 import com.limelight.shared.data.immich.ImmichServerSummary
 import com.limelight.shared.platform.PhotoServerActions
+import com.limelight.shared.platform.TimelineSection
+import com.limelight.shared.platform.TimelineUiModel
 import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PhotoServerStatus
 import com.limelight.shared.platform.PreviewPhotoServerActions
 import com.limelight.shared.ui.components.*
 import com.limelight.shared.ui.theme.MoonlightColors
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +98,7 @@ fun PhotoServerScreen(
                     galleryState = state.galleryState,
                     config = state.connectionConfig,
                     logs = state.recentLogs,
+                    timeline = state.timelineUiModel,
                     onRefresh = { scope.launch { actions.refreshImmich() } },
                 )
                 Spacer(Modifier.height(110.dp))
@@ -209,7 +219,7 @@ private fun MetricCard(title: String, value: String, suffix: String, footer: Str
 }
 
 @Composable
-private fun GalleryCard(galleryState: ImmichGalleryState, config: com.limelight.shared.data.immich.ImmichConnectionConfig, logs: List<String>, onRefresh: () -> Unit) {
+private fun GalleryCard(galleryState: ImmichGalleryState, config: com.limelight.shared.data.immich.ImmichConnectionConfig, logs: List<String>, timeline: TimelineUiModel, onRefresh: () -> Unit) {
     GlassCard(contentPadding = PaddingValues(22.dp), modifier = Modifier.fillMaxWidth()) {
         Column {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -226,8 +236,8 @@ private fun GalleryCard(galleryState: ImmichGalleryState, config: com.limelight.
             when (galleryState) {
                 ImmichGalleryState.Idle -> EmptyGalleryMessage("Configura la conexión para cargar fotos reales de Immich.")
                 ImmichGalleryState.Loading -> LoadingGallery()
-                is ImmichGalleryState.Error -> EmptyGalleryMessage(galleryState.message, isError = true)
-                is ImmichGalleryState.Success -> PhotoGrid(galleryState.photos, config)
+                is ImmichGalleryState.Error -> EmptyGalleryMessage(galleryState.message, isError = true, onRetry = onRefresh)
+                is ImmichGalleryState.Success -> PhotoTimeline(timeline = timeline, config = config, onLoadMore = onRefresh)
             }
             if (logs.isNotEmpty()) {
                 Spacer(Modifier.height(18.dp))
@@ -238,21 +248,42 @@ private fun GalleryCard(galleryState: ImmichGalleryState, config: com.limelight.
 }
 
 @Composable
-private fun PhotoGrid(photos: List<ImmichPhotoAsset>, config: com.limelight.shared.data.immich.ImmichConnectionConfig) {
-    if (photos.isEmpty()) {
+private fun PhotoTimeline(timeline: TimelineUiModel, config: com.limelight.shared.data.immich.ImmichConnectionConfig, loadingMore: Boolean = false, onLoadMore: () -> Unit) {
+    if (timeline.sections.isEmpty()) {
         EmptyGalleryMessage("Immich respondió correctamente, pero no devolvió fotos para esta API Key.")
-    } else {
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(148.dp),
-            modifier = Modifier.fillMaxWidth().heightIn(max = 620.dp),
-            userScrollEnabled = false,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            items(photos, key = { it.id }) { photo ->
-                GalleryTile(photo, config)
-            }
+        return
+    }
+    val listState = rememberLazyListState()
+    val preloadThreshold = 4
+    LaunchedEffect(listState, timeline.sections.size) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+            .distinctUntilChanged()
+            .filter { index -> index >= (listState.layoutInfo.totalItemsCount - 1 - preloadThreshold).coerceAtLeast(0) }
+            .collect { onLoadMore() }
+    }
+    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 620.dp), state = listState, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        timeline.sections.forEach { section ->
+            stickyHeader(key = "header-${section.dayKey}") { TimelineHeader(section.dayKey) }
+            item(key = "grid-${section.dayKey}") { SectionGrid(section = section, config = config) }
         }
+        if (loadingMore) item(key = "loading-more") { LoadingGalleryGrid() }
+    }
+}
+
+@Composable
+private fun TimelineHeader(dayKey: String) {
+    Text(
+        text = formatDayHeader(dayKey),
+        color = MoonlightColors.OnSurface,
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.fillMaxWidth().background(MoonlightColors.Surface.copy(alpha = 0.95f)).padding(vertical = 6.dp),
+    )
+}
+
+@Composable
+private fun SectionGrid(section: TimelineSection, config: com.limelight.shared.data.immich.ImmichConnectionConfig) {
+    LazyVerticalGrid(columns = GridCells.Adaptive(148.dp), userScrollEnabled = false, horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth().heightIn(max = 10000.dp)) {
+        items(section.items, key = { it.id }) { item -> GalleryTile(item.asset, config) }
     }
 }
 
@@ -268,6 +299,9 @@ private fun GalleryTile(photo: ImmichPhotoAsset, config: com.limelight.shared.da
     val imageRequest = ImageRequest.Builder(context)
         .data(photo.thumbnailUrl)
         .httpHeaders(headers)
+        .size(Size(512, 512))
+        .memoryCachePolicy(CachePolicy.ENABLED)
+        .diskCachePolicy(CachePolicy.ENABLED)
         .build()
     Box(Modifier.aspectRatio(1f).clip(RoundedCornerShape(24.dp)).background(MoonlightColors.SurfaceContainerHighest).border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(24.dp))) {
         AsyncImage(
@@ -297,6 +331,11 @@ private fun GalleryTile(photo: ImmichPhotoAsset, config: com.limelight.shared.da
 
 @Composable
 private fun LoadingGallery() {
+    LoadingGalleryGrid()
+}
+
+@Composable
+private fun LoadingGalleryGrid() {
     Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(color = MoonlightColors.Primary)
@@ -307,9 +346,14 @@ private fun LoadingGallery() {
 }
 
 @Composable
-private fun EmptyGalleryMessage(message: String, isError: Boolean = false) {
+private fun EmptyGalleryMessage(message: String, isError: Boolean = false, onRetry: (() -> Unit)? = null) {
     Box(Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(24.dp)).background(MoonlightColors.SurfaceContainerHighest), contentAlignment = Alignment.Center) {
-        Text(message, color = if (isError) MoonlightColors.Error else MoonlightColors.OnSurfaceVariant, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(20.dp))
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(message, color = if (isError) MoonlightColors.Error else MoonlightColors.OnSurfaceVariant, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(20.dp))
+            if (isError && onRetry != null) {
+                OutlinedButton(onClick = onRetry) { Text("Reintentar") }
+            }
+        }
     }
 }
 
@@ -340,3 +384,10 @@ private fun formatBytes(bytes: Long?): String {
     }.last()
     return "${(sequence.first * 10).toInt() / 10.0} ${units[sequence.second]}"
 }
+
+private fun formatDayHeader(dayKey: String): String = runCatching {
+    if (dayKey == "Sin fecha") dayKey else {
+        val d = LocalDate.parse(dayKey)
+        "%02d/%02d/%04d".format(d.dayOfMonth, d.monthNumber, d.year)
+    }
+}.getOrDefault(dayKey)

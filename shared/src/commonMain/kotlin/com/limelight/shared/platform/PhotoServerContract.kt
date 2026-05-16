@@ -8,6 +8,9 @@ import com.limelight.shared.domain.SessionState
 import com.limelight.shared.data.immich.ImmichGalleryState
 import com.limelight.shared.network.ImmichHealthChecker
 import com.limelight.shared.network.immich.ImmichApiClient
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 sealed interface PhotoServerStatus {
     data object Stopped : PhotoServerStatus
@@ -29,6 +32,7 @@ class PhotoServerState {
     var recentLogs: List<String> by mutableStateOf(emptyList())
     var connectionConfig: ImmichConnectionConfig by mutableStateOf(ImmichConnectionConfig())
     var galleryState: ImmichGalleryState by mutableStateOf(ImmichGalleryState.Idle)
+    var timelineUiModel: TimelineUiModel by mutableStateOf(TimelineUiModel())
     var sessionState: SessionState by mutableStateOf(SessionState.Unauthenticated)
 
     fun updateStatus(next: PhotoServerStatus) {
@@ -44,11 +48,39 @@ class PhotoServerState {
 
     fun updateGallery(next: ImmichGalleryState) {
         galleryState = next
+        timelineUiModel = when (next) {
+            is ImmichGalleryState.Success -> TimelineUiModel.fromPhotos(next.photos)
+            else -> TimelineUiModel()
+        }
         if (next is ImmichGalleryState.Error) {
             lastError = next.message
         }
     }
 }
+
+data class TimelineUiModel(
+    val sections: List<TimelineSection> = emptyList(),
+) {
+    companion object {
+        fun fromPhotos(photos: List<com.limelight.shared.data.immich.ImmichPhotoAsset>): TimelineUiModel {
+            val grouped = photos.groupBy { photo ->
+                val created = photo.createdAt?.let { runCatching { Instant.parse(it) }.getOrNull() }
+                if (created == null) "Sin fecha" else {
+                    val local = created.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                    "%04d-%02d-%02d".format(local.year, local.monthNumber, local.dayOfMonth)
+                }
+            }
+            val sections = grouped.entries.sortedByDescending { it.key }.map { (dayKey, values) ->
+                TimelineSection(dayKey = dayKey, items = values.map { TimelineItem(it.id, it) })
+            }
+            return TimelineUiModel(sections)
+        }
+    }
+}
+
+data class TimelineSection(val dayKey: String, val items: List<TimelineItem>)
+
+data class TimelineItem(val id: String, val asset: com.limelight.shared.data.immich.ImmichPhotoAsset)
 
 interface PhotoServerActions {
     suspend fun startPhotoServer(): StartCommandResult
