@@ -77,6 +77,7 @@ private fun runDesktopUi() = application {
                                         AppScreen.PHOTO_SERVER -> controller.openPhotoServer()
                                         AppScreen.GAME_LIST -> Unit
                                         AppScreen.MAIN_MENU -> Unit
+                                        AppScreen.IMMICH_HOME -> Unit
                                     }
                                 }
                             )
@@ -177,6 +178,9 @@ private fun runDesktopUi() = application {
                                 },
                                 onBack = { controller.navigation.goBack() }
                             )
+                            AppScreen.IMMICH_HOME -> ImmichHomeScreen(
+                                onBack = { controller.navigation.goBack() }
+                            )
                         }
                     }
                 }
@@ -221,4 +225,3 @@ private fun startDesktopDiscovery(controller: AppController) {
     } catch (_: Exception) {
     }
 }
-
