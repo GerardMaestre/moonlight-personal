@@ -22,6 +22,7 @@ class PremiumDashboardViewModel(application: Application) : AndroidViewModel(app
     
     val controller = AppController()
     val dashboardState get() = controller.dashboardState
+    val photoSessionState get() = controller.photoServerState.sessionState
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val appContext = getApplication<Application>()
 
