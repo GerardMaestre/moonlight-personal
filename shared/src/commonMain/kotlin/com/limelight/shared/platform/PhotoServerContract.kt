@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.limelight.shared.data.immich.ImmichConnectionConfig
+import com.limelight.shared.domain.SessionState
 import com.limelight.shared.data.immich.ImmichGalleryState
 import com.limelight.shared.network.ImmichHealthChecker
 import com.limelight.shared.network.immich.ImmichApiClient
@@ -28,6 +29,7 @@ class PhotoServerState {
     var recentLogs: List<String> by mutableStateOf(emptyList())
     var connectionConfig: ImmichConnectionConfig by mutableStateOf(ImmichConnectionConfig())
     var galleryState: ImmichGalleryState by mutableStateOf(ImmichGalleryState.Idle)
+    var sessionState: SessionState by mutableStateOf(SessionState.Unauthenticated)
 
     fun updateStatus(next: PhotoServerStatus) {
         status = next
@@ -64,6 +66,7 @@ class ImmichPhotoServerActions(
     private val client: ImmichApiClient = ImmichApiClient(),
 ) : PhotoServerActions {
     override suspend fun startPhotoServer(): StartCommandResult {
+        state.sessionState = SessionState.Authenticating
         state.updateStatus(PhotoServerStatus.Starting)
         state.healthMessage = "Conectando con Immich real..."
         val health = ImmichHealthChecker.check(state.connectionConfig, client)
@@ -71,17 +74,20 @@ class ImmichPhotoServerActions(
             val url = state.connectionConfig.baseUrl.trim().trimEnd('/')
             state.healthMessage = health.message
             state.updateStatus(PhotoServerStatus.Running(port = 2283, url = url))
+            state.sessionState = SessionState.Authenticated(com.limelight.shared.domain.model.Session(serverUrl = url, userId = "immich"))
             refreshImmich()
             StartCommandResult.Success
         } else {
             state.healthMessage = health.message
             state.updateStatus(PhotoServerStatus.Error(health.message))
+            state.sessionState = SessionState.Error(health.message)
             StartCommandResult.Failed(health.message)
         }.also { state.lastCommandResult = it }
     }
 
     override fun stopPhotoServer() {
         state.updateStatus(PhotoServerStatus.Stopped)
+        state.sessionState = SessionState.Unauthenticated
         state.healthMessage = "Conexión cerrada"
         state.updateGallery(ImmichGalleryState.Idle)
     }
