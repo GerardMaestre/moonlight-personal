@@ -1,0 +1,39 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared:generateComposeResClass UP-TO-DATE
+> Task :shared:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForCommonMain NO-SOURCE
+> Task :shared:convertXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :shared:copyNonXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :shared:prepareComposeResourcesTaskForDesktopMain NO-SOURCE
+> Task :shared:generateResourceAccessorsForDesktopMain NO-SOURCE
+
+> Task :shared:compileKotlinDesktop
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/platform/Logger.kt:3:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. You can use -Xexpect-actual-classes flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/platform/StorageManager.kt:3:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. You can use -Xexpect-actual-classes flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/shared/network/RemoteScriptClient.kt:25:23 'constructor(p0: String!): URL' is deprecated. Deprecated in Java.
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/shared/network/UpSnapClient.kt:68:19 'constructor(p0: String!): URL' is deprecated. Deprecated in Java.
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/shared/network/UpSnapClient.kt:96:28 'constructor(p0: String!): URL' is deprecated. Deprecated in Java.
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/shared/network/UpSnapClient.kt:132:36 'constructor(p0: String!): URL' is deprecated. Deprecated in Java.
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/shared/network/UpSnapClient.kt:136:32 'constructor(p0: String!): URL' is deprecated. Deprecated in Java.
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/shared/network/UpSnapClient.kt:161:19 'constructor(p0: String!): URL' is deprecated. Deprecated in Java.
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/shared/sync/SyncContracts.kt:5:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. You can use -Xexpect-actual-classes flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/shared/ui/components/GlassComponents.kt:152:40 'val Icons.Filled.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack.
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/shared/ui/screens/GameListScreen.kt:51:44 'val Icons.Filled.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack.
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/shared/ui/screens/PhotoServerScreen.kt:347:80 'val Icons.Filled.NavigateBefore: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.NavigateBefore.
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/commonMain/kotlin/com/limelight/shared/ui/screens/PhotoServerScreen.kt:347:285 'val Icons.Filled.NavigateNext: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.NavigateNext.
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/desktopMain/kotlin/com/limelight/platform/Logger.desktop.kt:3:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. You can use -Xexpect-actual-classes flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/desktopMain/kotlin/com/limelight/platform/StorageManager.desktop.kt:3:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. You can use -Xexpect-actual-classes flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///C:/Users/gerar/Desktop/moonlight-personal/shared/src/desktopMain/kotlin/com/limelight/shared/sync/BackgroundSyncScheduler.desktop.kt:3:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. You can use -Xexpect-actual-classes flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.7/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 14s
+2 actionable tasks: 1 executed, 1 up-to-date

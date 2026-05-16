@@ -67,7 +67,7 @@ data class TimelineUiModel(
                 val created = photo.createdAt?.let { runCatching { Instant.parse(it) }.getOrNull() }
                 if (created == null) "Sin fecha" else {
                     val local = created.toLocalDateTime(TimeZone.currentSystemDefault()).date
-                    "%04d-%02d-%02d".format(local.year, local.monthNumber, local.dayOfMonth)
+                    "${local.year}-${local.monthNumber.toString().padStart(2, '0')}-${local.dayOfMonth.toString().padStart(2, '0')}"
                 }
             }
             val sections = grouped.entries.sortedByDescending { it.key }.map { (dayKey, values) ->

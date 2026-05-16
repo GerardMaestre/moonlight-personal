@@ -1,5 +1,6 @@
 package com.limelight.shared.ui.components
 
+import coil3.PlatformContext
 import coil3.network.NetworkHeaders
 import coil3.network.httpHeaders
 import coil3.request.CachePolicy
@@ -14,7 +15,7 @@ class AuthenticatedImageRequestFactory {
     }
 
     fun buildThumbnailRequest(
-        context: Any,
+        context: PlatformContext,
         config: ImmichConnectionConfig,
         assetId: String,
         targetSizePx: Int,

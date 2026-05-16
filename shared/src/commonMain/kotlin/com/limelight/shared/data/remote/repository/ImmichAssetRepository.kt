@@ -7,8 +7,9 @@ import com.limelight.shared.data.remote.mapper.AssetMapper
 import com.limelight.shared.data.remote.paging.AssetPagingSource
 import com.limelight.shared.domain.media.Asset
 import com.limelight.shared.domain.media.TimelinePage
-import com.limelight.shared.network.immich.defaultHttpClient
+import com.limelight.shared.network.immich.ImmichApiClient
 import com.limelight.shared.network.immich.normalizedBaseUrl
+import io.ktor.http.Headers
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
@@ -33,7 +34,7 @@ import kotlinx.coroutines.flow.retryWhen
 
 class ImmichAssetRepository(
     private val config: ImmichConnectionConfig,
-    private val httpClient: HttpClient = defaultHttpClient(),
+    private val httpClient: HttpClient = ImmichApiClient.defaultHttpClient(),
 ) {
     private val pagingSource = AssetPagingSource(loader = ::loadAssetPage)
 
@@ -54,12 +55,10 @@ class ImmichAssetRepository(
         val response = httpClient.post(normalizedBaseUrl(config.baseUrl) + "/api/assets") {
             applyAuth()
             setBody(MultiPartFormDataContent(formData {
-                append("assetData", buildPacket { writeFully(bytes) }, headers = io.ktor.http.headersOf(
-                    HttpHeaders.ContentDisposition,
-                    "filename=\"$fileName\"",
-                    HttpHeaders.ContentType,
-                    mimeType,
-                ))
+                append("assetData", buildPacket { writeFully(bytes) }, headers = Headers.build {
+                    append(HttpHeaders.ContentDisposition, "filename=\"$fileName\"")
+                    append(HttpHeaders.ContentType, mimeType)
+                })
             }))
         }
         if (!response.status.isSuccess()) throw DataError.Network()

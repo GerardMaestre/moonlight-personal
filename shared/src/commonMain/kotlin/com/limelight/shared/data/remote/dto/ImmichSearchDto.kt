@@ -12,7 +12,7 @@ data class SearchAssetsRequestDto(
     val type: String? = null,
     val person: String? = null,
     val withArchived: Boolean = false,
-    val object: String? = null,
+    val `object`: String? = null,
 )
 
 @Serializable

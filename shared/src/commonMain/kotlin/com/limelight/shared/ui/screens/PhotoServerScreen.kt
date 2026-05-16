@@ -10,8 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.stickyHeader
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,7 +49,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun PhotoServerScreen(
     state: PhotoServerState,
@@ -245,6 +245,7 @@ private fun GalleryCard(galleryState: ImmichGalleryState, config: com.limelight.
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PhotoTimeline(timeline: TimelineUiModel, config: com.limelight.shared.data.immich.ImmichConnectionConfig, loadingMore: Boolean = false, onLoadMore: () -> Unit) {
     if (timeline.sections.isEmpty()) {
@@ -319,6 +320,7 @@ private fun GalleryTile(photo: ImmichPhotoAsset, config: com.limelight.shared.da
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AssetDetailScreen(initialAssetId: String, timeline: List<ImmichPhotoAsset>, config: com.limelight.shared.data.immich.ImmichConnectionConfig, onDismiss: () -> Unit) {
     val vm = remember { AssetDetailViewModel() }
@@ -411,6 +413,6 @@ private fun formatBytes(bytes: Long?): String {
 private fun formatDayHeader(dayKey: String): String = runCatching {
     if (dayKey == "Sin fecha") dayKey else {
         val d = LocalDate.parse(dayKey)
-        "%02d/%02d/%04d".format(d.dayOfMonth, d.monthNumber, d.year)
+        "${d.dayOfMonth.toString().padStart(2, '0')}/${d.monthNumber.toString().padStart(2, '0')}/${d.year}"
     }
 }.getOrDefault(dayKey)

@@ -1,13 +1,9 @@
-package com.limelight.sync
+package com.limelight.shared.sync
 
 import android.content.Context
 import android.provider.MediaStore
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.limelight.shared.sync.DefaultSyncStateFlow
-import com.limelight.shared.sync.PhotoUploadQueueRepository
-import com.limelight.shared.sync.PhotoUploadTask
-import com.limelight.shared.sync.SyncState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.security.MessageDigest

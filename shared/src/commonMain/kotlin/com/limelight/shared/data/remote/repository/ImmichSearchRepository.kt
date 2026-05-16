@@ -35,7 +35,7 @@ class ImmichSearchRepository(
                     takenBefore = query.toDateIso,
                     type = query.type?.name,
                     person = query.person,
-                    object = query.objectLabel,
+                    `object` = query.objectLabel,
                 ),
             )
         }.body<SearchResponseDto>()
