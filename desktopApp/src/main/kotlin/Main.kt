@@ -168,9 +168,12 @@ private fun runDesktopUi() = application {
                             AppScreen.PHOTO_SERVER -> PhotoServerScreen(
                                 state = controller.photoServerState,
                                 actions = object : PhotoServerActions {
-                                    override fun startPhotoServer() = photoServerManager.start()
+                                    override suspend fun startPhotoServer() = photoServerManager.start()
                                     override fun stopPhotoServer() = photoServerManager.stop()
-                                    override fun restartPhotoServer() { photoServerManager.restart() }
+                                    override suspend fun restartPhotoServer() = photoServerManager.restart()
+                                    override suspend fun refreshImmich() {
+                                        com.limelight.shared.platform.ImmichPhotoServerActions(controller.photoServerState).refreshImmich()
+                                    }
                                 },
                                 onBack = { controller.navigation.goBack() }
                             )
@@ -189,7 +192,7 @@ private fun runHeadlessServerMode() {
     if (System.getProperty("os.name").contains("Windows", ignoreCase = true)) {
         manager.registerWindowsStartupTask()
     }
-    while (true) {
+    while (!Thread.currentThread().isInterrupted) {
         Thread.sleep(60_000)
     }
 }
@@ -210,7 +213,7 @@ private fun startDesktopDiscovery(controller: AppController) {
         socket.broadcast = true
         val buffer = "Moonlight Discovery".toByteArray()
         val packet = DatagramPacket(buffer, buffer.size, InetAddress.getByName("255.255.255.255"), 47998)
-        while (true) {
+        while (!Thread.currentThread().isInterrupted) {
             socket.send(packet)
             controller.onDiscoveryStatus("Buscando PCs en la red...")
             Thread.sleep(5000)

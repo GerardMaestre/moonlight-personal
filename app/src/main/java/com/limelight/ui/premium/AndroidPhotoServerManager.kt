@@ -1,10 +1,13 @@
 package com.limelight.ui.premium
 
 import com.limelight.shared.network.ImmichHealthChecker
+import com.limelight.shared.network.immich.ImmichApiClient
 import com.limelight.shared.network.RemoteScriptClient
 import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PhotoServerStatus
 import com.limelight.shared.platform.StartCommandResult
+import com.limelight.shared.data.immich.ImmichGalleryState
+import kotlinx.coroutines.runBlocking
 
 /**
  * Manages the Immich photo server lifecycle via the StreamDeck API.
@@ -84,11 +87,12 @@ class AndroidPhotoServerManager(
     }
 
     fun checkHealth(pcIp: String) {
-        val result = ImmichHealthChecker.check(pcIp, IMMICH_PORT)
+        val url = "http://$pcIp:$IMMICH_PORT"
+        state.updateConnection(baseUrl = url, apiKey = state.connectionConfig.apiKey)
+        val result = runBlocking { ImmichHealthChecker.check(state.connectionConfig) }
         updateState {
             state.healthMessage = result.message
             if (result.isHealthy) {
-                val url = "http://$pcIp:$IMMICH_PORT"
                 state.updateStatus(PhotoServerStatus.Running(IMMICH_PORT, url))
                 appendLog("✓ Immich activo: $url")
             } else {
@@ -109,17 +113,18 @@ class AndroidPhotoServerManager(
         // === Polling de salud de Immich ===
         // Simplemente esperamos hasta que el puerto responda. El script del PC
         // ya se encarga de esperar a Docker y hacer el docker compose up.
-        val health = ImmichHealthChecker.waitForReady(
-            serverIp = pcIp,
-            port = IMMICH_PORT,
-            maxWaitSeconds = MAX_STARTUP_WAIT_SECONDS,
-            pollIntervalMs = 5000,
-            onProgress = { msg ->
-                updateState { state.healthMessage = msg }
-            }
-        )
-
         val url = "http://$pcIp:$IMMICH_PORT"
+        updateState { state.updateConnection(baseUrl = url, apiKey = state.connectionConfig.apiKey) }
+        val health = runBlocking {
+            ImmichHealthChecker.waitForReady(
+                config = state.connectionConfig,
+                maxWaitSeconds = MAX_STARTUP_WAIT_SECONDS,
+                pollIntervalMs = 5000,
+                onProgress = { msg ->
+                    updateState { state.healthMessage = msg }
+                }
+            )
+        }
         updateState {
             state.updateStatus(PhotoServerStatus.Running(IMMICH_PORT, url))
             state.healthMessage = if (health.isHealthy) health.message else "⚠ Immich tardando demasiado"
@@ -131,6 +136,22 @@ class AndroidPhotoServerManager(
             addLog("ℹ Si Docker Desktop se ha quedado colgado en el PC, reinícialo.")
         }
         return StartCommandResult.Success
+    }
+
+    fun refreshImmich() {
+        updateState { state.updateGallery(ImmichGalleryState.Loading) }
+        runBlocking {
+            runCatching { ImmichApiClient().loadOverview(state.connectionConfig) }
+                .onSuccess { overview ->
+                    updateState {
+                        state.updateGallery(ImmichGalleryState.Success(overview.summary, overview.photos))
+                        state.recentLogs = overview.photos.take(3).map { "${it.name} sincronizada desde Immich" }
+                    }
+                }
+                .onFailure { error ->
+                    updateState { state.updateGallery(ImmichGalleryState.Error(error.message ?: "No se pudo cargar Immich")) }
+                }
+        }
     }
 
     private fun addLog(message: String) {

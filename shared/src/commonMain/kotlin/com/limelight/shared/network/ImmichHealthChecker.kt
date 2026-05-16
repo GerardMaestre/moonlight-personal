@@ -1,51 +1,38 @@
 package com.limelight.shared.network
 
-import java.net.HttpURLConnection
-import java.net.URL
+import com.limelight.shared.data.immich.ImmichConnectionConfig
+import com.limelight.shared.network.immich.ImmichApiClient
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 /**
  * Health checker for the Immich photo server.
- * Pings the Immich API to verify the server is up and responding.
+ * Uses the real Immich REST API instead of local mock data.
  */
 object ImmichHealthChecker {
 
     data class HealthResult(
         val isHealthy: Boolean,
         val message: String,
-        val responseTimeMs: Long = 0
+        val responseTimeMs: Long = 0,
     )
 
     /**
      * Check if the Immich server is responding at the given base URL.
-     * Default port is 2283.
      */
-    fun check(serverIp: String, port: Int = 2283, timeoutMs: Int = 5000): HealthResult {
-        val start = System.currentTimeMillis()
-        return try {
-            val url = URL("http://$serverIp:$port/api/server/ping")
-            val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "GET"
-            conn.connectTimeout = timeoutMs
-            conn.readTimeout = timeoutMs
-
-            try {
-                val code = conn.responseCode
-                val elapsed = System.currentTimeMillis() - start
-
-                if (code == 200) {
-                    HealthResult(true, "Immich OK (${elapsed}ms)", elapsed)
-                } else {
-                    HealthResult(false, "Immich respondió con código $code", elapsed)
-                }
-            } finally {
-                conn.disconnect()
-            }
-        } catch (e: java.net.SocketTimeoutException) {
-            HealthResult(false, "Timeout - Immich no responde")
-        } catch (e: java.net.ConnectException) {
-            HealthResult(false, "No se puede conectar a Immich")
-        } catch (e: Exception) {
-            HealthResult(false, "Error: ${e.message ?: "desconocido"}")
+    suspend fun check(
+        config: ImmichConnectionConfig,
+        client: ImmichApiClient = ImmichApiClient(),
+    ): HealthResult {
+        val mark = TimeSource.Monotonic.markNow()
+        return runCatching {
+            client.ping(config)
+            val elapsed = mark.elapsedNow().inWholeMilliseconds
+            HealthResult(true, "Immich OK (${elapsed}ms)", elapsed)
+        }.getOrElse { error ->
+            val elapsed = mark.elapsedNow().inWholeMilliseconds
+            HealthResult(false, error.message ?: "No se puede conectar a Immich", elapsed)
         }
     }
 
@@ -53,32 +40,30 @@ object ImmichHealthChecker {
      * Poll the Immich server until it responds or timeout is reached.
      * Useful after starting Docker containers.
      */
-    fun waitForReady(
-        serverIp: String,
-        port: Int = 2283,
+    suspend fun waitForReady(
+        config: ImmichConnectionConfig,
         maxWaitSeconds: Int = 120,
         pollIntervalMs: Long = 3000,
-        onProgress: (String) -> Unit = {}
+        client: ImmichApiClient = ImmichApiClient(),
+        onProgress: (String) -> Unit = {},
     ): HealthResult {
-        val deadline = System.currentTimeMillis() + (maxWaitSeconds * 1000L)
+        val waitMark = TimeSource.Monotonic.markNow()
+        val maxWait = maxWaitSeconds.seconds
         var attempts = 0
+        var result = HealthResult(false, "Sin comprobaciones")
 
-        while (System.currentTimeMillis() < deadline) {
-            attempts++
+        while (waitMark.elapsedNow() < maxWait && !result.isHealthy) {
+            attempts += 1
             onProgress("Verificando Immich... (intento $attempts)")
-
-            val result = check(serverIp, port, 3000)
-            if (result.isHealthy) {
-                return result
-            }
-
-            try {
-                Thread.sleep(pollIntervalMs)
-            } catch (_: InterruptedException) {
-                return HealthResult(false, "Verificación cancelada")
+            result = check(config, client)
+            if (!result.isHealthy) {
+                delay(pollIntervalMs)
             }
         }
 
-        return HealthResult(false, "Timeout esperando a Immich (${maxWaitSeconds}s)")
+        return when {
+            result.isHealthy -> result
+            else -> HealthResult(false, "Timeout esperando a Immich (${maxWaitSeconds}s)")
+        }
     }
 }

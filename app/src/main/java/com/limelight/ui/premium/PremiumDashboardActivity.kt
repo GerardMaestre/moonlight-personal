@@ -242,15 +242,19 @@ class PremiumDashboardActivity : ComponentActivity() {
                                     com.limelight.shared.ui.screens.PhotoServerScreen(
                                         state = controller.photoServerState,
                                         actions = object : PhotoServerActions {
-                                            override fun startPhotoServer(): StartCommandResult {
+                                            override suspend fun startPhotoServer(): StartCommandResult {
                                                 thread { photoManager.start(remoteClient, pcIp) }
                                                 return StartCommandResult.Success
                                             }
                                             override fun stopPhotoServer() {
                                                 thread { photoManager.stop(remoteClient) }
                                             }
-                                            override fun restartPhotoServer() {
+                                            override suspend fun restartPhotoServer(): StartCommandResult {
                                                 thread { photoManager.restart(remoteClient, pcIp) }
+                                                return StartCommandResult.Success
+                                            }
+                                            override suspend fun refreshImmich() {
+                                                thread { photoManager.refreshImmich() }
                                             }
                                         },
                                         onBack = { navigateBackOrHome() }
