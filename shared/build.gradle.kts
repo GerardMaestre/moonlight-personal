@@ -25,7 +25,7 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
-            implementation("io.ktor:ktor-client-core:2.3.12")
+            api("io.ktor:ktor-client-core:2.3.12")
             implementation("io.ktor:ktor-client-content-negotiation:2.3.12")
             implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
             implementation("io.coil-kt.coil3:coil-compose:3.0.4")
