@@ -7,15 +7,11 @@ import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -60,46 +56,51 @@ fun PhotoServerScreen(
 
     AetherisScreen(primaryGlowAlignment = Alignment.TopStart, secondaryGlowAlignment = Alignment.BottomEnd) {
         Scaffold(topBar = { HomeHubTopBar(onBack = onBack) }, containerColor = Color.Transparent) { padding ->
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                Text("Multimedia", style = MaterialTheme.typography.headlineLarge.copy(fontSize = 42.sp), color = MoonlightColors.OnSurface, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(8.dp))
-                Text("Cliente nativo de Immich conectado a la API REST real.", style = MaterialTheme.typography.bodyLarge, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(24.dp))
+                item {
+                    Text("Multimedia", style = MaterialTheme.typography.headlineLarge.copy(fontSize = 42.sp), color = MoonlightColors.OnSurface, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Cliente nativo de Immich conectado a la API REST real.", style = MaterialTheme.typography.bodyLarge, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center)
+                }
 
-                BoxWithConstraints(Modifier.fillMaxWidth()) {
-                    if (maxWidth > 840.dp) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.fillMaxWidth()) {
-                            Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.weight(2f)) {
+                item {
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        if (maxWidth > 840.dp) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.fillMaxWidth()) {
+                                Column(verticalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.weight(2f)) {
+                                    ConnectionCard(state, actions)
+                                    ControlCard(state, actions)
+                                }
+                                SummaryColumn(state.galleryState, Modifier.weight(1f))
+                            }
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
                                 ConnectionCard(state, actions)
                                 ControlCard(state, actions)
+                                SummaryColumn(state.galleryState)
                             }
-                            SummaryColumn(state.galleryState, Modifier.weight(1f))
-                        }
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
-                            ConnectionCard(state, actions)
-                            ControlCard(state, actions)
-                            SummaryColumn(state.galleryState)
                         }
                     }
                 }
 
-                Spacer(Modifier.height(24.dp))
-                GalleryCard(
-                    galleryState = state.galleryState,
-                    config = state.connectionConfig,
-                    logs = state.recentLogs,
-                    timeline = state.timelineUiModel,
-                    onRefresh = { scope.launch { actions.refreshImmich() } },
-                )
-                Spacer(Modifier.height(110.dp))
+                item {
+                    GalleryCard(
+                        galleryState = state.galleryState,
+                        config = state.connectionConfig,
+                        logs = state.recentLogs,
+                        timeline = state.timelineUiModel,
+                        onRefresh = { scope.launch { actions.refreshImmich() } },
+                    )
+                }
+
+                item { Spacer(Modifier.height(86.dp)) }
             }
         }
     }
@@ -264,7 +265,7 @@ private fun PhotoTimeline(timeline: TimelineUiModel, config: com.limelight.share
     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 620.dp), state = listState, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         timeline.sections.forEach { section ->
             stickyHeader(key = "header-${section.dayKey}") { TimelineHeader(section.dayKey) }
-            item(key = "grid-${section.dayKey}") { SectionGrid(section = section, config = config, onAssetClick = { selectedAssetId = it }) }
+            sectionGridItems(section = section, config = config, onAssetClick = { selectedAssetId = it })
         }
         if (loadingMore) item(key = "loading-more") { LoadingGalleryGrid() }
     }
@@ -283,10 +284,26 @@ private fun TimelineHeader(dayKey: String) {
     )
 }
 
-@Composable
-private fun SectionGrid(section: TimelineSection, config: com.limelight.shared.data.immich.ImmichConnectionConfig, onAssetClick: (String) -> Unit) {
-    LazyVerticalGrid(columns = GridCells.Adaptive(148.dp), userScrollEnabled = false, horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth().heightIn(max = 10000.dp)) {
-        items(section.items, key = { it.id }) { item -> GalleryTile(item.asset, config, onAssetClick) }
+private fun androidx.compose.foundation.lazy.LazyListScope.sectionGridItems(
+    section: TimelineSection,
+    config: com.limelight.shared.data.immich.ImmichConnectionConfig,
+    onAssetClick: (String) -> Unit,
+) {
+    val chunked = section.items.chunked(3)
+    items(chunked, key = { row -> "${section.dayKey}-${row.first().id}" }) { row ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            row.forEach { item ->
+                Box(modifier = Modifier.weight(1f)) {
+                    GalleryTile(item.asset, config, onAssetClick)
+                }
+            }
+            repeat(3 - row.size) {
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        }
     }
 }
 
