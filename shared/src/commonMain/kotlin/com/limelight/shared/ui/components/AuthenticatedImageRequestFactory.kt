@@ -7,8 +7,11 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.size.Size
 import com.limelight.shared.data.immich.ImmichConnectionConfig
+import com.limelight.shared.data.session.AuthHeaderProvider
 
-class AuthenticatedImageRequestFactory {
+class AuthenticatedImageRequestFactory(
+    private val authHeaderProvider: AuthHeaderProvider = AuthHeaderProvider(),
+) {
     fun buildThumbnailUrl(baseUrl: String, assetId: String): String {
         val normalizedBaseUrl = baseUrl.trim().trimEnd('/')
         return "$normalizedBaseUrl/api/assets/$assetId/thumbnail?size=thumbnail"
@@ -21,9 +24,8 @@ class AuthenticatedImageRequestFactory {
         targetSizePx: Int,
     ): ImageRequest {
         val headers = NetworkHeaders.Builder().apply {
-            when {
-                config.apiKey.isNotBlank() -> set("x-api-key", config.apiKey)
-                config.bearerToken.isNotBlank() -> set("Authorization", "Bearer ${config.bearerToken}")
+            authHeaderProvider.headersFor(config).forEach { (name, value) ->
+                set(name, value)
             }
         }.build()
 
