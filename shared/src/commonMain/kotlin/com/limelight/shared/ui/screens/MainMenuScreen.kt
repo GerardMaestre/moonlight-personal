@@ -1,11 +1,10 @@
 package com.limelight.shared.ui.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Games
@@ -15,124 +14,56 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.limelight.shared.ui.components.AetherisScreen
+import com.limelight.shared.ui.components.GlassCard
+import com.limelight.shared.ui.components.HomeHubTopBar
 import com.limelight.shared.ui.theme.MoonlightColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainMenuScreen(
-    onNavigate: (AppScreen) -> Unit
-) {
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        "PANEL DE CONTROL",
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { /* TODO: account action */ }) {
-                        Icon(
-                            imageVector = Icons.Default.Computer, // Placeholder, use proper icon later
-                            contentDescription = "Account",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { /* TODO: tune action */ }) {
-                        Icon(
-                            imageVector = Icons.Default.Computer, // Placeholder
-                            contentDescription = "Tune",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
-                    titleContentColor = MoonlightColors.TertiaryContainer
+fun MainMenuScreen(onNavigate: (AppScreen) -> Unit) {
+    AetherisScreen {
+        Scaffold(
+            topBar = { HomeHubTopBar() },
+            containerColor = Color.Transparent
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 20.dp, vertical = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Home Hub", style = MaterialTheme.typography.headlineLarge.copy(fontSize = 42.sp), color = MoonlightColors.OnSurface, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Control centralizado para gaming, energía y multimedia.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MoonlightColors.OnSurfaceVariant,
+                    textAlign = TextAlign.Center
                 )
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            // We use an experimental layout or a simple adaptive column/row based on screen width.
-            // A BoxWithConstraints allows us to switch from Column to Row.
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-                if (maxWidth > 600.dp) {
-                    // Desktop / Landscape mode: Side by side
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        MenuCard(
-                            title = "Moonlight",
-                            subtitle = "Streaming de Juegos",
-                            icon = Icons.Default.Games,
-                            onClick = { onNavigate(AppScreen.MOONLIGHT) },
-                            modifier = Modifier.weight(1f).padding(8.dp)
-                        )
-                        MenuCard(
-                            title = "Mi PC",
-                            subtitle = "Control de Energía",
-                            icon = Icons.Default.Computer,
-                            onClick = { onNavigate(AppScreen.POWER_CONTROL) },
-                            modifier = Modifier.weight(1f).padding(8.dp)
-                        )
-                        MenuCard(
-                            title = "Fotos",
-                            subtitle = "Servidor Multimedia",
-                            icon = Icons.Default.PhotoAlbum,
-                            onClick = { onNavigate(AppScreen.PHOTO_SERVER) },
-                            modifier = Modifier.weight(1f).padding(8.dp)
-                        )
-                    }
-                } else {
-                    // Mobile / Portrait mode: Stacked and Fixed
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        MenuCard(
-                            title = "Moonlight",
-                            subtitle = "Streaming de Juegos",
-                            icon = Icons.Default.Games,
-                            onClick = { onNavigate(AppScreen.MOONLIGHT) },
-                            modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        MenuCard(
-                            title = "Mi PC",
-                            subtitle = "Control de Energía",
-                            icon = Icons.Default.Computer,
-                            onClick = { onNavigate(AppScreen.POWER_CONTROL) },
-                            modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        MenuCard(
-                            title = "Fotos",
-                            subtitle = "Servidor Multimedia",
-                            icon = Icons.Default.PhotoAlbum,
-                            onClick = { onNavigate(AppScreen.PHOTO_SERVER) },
-                            modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
-                        )
+                Spacer(Modifier.height(30.dp))
+
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    if (maxWidth > 700.dp) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.fillMaxWidth()) {
+                            MenuCard("Moonlight", "Gaming Nexus", Icons.Default.Games, MoonlightColors.Primary, { onNavigate(AppScreen.MOONLIGHT) }, Modifier.weight(1f))
+                            MenuCard("Mi PC", "Core Power", Icons.Default.Computer, MoonlightColors.Tertiary, { onNavigate(AppScreen.POWER_CONTROL) }, Modifier.weight(1f))
+                            MenuCard("Multimedia", "Aetheris Media", Icons.Default.PhotoAlbum, MoonlightColors.Secondary, { onNavigate(AppScreen.PHOTO_SERVER) }, Modifier.weight(1f))
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
+                            MenuCard("Moonlight", "Streaming de juegos", Icons.Default.Games, MoonlightColors.Primary, { onNavigate(AppScreen.MOONLIGHT) })
+                            MenuCard("Mi PC", "Control de energía", Icons.Default.Computer, MoonlightColors.Tertiary, { onNavigate(AppScreen.POWER_CONTROL) })
+                            MenuCard("Multimedia", "Servidor de fotos Immich", Icons.Default.PhotoAlbum, MoonlightColors.Secondary, { onNavigate(AppScreen.PHOTO_SERVER) })
+                        }
                     }
                 }
             }
@@ -145,54 +76,35 @@ private fun MenuCard(
     title: String,
     subtitle: String,
     icon: ImageVector,
+    accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    GlassCard(
         modifier = modifier
-            .clip(RoundedCornerShape(24.dp))
+            .heightIn(min = 178.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-        ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+        contentPadding = PaddingValues(24.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Box(Modifier.fillMaxSize()) {
             Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(MoonlightColors.Secondary.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    modifier = Modifier.size(36.dp),
-                    tint = MoonlightColors.Secondary
-                )
+                Modifier
+                    .matchParentSize()
+                    .background(Brush.radialGradient(listOf(accent.copy(alpha = 0.18f), Color.Transparent)))
+            )
+            Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize()) {
+                Box(
+                    Modifier
+                        .size(70.dp)
+                        .clip(CircleShape)
+                        .background(accent.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) { Icon(icon, contentDescription = title, tint = accent, modifier = Modifier.size(38.dp)) }
+                Spacer(Modifier.height(18.dp))
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MoonlightColors.OnSurface)
+                Spacer(Modifier.height(6.dp))
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center)
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
