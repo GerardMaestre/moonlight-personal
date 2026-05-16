@@ -28,17 +28,17 @@ data class ImmichSearchAssetsRequest(
     val page: Int = 1,
     val size: Int = 60,
     val order: String = "desc",
-    val type: String? = "IMAGE",
+    val type: String? = null,
     val withExif: Boolean = true,
     val withPeople: Boolean = false,
     val withStacked: Boolean = false,
-    val visibility: String? = "timeline",
+    val visibility: String? = null,
 )
 
 @Serializable
 data class ImmichSearchStatisticsRequest(
     val type: String? = null,
-    val visibility: String? = "timeline",
+    val visibility: String? = null,
 )
 
 @Serializable

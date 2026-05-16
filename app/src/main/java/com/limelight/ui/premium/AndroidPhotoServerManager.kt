@@ -95,6 +95,7 @@ class AndroidPhotoServerManager(
             if (result.isHealthy) {
                 state.updateStatus(PhotoServerStatus.Running(IMMICH_PORT, url))
                 appendLog("✓ Immich activo: $url")
+                refreshImmich()
             } else {
                 if (state.status is PhotoServerStatus.Running) {
                     state.updateStatus(PhotoServerStatus.Stopped)
@@ -131,6 +132,7 @@ class AndroidPhotoServerManager(
         }
         if (health.isHealthy) {
             addLog("✓ ¡Immich en línea! → $url")
+            refreshImmich()
         } else {
             addLog("⚠ No responde aún tras varios minutos.")
             addLog("ℹ Si Docker Desktop se ha quedado colgado en el PC, reinícialo.")
@@ -139,16 +141,19 @@ class AndroidPhotoServerManager(
     }
 
     fun refreshImmich() {
+        android.util.Log.d("ImmichManager", "Refrescando galería. Config: URL=${state.connectionConfig.baseUrl}, KeyLength=${state.connectionConfig.apiKey.length}")
         updateState { state.updateGallery(ImmichGalleryState.Loading) }
         runBlocking {
             runCatching { ImmichApiClient().loadOverview(state.connectionConfig) }
                 .onSuccess { overview ->
+                    android.util.Log.d("ImmichManager", "Carga exitosa: ${overview.photos.size} fotos")
                     updateState {
                         state.updateGallery(ImmichGalleryState.Success(overview.summary, overview.photos))
                         state.recentLogs = overview.photos.take(3).map { "${it.name} sincronizada desde Immich" }
                     }
                 }
                 .onFailure { error ->
+                    android.util.Log.e("ImmichManager", "Error cargando Immich: ${error.message}", error)
                     updateState { state.updateGallery(ImmichGalleryState.Error(error.message ?: "No se pudo cargar Immich")) }
                 }
         }

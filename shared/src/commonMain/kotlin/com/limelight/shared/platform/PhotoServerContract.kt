@@ -91,12 +91,18 @@ interface PhotoServerActions {
     }
 
     suspend fun refreshImmich()
+    fun onUpdateConnection(baseUrl: String, apiKey: String) {}
 }
 
 class ImmichPhotoServerActions(
     private val state: PhotoServerState,
     private val client: ImmichApiClient = ImmichApiClient(),
+    private val onUpdate: (String, String) -> Unit = { _, _ -> },
 ) : PhotoServerActions {
+    override fun onUpdateConnection(baseUrl: String, apiKey: String) {
+        state.updateConnection(baseUrl, apiKey)
+        onUpdate(baseUrl, apiKey)
+    }
     override suspend fun startPhotoServer(): StartCommandResult {
         state.sessionState = SessionState.Authenticating
         state.updateStatus(PhotoServerStatus.Starting)

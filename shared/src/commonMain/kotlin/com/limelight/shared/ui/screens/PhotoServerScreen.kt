@@ -114,14 +114,14 @@ private fun ConnectionCard(state: PhotoServerState, actions: PhotoServerActions,
             Text("Introduce la URL de tu instancia y una API Key con permisos asset.read/server.*.", style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant)
             OutlinedTextField(
                 value = state.connectionConfig.baseUrl,
-                onValueChange = { state.updateConnection(baseUrl = it, apiKey = state.connectionConfig.apiKey) },
+                onValueChange = { actions.onUpdateConnection(it, state.connectionConfig.apiKey) },
                 label = { Text("URL base (https://immich.tu-dominio.com)") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = state.connectionConfig.apiKey,
-                onValueChange = { state.updateConnection(baseUrl = state.connectionConfig.baseUrl, apiKey = it) },
+                onValueChange = { actions.onUpdateConnection(state.connectionConfig.baseUrl, it) },
                 label = { Text("API Key") },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,

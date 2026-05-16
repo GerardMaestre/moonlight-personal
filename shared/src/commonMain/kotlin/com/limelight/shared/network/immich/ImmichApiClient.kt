@@ -3,30 +3,40 @@ package com.limelight.shared.network.immich
 import com.limelight.shared.data.immich.ImmichConnectionConfig
 import com.limelight.shared.data.immich.ImmichPhotoAsset
 import com.limelight.shared.data.immich.ImmichServerSummary
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.plugins.HttpRequestTimeoutException
-import io.ktor.client.plugins.ServerResponseException
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.request.accept
-import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.URLBuilder
-import io.ktor.http.appendPathSegments
-import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.json.Json
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.json.*
+
+internal val ImmichJson = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
+}
 
 class ImmichApiClient(
     private val httpClient: HttpClient = defaultHttpClient(),
 ) {
+
+    private suspend inline fun <reified T> get(config: ImmichConnectionConfig, path: String): T {
+        return httpClient.get(normalizedBaseUrl(config.baseUrl) + path) {
+            applyAuthentication(config)
+            accept(ContentType.Application.Json)
+        }.body()
+    }
+
+    private suspend inline fun <reified B, reified T> post(config: ImmichConnectionConfig, path: String, body: B): T {
+        return httpClient.post(normalizedBaseUrl(config.baseUrl) + path) {
+            applyAuthentication(config)
+            contentType(ContentType.Application.Json)
+            accept(ContentType.Application.Json)
+            setBody(body)
+        }.body()
+    }
+
     suspend fun ping(config: ImmichConnectionConfig): ImmichPingResponse = get(config, "/api/server/ping")
 
     suspend fun loadOverview(config: ImmichConnectionConfig, pageSize: Int = 60): ImmichOverview {
@@ -38,39 +48,59 @@ class ImmichApiClient(
         }
         val user = runCatching { getCurrentUser(config) }.getOrNull()
         val stats = runCatching { searchStatistics(config) }.getOrDefault(ImmichAssetStatisticsResponse())
-        val photoPage = searchAssets(config, pageSize = pageSize)
-        val photos = photoPage.items.map { it.toPhotoAsset(config) }
+        
+        val photos = runCatching { 
+            val element = get<JsonElement>(config, "/api/assets")
+            when {
+                element is JsonArray -> {
+                    ImmichJson.decodeFromJsonElement<List<ImmichAssetResponse>>(element)
+                }
+                element is JsonObject && element.containsKey("items") -> {
+                    ImmichJson.decodeFromJsonElement<List<ImmichAssetResponse>>(element["items"]!!)
+                }
+                else -> emptyList()
+            }
+        }.onFailure { 
+            println("ImmichApiClient getAssets error: ${it.message}")
+            it.printStackTrace() 
+        }.getOrElse { 
+            searchAssets(config, pageSize = pageSize).items 
+        }.map { it.toPhotoAsset(config) }
+
         val total = when {
             stats.total > 0 -> stats.total
-            photoPage.total > 0 -> photoPage.total
-            else -> photos.size
+            photos.size > 0 -> photos.size
+            else -> 0
         }
 
         return ImmichOverview(
             summary = ImmichServerSummary(
                 version = version,
-                images = stats.images.takeIf { it > 0 } ?: photoPage.total,
+                images = stats.images.takeIf { it > 0 } ?: photos.size,
                 videos = stats.videos,
                 totalAssets = total,
                 quotaUsageBytes = user?.quotaUsageInBytes,
                 quotaSizeBytes = user?.quotaSizeInBytes,
                 userName = user?.name ?: user?.email,
             ),
-            photos = photos,
+            photos = photos
         )
     }
 
-    suspend fun getAbout(config: ImmichConnectionConfig): ImmichAboutResponse = get(config, "/api/server/about")
-
     suspend fun getVersion(config: ImmichConnectionConfig): String {
-        val version = get<ImmichVersionResponse>(config, "/api/server/version")
-        return listOfNotNull(version.major, version.minor, version.patch).joinToString(".").ifBlank { "Desconocida" }
+        val v = get<ImmichVersionResponse>(config, "/api/server/version")
+        return "${v.major}.${v.minor}.${v.patch}"
     }
+
+    suspend fun getAbout(config: ImmichConnectionConfig): ImmichAboutResponse = get(config, "/api/server/about")
 
     suspend fun getCurrentUser(config: ImmichConnectionConfig): ImmichUserResponse = get(config, "/api/users/me")
 
     suspend fun searchStatistics(config: ImmichConnectionConfig): ImmichAssetStatisticsResponse =
         post(config, "/api/search/statistics", ImmichSearchStatisticsRequest())
+
+    suspend fun getAssets(config: ImmichConnectionConfig): JsonElement =
+        get(config, "/api/assets")
 
     suspend fun searchAssets(config: ImmichConnectionConfig, page: Int = 1, pageSize: Int = 60): ImmichAssetPage {
         val response = post<ImmichSearchAssetsRequest, ImmichSearchAssetsResponse>(
@@ -83,31 +113,13 @@ class ImmichApiClient(
 
     fun thumbnailUrl(config: ImmichConnectionConfig, assetId: String): String = URLBuilder(normalizedBaseUrl(config.baseUrl)).apply {
         appendPathSegments("api", "assets", assetId, "thumbnail")
-        parameters.append("size", "thumbnail")
     }.buildString()
 
-    private suspend inline fun <reified T> get(config: ImmichConnectionConfig, path: String): T =
-        executeImmichRequest {
-            httpClient.get(normalizedBaseUrl(config.baseUrl) + path) {
-                applyAuthentication(config)
-                accept(ContentType.Application.Json)
-            }.body()
-        }
+    fun photoUrl(config: ImmichConnectionConfig, assetId: String): String = URLBuilder(normalizedBaseUrl(config.baseUrl)).apply {
+        appendPathSegments("api", "assets", assetId, "original")
+    }.buildString()
 
-    private suspend inline fun <reified Request : Any, reified Response> post(
-        config: ImmichConnectionConfig,
-        path: String,
-        body: Request,
-    ): Response = executeImmichRequest {
-        httpClient.post(normalizedBaseUrl(config.baseUrl) + path) {
-            applyAuthentication(config)
-            contentType(ContentType.Application.Json)
-            accept(ContentType.Application.Json)
-            setBody(body)
-        }.body()
-    }
-
-    private fun ImmichAssetResponse.toPhotoAsset(config: ImmichConnectionConfig): ImmichPhotoAsset = ImmichPhotoAsset(
+    private fun ImmichAssetResponse.toPhotoAsset(config: ImmichConnectionConfig) = ImmichPhotoAsset(
         id = id,
         name = originalFileName ?: id,
         thumbnailUrl = thumbnailUrl(config, id),
@@ -116,7 +128,7 @@ class ImmichApiClient(
         isFavorite = isFavorite,
     )
 
-    private fun io.ktor.client.request.HttpRequestBuilder.applyAuthentication(config: ImmichConnectionConfig) {
+    private fun HttpRequestBuilder.applyAuthentication(config: ImmichConnectionConfig) {
         when {
             config.apiKey.isNotBlank() -> header("x-api-key", config.apiKey)
             config.bearerToken.isNotBlank() -> bearerAuth(config.bearerToken)
@@ -126,10 +138,7 @@ class ImmichApiClient(
     companion object {
         fun defaultHttpClient(): HttpClient = HttpClient {
             install(ContentNegotiation) {
-                json(Json {
-                    ignoreUnknownKeys = true
-                    isLenient = true
-                })
+                json(ImmichJson)
             }
             defaultRequest {
                 header(HttpHeaders.CacheControl, "no-cache")
@@ -144,19 +153,3 @@ data class ImmichOverview(
 )
 
 fun normalizedBaseUrl(baseUrl: String): String = baseUrl.trim().trimEnd('/').removeSuffix("/api")
-
-suspend inline fun <T> executeImmichRequest(crossinline block: suspend () -> T): T = try {
-    block()
-} catch (error: ClientRequestException) {
-    throw ImmichApiException("Immich rechazó la solicitud (${error.response.status.value}). Revisa la URL y la clave API.", error)
-} catch (error: ServerResponseException) {
-    throw ImmichApiException("Immich devolvió un error del servidor (${error.response.status.value}).", error)
-} catch (error: HttpRequestTimeoutException) {
-    throw ImmichApiException("Timeout conectando con Immich.", error)
-} catch (error: IllegalArgumentException) {
-    throw ImmichApiException(error.message ?: "Configuración de Immich inválida.", error)
-} catch (error: Exception) {
-    throw ImmichApiException(error.message ?: "No se pudo conectar con Immich.", error)
-}
-
-class ImmichApiException(message: String, cause: Throwable? = null) : Exception(message, cause)

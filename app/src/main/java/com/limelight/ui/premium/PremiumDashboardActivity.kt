@@ -25,6 +25,7 @@ import com.limelight.shared.ui.screens.AppScreen
 import com.limelight.shared.ui.screens.DashboardScreen
 import com.limelight.shared.ui.screens.GameListScreen
 import com.limelight.shared.ui.screens.MainMenuScreen
+import com.limelight.shared.ui.screens.PhotoServerScreen
 import com.limelight.shared.ui.screens.PowerControlScreen
 import com.limelight.shared.ui.screens.PowerControlState
 import com.limelight.shared.ui.theme.MoonlightTheme
@@ -236,18 +237,29 @@ class PremiumDashboardActivity : ComponentActivity() {
                                     }
 
                                     LaunchedEffect(Unit) {
+                                        val immichConfig = ImmichConfig.getInstance(this@PremiumDashboardActivity)
+                                        controller.photoServerState.updateConnection(
+                                            baseUrl = if (immichConfig.baseUrl.isBlank()) "http://$pcIp:2283" else immichConfig.baseUrl,
+                                            apiKey = immichConfig.apiKey
+                                        )
                                         thread { photoManager.checkHealth(pcIp) }
                                     }
 
-                                    com.limelight.shared.ui.screens.PhotoServerScreen(
+                                    PhotoServerScreen(
                                         state = controller.photoServerState,
                                         actions = object : PhotoServerActions {
+                                            override fun onUpdateConnection(baseUrl: String, apiKey: String) {
+                                                controller.photoServerState.updateConnection(baseUrl, apiKey)
+                                                val immichConfig = ImmichConfig.getInstance(this@PremiumDashboardActivity)
+                                                immichConfig.baseUrl = baseUrl
+                                                immichConfig.apiKey = apiKey
+                                            }
                                             override suspend fun startPhotoServer(): StartCommandResult {
                                                 thread { photoManager.start(remoteClient, pcIp) }
                                                 return StartCommandResult.Success
                                             }
                                             override fun stopPhotoServer() {
-                                                thread { photoManager.stop(remoteClient) }
+                                                photoManager.stop(remoteClient)
                                             }
                                             override suspend fun restartPhotoServer(): StartCommandResult {
                                                 thread { photoManager.restart(remoteClient, pcIp) }
