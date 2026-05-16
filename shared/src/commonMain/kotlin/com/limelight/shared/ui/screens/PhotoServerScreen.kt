@@ -6,6 +6,8 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -27,6 +29,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.limelight.shared.data.immich.ImmichGalleryState
 import com.limelight.shared.data.immich.ImmichPhotoAsset
@@ -43,7 +46,6 @@ import com.limelight.shared.ui.theme.MoonlightColors
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -279,10 +281,12 @@ private fun PhotoTimeline(timeline: TimelineUiModel, config: com.limelight.share
             .collect { onLoadMore() }
     }
     var selectedAssetId by remember { mutableStateOf<String?>(null) }
-    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 620.dp), state = listState, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 620.dp), state = listState, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         timeline.sections.forEach { section ->
-            stickyHeader(key = "header-${section.dayKey}") { TimelineHeader(section.dayKey) }
-            sectionGridItems(section = section, config = config, onAssetClick = { selectedAssetId = it })
+            stickyHeader(key = "header-${section.dayKey}") { TimelineHeader(section.readableDate) }
+            item(key = "grid-${section.dayKey}") {
+                SectionAssetGrid(section = section, config = config, onAssetClick = { selectedAssetId = it })
+            }
         }
         if (loadingMore) item(key = "loading-more") { LoadingGalleryGrid() }
     }
@@ -292,41 +296,43 @@ private fun PhotoTimeline(timeline: TimelineUiModel, config: com.limelight.share
 }
 
 @Composable
-private fun TimelineHeader(dayKey: String) {
+private fun TimelineHeader(title: String) {
     Text(
-        text = formatDayHeader(dayKey),
+        text = title,
         color = MoonlightColors.OnSurface,
         style = MaterialTheme.typography.titleMedium,
         modifier = Modifier.fillMaxWidth().background(MoonlightColors.Surface.copy(alpha = 0.95f)).padding(vertical = 6.dp),
     )
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.sectionGridItems(
+@Composable
+private fun SectionAssetGrid(
     section: TimelineSection,
     config: com.limelight.shared.data.immich.ImmichConnectionConfig,
     onAssetClick: (String) -> Unit,
 ) {
-    val chunked = section.items.chunked(3)
-    items(chunked, key = { row -> "${section.dayKey}-${row.first().id}" }) { row ->
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            row.forEach { item ->
-                Box(modifier = Modifier.weight(1f)) {
-                    GalleryTile(item.asset, config, onAssetClick)
-                }
-            }
-            repeat(3 - row.size) {
-                Spacer(modifier = Modifier.weight(1f))
-            }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 110.dp),
+        userScrollEnabled = false,
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
+        modifier = Modifier.fillMaxWidth().height(gridHeightFor(section.items.size, 110.dp)),
+    ) {
+        items(section.items.size, key = { idx -> "${section.dayKey}-${section.items[idx].id}" }) { idx ->
+            GalleryTile(section.items[idx].asset, config, onAssetClick)
         }
     }
 }
 
+private fun gridHeightFor(itemCount: Int, minCellSize: Dp): Dp {
+    val columns = 3
+    val rows = ((itemCount + columns - 1) / columns).coerceAtLeast(1)
+    return minCellSize * rows
+}
+
 @Composable
 private fun GalleryTile(photo: ImmichPhotoAsset, config: com.limelight.shared.data.immich.ImmichConnectionConfig, onAssetClick: (String) -> Unit) {
-    Box(Modifier.aspectRatio(1f).clickable { onAssetClick(photo.id) }.clip(RoundedCornerShape(24.dp)).background(MoonlightColors.SurfaceContainerHighest).border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(24.dp))) {
+    Box(Modifier.aspectRatio(1f).clickable { onAssetClick(photo.id) }.clip(RoundedCornerShape(6.dp)).background(MoonlightColors.SurfaceContainerHighest).border(0.5.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(6.dp))) {
         ThumbnailImage(
             assetId = photo.id,
             contentDescription = photo.name,
@@ -334,6 +340,20 @@ private fun GalleryTile(photo: ImmichPhotoAsset, config: com.limelight.shared.da
             cellSize = 148.dp,
             modifier = Modifier.matchParentSize(),
         )
+        if (photo.isVideo || photo.isAnimated) {
+            Surface(
+                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                color = MoonlightColors.Surface.copy(alpha = 0.7f),
+                shape = RoundedCornerShape(999.dp),
+            ) {
+                Icon(
+                    imageVector = if (photo.isVideo) Icons.Default.Videocam else Icons.Default.GifBox,
+                    contentDescription = if (photo.isVideo) "Video" else "Animado",
+                    tint = MoonlightColors.OnSurface,
+                    modifier = Modifier.padding(4.dp).size(12.dp),
+                )
+            }
+        }
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -443,10 +463,3 @@ private fun formatBytes(bytes: Long?): String {
     }.last()
     return "${(sequence.first * 10).toInt() / 10.0} ${units[sequence.second]}"
 }
-
-private fun formatDayHeader(dayKey: String): String = runCatching {
-    if (dayKey == "Sin fecha") dayKey else {
-        val d = LocalDate.parse(dayKey)
-        "${d.dayOfMonth.toString().padStart(2, '0')}/${d.monthNumber.toString().padStart(2, '0')}/${d.year}"
-    }
-}.getOrDefault(dayKey)

@@ -9,6 +9,7 @@ import com.limelight.shared.data.immich.ImmichGalleryState
 import com.limelight.shared.network.ImmichHealthChecker
 import com.limelight.shared.network.immich.ImmichApiClient
 import kotlinx.datetime.Instant
+import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -71,14 +72,31 @@ data class TimelineUiModel(
                 }
             }
             val sections = grouped.entries.sortedByDescending { it.key }.map { (dayKey, values) ->
-                TimelineSection(dayKey = dayKey, items = values.map { TimelineItem(it.id, it) })
+                TimelineSection(
+                    dayKey = dayKey,
+                    readableDate = formatReadableDate(dayKey),
+                    items = values.map { TimelineItem(it.id, it) },
+                )
             }
             return TimelineUiModel(sections)
+        }
+
+        private fun formatReadableDate(dayKey: String): String {
+            val parts = dayKey.split("-")
+            if (parts.size != 3) return dayKey
+            val year = parts[0].toIntOrNull() ?: return dayKey
+            val month = parts[1].toIntOrNull()?.let { Month.entries.getOrNull(it - 1) } ?: return dayKey
+            val day = parts[2].toIntOrNull() ?: return dayKey
+            return "${month.name.lowercase().replaceFirstChar { it.uppercase() }} $day, $year"
         }
     }
 }
 
-data class TimelineSection(val dayKey: String, val items: List<TimelineItem>)
+data class TimelineSection(
+    val dayKey: String,
+    val readableDate: String = dayKey,
+    val items: List<TimelineItem>,
+)
 
 data class TimelineItem(val id: String, val asset: com.limelight.shared.data.immich.ImmichPhotoAsset)
 
