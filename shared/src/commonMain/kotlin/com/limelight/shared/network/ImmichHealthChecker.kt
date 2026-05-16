@@ -28,13 +28,17 @@ object ImmichHealthChecker {
             conn.connectTimeout = timeoutMs
             conn.readTimeout = timeoutMs
 
-            val code = conn.responseCode
-            val elapsed = System.currentTimeMillis() - start
+            try {
+                val code = conn.responseCode
+                val elapsed = System.currentTimeMillis() - start
 
-            if (code == 200) {
-                HealthResult(true, "Immich OK (${elapsed}ms)", elapsed)
-            } else {
-                HealthResult(false, "Immich respondió con código $code", elapsed)
+                if (code == 200) {
+                    HealthResult(true, "Immich OK (${elapsed}ms)", elapsed)
+                } else {
+                    HealthResult(false, "Immich respondió con código $code", elapsed)
+                }
+            } finally {
+                conn.disconnect()
             }
         } catch (e: java.net.SocketTimeoutException) {
             HealthResult(false, "Timeout - Immich no responde")

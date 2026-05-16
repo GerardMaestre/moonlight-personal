@@ -9,7 +9,10 @@ import com.limelight.shared.platform.StartCommandResult
 /**
  * Manages the Immich photo server lifecycle via the StreamDeck API.
  */
-class AndroidPhotoServerManager(private val state: PhotoServerState) {
+class AndroidPhotoServerManager(
+    private val state: PhotoServerState,
+    private val dispatchState: (() -> Unit) -> Unit = { update -> update() }
+) {
 
     companion object {
         private const val IMMICH_PORT = 2283
@@ -20,8 +23,10 @@ class AndroidPhotoServerManager(private val state: PhotoServerState) {
     }
 
     fun start(remoteClient: RemoteScriptClient, pcIp: String): StartCommandResult {
-        state.updateStatus(PhotoServerStatus.Starting)
-        state.healthMessage = "Iniciando proceso..."
+        updateState {
+            state.updateStatus(PhotoServerStatus.Starting)
+            state.healthMessage = "Iniciando proceso..."
+        }
         addLog("→ Solicitando ejecución de fotos.bat...")
 
         return try {
@@ -31,44 +36,19 @@ class AndroidPhotoServerManager(private val state: PhotoServerState) {
             val scriptResult = remoteClient.runScript(SCRIPT_FOLDER, START_SCRIPT)
             if (!scriptResult) {
                 val msg = "No se pudo conectar al StreamDeck. ¿Está el PC encendido?"
-                state.updateStatus(PhotoServerStatus.Error(msg))
-                addLog("✗ $msg")
-                return StartCommandResult.Failed(msg)
-            }
-            addLog("✓ Comando aceptado por el PC.")
-            state.healthMessage = "Esperando a que Docker y contenedores arranquen..."
-
-            // === Polling de salud de Immich ===
-            // Simplemente esperamos hasta que el puerto responda. El script del PC
-            // ya se encarga de esperar a Docker y hacer el docker compose up.
-            val health = ImmichHealthChecker.waitForReady(
-                serverIp = pcIp,
-                port = IMMICH_PORT,
-                maxWaitSeconds = MAX_STARTUP_WAIT_SECONDS,
-                pollIntervalMs = 5000,
-                onProgress = { msg ->
-                    state.healthMessage = msg
+                updateState {
+                    state.updateStatus(PhotoServerStatus.Error(msg))
                 }
-            )
-
-            if (health.isHealthy) {
-                val url = "http://$pcIp:$IMMICH_PORT"
-                state.updateStatus(PhotoServerStatus.Running(IMMICH_PORT, url))
-                state.healthMessage = health.message
-                addLog("✓ ¡Immich en línea! → $url")
-                StartCommandResult.Success
+                addLog("✗ $msg")
+                StartCommandResult.Failed(msg)
             } else {
-                val url = "http://$pcIp:$IMMICH_PORT"
-                state.updateStatus(PhotoServerStatus.Running(IMMICH_PORT, url))
-                state.healthMessage = "⚠ Immich tardando demasiado"
-                addLog("⚠ No responde aún tras varios minutos.")
-                addLog("ℹ Si Docker Desktop se ha quedado colgado en el PC, reinícialo.")
-                StartCommandResult.Success
+                waitForImmich(pcIp)
             }
-
         } catch (e: Exception) {
-            val msg = "Error: ${e.message}"
-            state.updateStatus(PhotoServerStatus.Error(msg))
+            val msg = "Error: ${e.message ?: "desconocido"}"
+            updateState {
+                state.updateStatus(PhotoServerStatus.Error(msg))
+            }
             addLog("✗ $msg")
             StartCommandResult.Failed(msg)
         }
@@ -76,18 +56,24 @@ class AndroidPhotoServerManager(private val state: PhotoServerState) {
 
     fun stop(remoteClient: RemoteScriptClient) {
         addLog("→ Apagando contenedores...")
-        state.healthMessage = "Apagando Immich..."
+        updateState {
+            state.healthMessage = "Apagando Immich..."
+        }
         try {
             if (remoteClient.runScript(SCRIPT_FOLDER, STOP_SCRIPT)) {
-                state.updateStatus(PhotoServerStatus.Stopped)
-                state.healthMessage = "Immich apagado"
+                updateState {
+                    state.updateStatus(PhotoServerStatus.Stopped)
+                    state.healthMessage = "Immich apagado"
+                }
                 addLog("✓ Immich apagado")
             } else {
-                state.healthMessage = "Fallo al apagar"
+                updateState {
+                    state.healthMessage = "Fallo al apagar"
+                }
                 addLog("✗ Error conectando al PC")
             }
         } catch (e: Exception) {
-            addLog("✗ Error: ${e.message}")
+            addLog("✗ Error: ${e.message ?: "desconocido"}")
         }
     }
 
@@ -99,23 +85,66 @@ class AndroidPhotoServerManager(private val state: PhotoServerState) {
 
     fun checkHealth(pcIp: String) {
         val result = ImmichHealthChecker.check(pcIp, IMMICH_PORT)
-        state.healthMessage = result.message
-        if (result.isHealthy) {
-            val url = "http://$pcIp:$IMMICH_PORT"
-            state.updateStatus(PhotoServerStatus.Running(IMMICH_PORT, url))
-            addLog("✓ Immich activo: $url")
-        } else {
-            if (state.status is PhotoServerStatus.Running) {
-                state.updateStatus(PhotoServerStatus.Stopped)
+        updateState {
+            state.healthMessage = result.message
+            if (result.isHealthy) {
+                val url = "http://$pcIp:$IMMICH_PORT"
+                state.updateStatus(PhotoServerStatus.Running(IMMICH_PORT, url))
+                appendLog("✓ Immich activo: $url")
+            } else {
+                if (state.status is PhotoServerStatus.Running) {
+                    state.updateStatus(PhotoServerStatus.Stopped)
+                }
+                appendLog("ℹ ${result.message}")
             }
-            addLog("ℹ ${result.message}")
         }
     }
 
+    private fun waitForImmich(pcIp: String): StartCommandResult {
+        addLog("✓ Comando aceptado por el PC.")
+        updateState {
+            state.healthMessage = "Esperando a que Docker y contenedores arranquen..."
+        }
+
+        // === Polling de salud de Immich ===
+        // Simplemente esperamos hasta que el puerto responda. El script del PC
+        // ya se encarga de esperar a Docker y hacer el docker compose up.
+        val health = ImmichHealthChecker.waitForReady(
+            serverIp = pcIp,
+            port = IMMICH_PORT,
+            maxWaitSeconds = MAX_STARTUP_WAIT_SECONDS,
+            pollIntervalMs = 5000,
+            onProgress = { msg ->
+                updateState { state.healthMessage = msg }
+            }
+        )
+
+        val url = "http://$pcIp:$IMMICH_PORT"
+        updateState {
+            state.updateStatus(PhotoServerStatus.Running(IMMICH_PORT, url))
+            state.healthMessage = if (health.isHealthy) health.message else "⚠ Immich tardando demasiado"
+        }
+        if (health.isHealthy) {
+            addLog("✓ ¡Immich en línea! → $url")
+        } else {
+            addLog("⚠ No responde aún tras varios minutos.")
+            addLog("ℹ Si Docker Desktop se ha quedado colgado en el PC, reinícialo.")
+        }
+        return StartCommandResult.Success
+    }
+
     private fun addLog(message: String) {
+        updateState { appendLog(message) }
+    }
+
+    private fun appendLog(message: String) {
         val timestamp = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
             .format(java.util.Date())
         val logLine = "[$timestamp] $message"
         state.recentLogs = (state.recentLogs + logLine).takeLast(10)
+    }
+
+    private fun updateState(update: () -> Unit) {
+        dispatchState(update)
     }
 }

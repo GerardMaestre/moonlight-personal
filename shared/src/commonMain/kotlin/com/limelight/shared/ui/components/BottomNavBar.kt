@@ -41,8 +41,8 @@ fun BottomNavBar(
         ) {
             NavBarItem(Icons.Default.Home, currentScreen == AppScreen.MAIN_MENU) { onNavigate(AppScreen.MAIN_MENU) }
             NavBarItem(Icons.Default.SportsEsports, currentScreen == AppScreen.MOONLIGHT || currentScreen == AppScreen.GAME_LIST) { onNavigate(AppScreen.MOONLIGHT) }
-            NavBarItem(Icons.Default.NetworkCheck, currentScreen == AppScreen.POWER_CONTROL || currentScreen == AppScreen.PHOTO_SERVER) { onNavigate(AppScreen.POWER_CONTROL) }
-            NavBarItem(Icons.Default.Settings, false) { onNavigate(AppScreen.POWER_CONTROL) }
+            NavBarItem(Icons.Default.PowerSettingsNew, currentScreen == AppScreen.POWER_CONTROL) { onNavigate(AppScreen.POWER_CONTROL) }
+            NavBarItem(Icons.Default.PhotoAlbum, currentScreen == AppScreen.PHOTO_SERVER) { onNavigate(AppScreen.PHOTO_SERVER) }
         }
     }
 }
