@@ -48,6 +48,13 @@ import com.limelight.shared.data.remote.repository.ImmichAlbumRepository
 import com.limelight.shared.network.immich.ImmichApiClient
 import com.limelight.shared.network.immich.ImmichPersonResponse
 import kotlinx.coroutines.launch
+import androidx.compose.ui.text.input.TextFieldValue
+import com.limelight.shared.data.remote.repository.ImmichSearchRepository
+import com.limelight.shared.domain.media.SearchQuery
+import com.limelight.shared.network.immich.ImmichPerson
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.LocalPlatformContext
+import coil3.compose.SubcomposeAsyncImage
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -80,9 +87,16 @@ fun ImmichHomeScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
+    // Advanced search states (contextual)
+    var personSearchText by remember { mutableStateOf(TextFieldValue("")) }
+    var searchedAssets by remember { mutableStateOf<List<ImmichPhotoAsset>>(emptyList()) }
+    var searchError by remember { mutableStateOf<String?>(null) }
+    var isSearching by remember { mutableStateOf(false) }
+    var selectedPersonId by remember { mutableStateOf<String?>(null) }
+
     // Detected people list & selected person filtering
-    var peopleList by remember { mutableStateOf<List<ImmichPersonResponse>>(emptyList()) }
-    var selectedPerson by remember { mutableStateOf<ImmichPersonResponse?>(null) }
+    var peopleList by remember { mutableStateOf<List<ImmichPerson>>(emptyList()) }
+    var selectedPerson by remember { mutableStateOf<ImmichPerson?>(null) }
     var selectedPersonPhotos by remember { mutableStateOf<List<ImmichPhotoAsset>>(emptyList()) }
     var isPersonPhotosLoading by remember { mutableStateOf(false) }
 
@@ -101,10 +115,19 @@ fun ImmichHomeScreen(
     val client = remember { ImmichApiClient() }
     val albumRepo = remember(state.connectionConfig) { ImmichAlbumRepository(state.connectionConfig) }
 
-    // Automatically trigger a refresh to fetch the native timeline if not yet loaded
     LaunchedEffect(isValidUrl) {
         if (isValidUrl && state.galleryState is ImmichGalleryState.Idle) {
             actions.refreshImmich()
+        }
+    }
+
+    LaunchedEffect(isSearchActive) {
+        if (isSearchActive && peopleList.isEmpty() && isValidUrl) {
+            scope.launch {
+                runCatching { client.getImmichPeople(state.connectionConfig) }
+                    .onSuccess { peopleList = it }
+                    .onFailure { it.printStackTrace() }
+            }
         }
     }
 
@@ -129,7 +152,7 @@ fun ImmichHomeScreen(
                 }
             } else if (currentTab == "fotos") {
                 scope.launch {
-                    runCatching { client.getPeople(state.connectionConfig) }
+                    runCatching { client.getImmichPeople(state.connectionConfig) }
                         .onSuccess { peopleList = it }
                         .onFailure { it.printStackTrace() }
                 }
@@ -294,14 +317,20 @@ fun ImmichHomeScreen(
                                         .background(Color.White.copy(alpha = 0.06f))
                                         .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
                                 ) {
-                                    Icon(Icons.Default.CloudUpload, "Subir Foto", tint = MoonlightColors.Tertiary)
+                                    Icon(Icons.Default.CloudUpload, "Subir Fotos", tint = MoonlightColors.Tertiary)
                                 }
                             }
 
                             IconButton(
                                 onClick = {
                                     isSearchActive = !isSearchActive
-                                    if (!isSearchActive) searchQuery = ""
+                                    if (!isSearchActive) {
+                                        searchQuery = ""
+                                        personSearchText = TextFieldValue("")
+                                        selectedPersonId = null
+                                        searchedAssets = emptyList()
+                                        searchError = null
+                                    }
                                 },
                                 modifier = Modifier
                                     .size(44.dp)
@@ -322,6 +351,122 @@ fun ImmichHomeScreen(
                             ) {
                                 Icon(Icons.Default.Settings, "Ajustes", tint = MoonlightColors.OnSurface)
                             }
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = isSearchActive,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            SearchCard(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                personValue = personSearchText,
+                                onPersonChange = { personSearchText = it },
+                                isSearching = isSearching,
+                                searchError = searchError,
+                                onSearch = {
+                                    val query = searchQuery.trim()
+                                    val person = personSearchText.text.trim()
+                                    if (query.isBlank() && person.isBlank() && selectedPersonId == null) {
+                                        searchedAssets = emptyList()
+                                        searchError = null
+                                        return@SearchCard
+                                    }
+                                    isSearching = true
+                                    searchError = null
+                                    scope.launch {
+                                        val result = runCatching {
+                                            ImmichSearchRepository(state.connectionConfig).search(
+                                                SearchQuery(
+                                                    text = query.ifBlank { null },
+                                                    person = person.ifBlank { null },
+                                                    personId = selectedPersonId,
+                                                    size = 100
+                                                )
+                                            )
+                                        }
+                                        result.onSuccess { response ->
+                                            searchedAssets = response.page.items.map { asset ->
+                                                ImmichPhotoAsset(
+                                                    id = asset.id,
+                                                    name = asset.fileName,
+                                                    thumbnailUrl = "${state.connectionConfig.baseUrl.trimEnd('/')}/api/assets/${asset.id}/thumbnail",
+                                                    createdAt = asset.createdAtIso,
+                                                    location = listOfNotNull(asset.city, asset.country).joinToString(", ").ifBlank { null },
+                                                    isFavorite = asset.isFavorite,
+                                                    isVideo = asset.type == com.limelight.shared.domain.media.AssetType.VIDEO,
+                                                    isAnimated = false
+                                                )
+                                            }
+                                        }.onFailure { error ->
+                                            searchedAssets = emptyList()
+                                            searchError = error.message ?: "Error en búsqueda"
+                                        }
+                                        isSearching = false
+                                    }
+                                },
+                                onClear = {
+                                    searchQuery = ""
+                                    personSearchText = TextFieldValue("")
+                                    selectedPersonId = null
+                                    searchedAssets = emptyList()
+                                    searchError = null
+                                },
+                                people = peopleList,
+                                selectedPersonId = selectedPersonId,
+                                isLoadingPeople = false,
+                                onLoadPeople = {},
+                                onPersonQuickSelect = { selected ->
+                                    val isAlreadySelected = selected.id == selectedPersonId
+                                    val newPersonId = if (isAlreadySelected) null else selected.id
+                                    selectedPersonId = newPersonId
+                                    personSearchText = TextFieldValue(if (isAlreadySelected) "" else selected.name)
+                                    
+                                    val query = searchQuery.trim()
+                                    val personName = personSearchText.text.trim()
+                                    if (newPersonId == null && query.isBlank() && personName.isBlank()) {
+                                        searchedAssets = emptyList()
+                                        searchError = null
+                                    } else {
+                                        isSearching = true
+                                        searchError = null
+                                        scope.launch {
+                                            val result = runCatching {
+                                                ImmichSearchRepository(state.connectionConfig).search(
+                                                    SearchQuery(
+                                                        text = query.ifBlank { null },
+                                                        person = personName.ifBlank { null },
+                                                        personId = newPersonId,
+                                                        size = 100
+                                                    )
+                                                )
+                                            }
+                                            result.onSuccess { response ->
+                                                searchedAssets = response.page.items.map { asset ->
+                                                    ImmichPhotoAsset(
+                                                        id = asset.id,
+                                                        name = asset.fileName,
+                                                        thumbnailUrl = "${state.connectionConfig.baseUrl.trimEnd('/')}/api/assets/${asset.id}/thumbnail",
+                                                        createdAt = asset.createdAtIso,
+                                                        location = listOfNotNull(asset.city, asset.country).joinToString(", ").ifBlank { null },
+                                                        isFavorite = asset.isFavorite,
+                                                        isVideo = asset.type == com.limelight.shared.domain.media.AssetType.VIDEO,
+                                                        isAnimated = false
+                                                    )
+                                                }
+                                            }.onFailure { error ->
+                                                searchedAssets = emptyList()
+                                                searchError = error.message ?: "Error en búsqueda"
+                                            }
+                                            isSearching = false
+                                        }
+                                    }
+                                },
+                                config = state.connectionConfig
+                            )
                         }
                     }
 
@@ -538,12 +683,20 @@ fun ImmichHomeScreen(
                                     }
                                     else -> {
                                         // ⚡ OPTIMIZATION: Cache calculated filtered list with remember
-                                        val filteredPhotos = remember(gallery, state.timelineUiModel, searchQuery) {
-                                            val allPhotos = (gallery as? ImmichGalleryState.Success)?.photos ?: emptyList()
-                                            val workingList = allPhotos.ifEmpty { state.timelineUiModel.sections.flatMap { s -> s.items.map { i -> i.asset } } }
-                                            workingList.filter {
-                                                it.name.contains(searchQuery, ignoreCase = true) ||
-                                                        (it.location?.contains(searchQuery, ignoreCase = true) == true)
+                                        val filteredPhotos = remember(gallery, state.timelineUiModel, searchQuery, searchedAssets) {
+                                            if (searchedAssets.isNotEmpty()) {
+                                                searchedAssets
+                                            } else {
+                                                val allPhotos = (gallery as? ImmichGalleryState.Success)?.photos ?: emptyList()
+                                                val workingList = allPhotos.ifEmpty { state.timelineUiModel.sections.flatMap { s -> s.items.map { i -> i.asset } } }
+                                                if (searchQuery.isBlank()) {
+                                                    workingList
+                                                } else {
+                                                    workingList.filter {
+                                                        it.name.contains(searchQuery, ignoreCase = true) ||
+                                                                (it.location?.contains(searchQuery, ignoreCase = true) == true)
+                                                    }
+                                                }
                                             }
                                         }
 
@@ -963,7 +1116,7 @@ fun ImmichHomeScreen(
                                             ) {
                                                 currentAsset.createdAt?.let { date ->
                                                     Text(
-                                                        text = date.take(10),
+                                                        text = formatAssetDate(date),
                                                         style = MaterialTheme.typography.bodySmall,
                                                         color = Color.White.copy(alpha = 0.6f)
                                                     )
@@ -1205,7 +1358,7 @@ fun ImmichHomeScreen(
                                 modifier = Modifier.size(48.dp)
                             )
                             Text(
-                                text = "Subiendo archivo...",
+                                text = "Subiendo fotos...",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = Color.White,
                                 textAlign = TextAlign.Center
@@ -1425,4 +1578,178 @@ private fun formatBytes(bytes: Long): String {
 private fun formatDimensions(w: Double, h: Double): String {
     val megapixels = (w * h) / 1_000_000.0
     return "${w.toInt()} x ${h.toInt()} (${megapixels.toString().take(3)} MP)"
+}
+
+@Composable
+private fun SearchCard(
+    value: String,
+    onValueChange: (String) -> Unit,
+    personValue: TextFieldValue,
+    onPersonChange: (TextFieldValue) -> Unit,
+    isSearching: Boolean,
+    searchError: String?,
+    onSearch: () -> Unit,
+    onClear: () -> Unit,
+    people: List<com.limelight.shared.network.immich.ImmichPerson>,
+    selectedPersonId: String?,
+    isLoadingPeople: Boolean,
+    onLoadPeople: () -> Unit,
+    onPersonQuickSelect: (com.limelight.shared.network.immich.ImmichPerson) -> Unit,
+    config: com.limelight.shared.data.immich.ImmichConnectionConfig
+) {
+    val context = LocalPlatformContext.current
+    val requestFactory = remember { AuthenticatedImageRequestFactory() }
+
+    GlassCard(contentPadding = PaddingValues(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text("Búsqueda contextual", style = MaterialTheme.typography.titleMedium, color = MoonlightColors.OnSurface)
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                placeholder = { Text("Buscar en Immich (e.g. playa, gato)...", color = Color.White.copy(alpha = 0.4f), fontSize = 14.sp) },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MoonlightColors.Tertiary,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                    focusedContainerColor = Color.Black.copy(alpha = 0.3f),
+                    unfocusedContainerColor = Color.Black.copy(alpha = 0.2f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = personValue,
+                onValueChange = onPersonChange,
+                placeholder = { Text("Filtrar por nombre...", color = Color.White.copy(alpha = 0.4f), fontSize = 14.sp) },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MoonlightColors.Tertiary,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                    focusedContainerColor = Color.Black.copy(alpha = 0.3f),
+                    unfocusedContainerColor = Color.Black.copy(alpha = 0.2f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(12.dp))
+
+            if (isLoadingPeople) {
+                Box(Modifier.fillMaxWidth().height(90.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MoonlightColors.Tertiary)
+                }
+            } else if (people.isNotEmpty()) {
+                Text("Filtrar por rostro detectado", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = MoonlightColors.OnSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(people) { person ->
+                        val isSelected = person.id == selectedPersonId
+                        val borderColor = if (isSelected) MoonlightColors.Tertiary else Color.White.copy(alpha = 0.12f)
+                        val borderSize = if (isSelected) 3.dp else 1.dp
+                        
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .width(76.dp)
+                                .clickable { onPersonQuickSelect(person) }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(CircleShape)
+                                    .border(borderSize, borderColor, CircleShape)
+                            ) {
+                                SubcomposeAsyncImage(
+                                    model = requestFactory.buildPeopleFaceRequest(context, config, person.id),
+                                    contentDescription = person.name,
+                                    contentScale = ContentScale.Crop,
+                                    loading = {
+                                        Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.08f)))
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = person.name,
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal),
+                                color = if (isSelected) MoonlightColors.Tertiary else MoonlightColors.OnSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            } else {
+                OutlinedButton(
+                    onClick = onLoadPeople,
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("Cargar personas detectadas")
+                }
+            }
+            
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                PrimaryGlassButton(
+                    text = if (isSearching) "Buscando..." else "Buscar",
+                    icon = Icons.Default.Search,
+                    onClick = onSearch,
+                    modifier = Modifier.weight(1f),
+                    enabled = !isSearching
+                )
+                OutlinedButton(
+                    onClick = onClear,
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    enabled = !isSearching,
+                    shape = RoundedCornerShape(999.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                ) {
+                    Text("Limpiar", color = Color.White)
+                }
+            }
+            if (searchError != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(searchError, color = MoonlightColors.Error, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+private fun formatAssetDate(dateString: String?): String {
+    if (dateString == null) return ""
+    val isoDate = dateString.take(10)
+    val parts = isoDate.split("-")
+    if (parts.size != 3) return isoDate
+    val year = parts[0]
+    val month = parts[1].toIntOrNull() ?: return isoDate
+    val day = parts[2].toIntOrNull() ?: return isoDate
+    
+    val monthName = when (month) {
+        1 -> "enero"
+        2 -> "febrero"
+        3 -> "marzo"
+        4 -> "abril"
+        5 -> "mayo"
+        6 -> "junio"
+        7 -> "julio"
+        8 -> "agosto"
+        9 -> "septiembre"
+        10 -> "octubre"
+        11 -> "noviembre"
+        12 -> "diciembre"
+        else -> null
+    } ?: return isoDate
+    return "$day de $monthName, $year"
 }

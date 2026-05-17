@@ -92,9 +92,24 @@ data class TimelineUiModel(
             val parts = dayKey.split("-")
             if (parts.size != 3) return dayKey
             val year = parts[0].toIntOrNull() ?: return dayKey
-            val month = parts[1].toIntOrNull()?.let { Month.entries.getOrNull(it - 1) } ?: return dayKey
+            val month = parts[1].toIntOrNull() ?: return dayKey
             val day = parts[2].toIntOrNull() ?: return dayKey
-            return "${month.name.lowercase().replaceFirstChar { it.uppercase() }} $day, $year"
+            val monthName = when (month) {
+                1 -> "Enero"
+                2 -> "Febrero"
+                3 -> "Marzo"
+                4 -> "Abril"
+                5 -> "Mayo"
+                6 -> "Junio"
+                7 -> "Julio"
+                8 -> "Agosto"
+                9 -> "Septiembre"
+                10 -> "Octubre"
+                11 -> "Noviembre"
+                12 -> "Diciembre"
+                else -> ""
+            }
+            return if (monthName.isNotEmpty()) "$day de ${monthName.lowercase()}, $year" else dayKey
         }
     }
 }

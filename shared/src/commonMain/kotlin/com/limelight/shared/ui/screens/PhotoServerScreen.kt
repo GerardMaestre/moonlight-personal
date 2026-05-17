@@ -68,15 +68,7 @@ fun PhotoServerScreen(
     val timelineAssets = remember(state.timelineUiModel.sections) {
         state.timelineUiModel.sections.flatMap { section -> section.items.map { item -> item.asset } }
     }
-    var searchText by remember { mutableStateOf(TextFieldValue("")) }
-    var personText by remember { mutableStateOf(TextFieldValue("")) }
-    var searchedAssets by remember { mutableStateOf<List<ImmichPhotoAsset>>(emptyList()) }
-    var searchError by remember { mutableStateOf<String?>(null) }
-    var isSearching by remember { mutableStateOf(false) }
-    var detectedPeople by remember { mutableStateOf<List<ImmichPerson>>(emptyList()) }
-    var selectedPersonId by remember { mutableStateOf<String?>(null) }
-    var isLoadingPeople by remember { mutableStateOf(false) }
-    val visibleAssets = if (searchedAssets.isEmpty()) timelineAssets else searchedAssets
+    val visibleAssets = timelineAssets
 
     LaunchedEffect(isOnline) {
         if (isOnline) {
@@ -85,17 +77,6 @@ fun PhotoServerScreen(
                     actions.refreshImmich()
                 }
             }
-            isLoadingPeople = true
-            val response = runCatching {
-                ImmichApiClient().getImmichPeople(state.connectionConfig)
-            }
-            response.onSuccess {
-                detectedPeople = it
-            }
-            response.onFailure {
-                // Fail silently, showing the default UI if the faces API fails
-            }
-            isLoadingPeople = false
         }
     }
 
@@ -126,133 +107,7 @@ fun PhotoServerScreen(
                     )
                 }
 
-                item {
-                    SearchCard(
-                        value = searchText,
-                        isSearching = isSearching,
-                        searchError = searchError,
-                        onValueChange = { updated ->
-                            searchText = updated
-                            if (updated.text.isBlank()) {
-                                searchedAssets = emptyList()
-                                searchError = null
-                            }
-                        },
-                        personValue = personText,
-                        onPersonChange = { personText = it },
-                        onSearch = {
-                            val query = searchText.text.trim()
-                            val person = personText.text.trim()
-                            if (query.isBlank() && person.isBlank() && selectedPersonId == null) {
-                                searchedAssets = emptyList()
-                                searchError = null
-                                return@SearchCard
-                            }
-                            isSearching = true
-                            searchError = null
-                            scope.launch {
-                                val result = runCatching {
-                                    ImmichSearchRepository(state.connectionConfig).search(
-                                        SearchQuery(
-                                            text = query.ifBlank { null },
-                                            person = person.ifBlank { null },
-                                            personId = selectedPersonId,
-                                            size = 100
-                                        )
-                                    )
-                                }
-                                result.onSuccess { response ->
-                                    searchedAssets = response.page.items.map { asset ->
-                                        ImmichPhotoAsset(
-                                            id = asset.id,
-                                            name = asset.fileName,
-                                            thumbnailUrl = "${state.connectionConfig.baseUrl.trimEnd('/')}/api/assets/${asset.id}/thumbnail",
-                                            createdAt = asset.createdAtIso,
-                                            location = listOfNotNull(asset.city, asset.country).joinToString(", ").ifBlank { null },
-                                            isFavorite = asset.isFavorite,
-                                            isVideo = asset.type == com.limelight.shared.domain.media.AssetType.VIDEO,
-                                            isAnimated = false
-                                        )
-                                    }
-                                }.onFailure { error ->
-                                    searchedAssets = emptyList()
-                                    searchError = error.message ?: "Error en búsqueda"
-                                }
-                                isSearching = false
-                            }
-                        },
-                        onClear = {
-                            searchText = TextFieldValue("")
-                            personText = TextFieldValue("")
-                            selectedPersonId = null
-                            searchedAssets = emptyList()
-                            searchError = null
-                        },
-                        people = detectedPeople,
-                        selectedPersonId = selectedPersonId,
-                        isLoadingPeople = isLoadingPeople,
-                        onLoadPeople = {
-                            isLoadingPeople = true
-                            scope.launch {
-                                val response = runCatching {
-                                    ImmichApiClient().getImmichPeople(state.connectionConfig)
-                                }
-                                response.onSuccess { detectedPeople = it }
-                                response.onFailure { error ->
-                                    searchError = error.message ?: "No se pudieron cargar las caras"
-                                }
-                                isLoadingPeople = false
-                            }
-                        },
-                        onPersonQuickSelect = { selected ->
-                            val isAlreadySelected = selected.id == selectedPersonId
-                            val newPersonId = if (isAlreadySelected) null else selected.id
-                            selectedPersonId = newPersonId
-                            personText = TextFieldValue(if (isAlreadySelected) "" else selected.name)
-                            
-                            val query = searchText.text.trim()
-                            val personName = personText.text.trim()
-                            if (newPersonId == null && query.isBlank() && personName.isBlank()) {
-                                searchedAssets = emptyList()
-                                searchError = null
-                            } else {
-                                isSearching = true
-                                searchError = null
-                                scope.launch {
-                                    val result = runCatching {
-                                        ImmichSearchRepository(state.connectionConfig).search(
-                                            SearchQuery(
-                                                text = query.ifBlank { null },
-                                                person = personName.ifBlank { null },
-                                                personId = newPersonId,
-                                                size = 100
-                                            )
-                                        )
-                                    }
-                                    result.onSuccess { response ->
-                                        searchedAssets = response.page.items.map { asset ->
-                                            ImmichPhotoAsset(
-                                                id = asset.id,
-                                                name = asset.fileName,
-                                                thumbnailUrl = "${state.connectionConfig.baseUrl.trimEnd('/')}/api/assets/${asset.id}/thumbnail",
-                                                createdAt = asset.createdAtIso,
-                                                location = listOfNotNull(asset.city, asset.country).joinToString(", ").ifBlank { null },
-                                                isFavorite = asset.isFavorite,
-                                                isVideo = asset.type == com.limelight.shared.domain.media.AssetType.VIDEO,
-                                                isAnimated = false
-                                            )
-                                        }
-                                    }.onFailure { error ->
-                                        searchedAssets = emptyList()
-                                        searchError = error.message ?: "Error en búsqueda"
-                                    }
-                                    isSearching = false
-                                }
-                            }
-                        },
-                        config = state.connectionConfig
-                    )
-                }
+
 
                 // 🌟 Master Launcher Card sit at the very top for direct click access!
                 item {
@@ -530,128 +385,7 @@ private fun ControlCard(
     }
 }
 
-@Composable
-private fun SearchCard(
-    value: TextFieldValue,
-    personValue: TextFieldValue,
-    isSearching: Boolean,
-    searchError: String?,
-    onValueChange: (TextFieldValue) -> Unit,
-    onPersonChange: (TextFieldValue) -> Unit,
-    onSearch: () -> Unit,
-    onClear: () -> Unit,
-    people: List<com.limelight.shared.network.immich.ImmichPerson>,
-    selectedPersonId: String?,
-    isLoadingPeople: Boolean,
-    onLoadPeople: () -> Unit,
-    onPersonQuickSelect: (com.limelight.shared.network.immich.ImmichPerson) -> Unit,
-    config: com.limelight.shared.data.immich.ImmichConnectionConfig
-) {
-    val context = LocalPlatformContext.current
-    val requestFactory = remember { AuthenticatedImageRequestFactory() }
 
-    GlassCard(contentPadding = PaddingValues(16.dp), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text("Búsqueda contextual", style = MaterialTheme.typography.titleMedium, color = MoonlightColors.OnSurface)
-        Spacer(Modifier.height(10.dp))
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text("Buscar en Immich (/api/search)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = personValue,
-            onValueChange = onPersonChange,
-            label = { Text("Filtro por nombre (texto)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(12.dp))
-
-        if (isLoadingPeople) {
-            Box(Modifier.fillMaxWidth().height(90.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = MoonlightColors.Tertiary)
-            }
-        } else if (people.isNotEmpty()) {
-            Text("Personas detectadas", style = MaterialTheme.typography.bodySmall, color = MoonlightColors.OnSurfaceVariant)
-            Spacer(Modifier.height(8.dp))
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(vertical = 4.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(people) { person ->
-                    val isSelected = person.id == selectedPersonId
-                    val borderColor = if (isSelected) MoonlightColors.Tertiary else Color.White.copy(alpha = 0.12f)
-                    val borderSize = if (isSelected) 3.dp else 1.dp
-                    
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .width(76.dp)
-                            .clickable { onPersonQuickSelect(person) }
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .border(borderSize, borderColor, CircleShape)
-                        ) {
-                            SubcomposeAsyncImage(
-                                model = requestFactory.buildPeopleFaceRequest(context, config, person.id),
-                                contentDescription = person.name,
-                                contentScale = ContentScale.Crop,
-                                loading = {
-                                    Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.08f)))
-                                },
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = person.name,
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal),
-                            color = if (isSelected) MoonlightColors.Tertiary else MoonlightColors.OnSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            }
-        } else {
-            OutlinedButton(
-                onClick = onLoadPeople,
-                modifier = Modifier.fillMaxWidth().height(48.dp)
-            ) {
-                Text("Cargar personas detectadas")
-            }
-        }
-        
-        Spacer(Modifier.height(14.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            PrimaryGlassButton(
-                text = if (isSearching) "Buscando..." else "Buscar",
-                icon = Icons.Default.Refresh,
-                onClick = onSearch,
-                modifier = Modifier.weight(1f),
-                enabled = !isSearching
-            )
-            OutlinedButton(onClick = onClear, modifier = Modifier.weight(1f).height(56.dp), enabled = !isSearching) {
-                Text("Limpiar")
-            }
-        }
-        if (searchError != null) {
-            Spacer(Modifier.height(8.dp))
-            Text(searchError, color = MoonlightColors.Error, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-        }
-    }
-}
 
 @Composable
 private fun GalleryPreview(assets: List<ImmichPhotoAsset>, config: com.limelight.shared.data.immich.ImmichConnectionConfig, onAssetClick: (String) -> Unit) {
