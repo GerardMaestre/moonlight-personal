@@ -77,6 +77,7 @@ fun PhotoServerScreen(
         state.timelineUiModel.sections.flatMap { section -> section.items.map { item -> item.asset } }
     }
     var searchText by remember { mutableStateOf(TextFieldValue("")) }
+    var personText by remember { mutableStateOf(TextFieldValue("")) }
     var searchedAssets by remember { mutableStateOf<List<ImmichPhotoAsset>>(emptyList()) }
     var searchError by remember { mutableStateOf<String?>(null) }
     var isSearching by remember { mutableStateOf(false) }
@@ -110,9 +111,12 @@ fun PhotoServerScreen(
                                 searchError = null
                             }
                         },
+                        personValue = personText,
+                        onPersonChange = { personText = it },
                         onSearch = {
                             val query = searchText.text.trim()
-                            if (query.isBlank()) {
+                            val person = personText.text.trim()
+                            if (query.isBlank() && person.isBlank()) {
                                 searchedAssets = emptyList()
                                 searchError = null
                                 return@SearchCard
@@ -121,7 +125,13 @@ fun PhotoServerScreen(
                             searchError = null
                             scope.launch {
                                 val result = runCatching {
-                                    ImmichSearchRepository(state.connectionConfig).search(SearchQuery(text = query, size = 100))
+                                    ImmichSearchRepository(state.connectionConfig).search(
+                                        SearchQuery(
+                                            text = query.ifBlank { null },
+                                            person = person.ifBlank { null },
+                                            size = 100
+                                        )
+                                    )
                                 }
                                 result.onSuccess { response ->
                                     searchedAssets = response.page.items.map { asset ->
@@ -145,6 +155,7 @@ fun PhotoServerScreen(
                         },
                         onClear = {
                             searchText = TextFieldValue("")
+                            personText = TextFieldValue("")
                             searchedAssets = emptyList()
                             searchError = null
                         }
@@ -205,9 +216,11 @@ fun PhotoServerScreen(
 @Composable
 private fun SearchCard(
     value: TextFieldValue,
+    personValue: TextFieldValue,
     isSearching: Boolean,
     searchError: String?,
     onValueChange: (TextFieldValue) -> Unit,
+    onPersonChange: (TextFieldValue) -> Unit,
     onSearch: () -> Unit,
     onClear: () -> Unit
 ) {
@@ -218,6 +231,14 @@ private fun SearchCard(
             value = value,
             onValueChange = onValueChange,
             label = { Text("Buscar en Immich (/api/search)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = personValue,
+            onValueChange = onPersonChange,
+            label = { Text("Filtro por persona (reconocimiento facial)") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
