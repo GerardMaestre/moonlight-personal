@@ -1,5 +1,11 @@
 package com.limelight.ui.premium
 
+import android.app.Activity
+import android.app.ActivityOptions
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.widget.Toast
 import com.limelight.shared.network.ImmichHealthChecker
 import com.limelight.shared.network.immich.ImmichApiClient
 import com.limelight.shared.network.RemoteScriptClient
@@ -23,6 +29,34 @@ class AndroidPhotoServerManager(
         private const val START_SCRIPT = "fotos.bat"
         private const val STOP_SCRIPT = "cerrar_fotos.bat"
         private const val MAX_STARTUP_WAIT_SECONDS = 200 // Docker Engine can take up to 3 minutes
+        private const val IMMICH_PACKAGE = "app.alextran.immich"
+    }
+
+    fun openImmichGallery(context: Context) {
+        runCatching {
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(IMMICH_PACKAGE)
+                ?: error("Immich no está instalada")
+
+            val intent = Intent(launchIntent).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+
+            if (context is Activity) {
+                val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    ActivityOptions.makeCustomAnimation(context, android.R.anim.slide_in_left, android.R.anim.fade_out)
+                } else {
+                    ActivityOptions.makeCustomAnimation(context, android.R.anim.slide_in_left, android.R.anim.fade_out)
+                }
+                context.startActivity(intent, options.toBundle())
+                context.overridePendingTransition(android.R.anim.slide_in_left, android.R.anim.fade_out)
+            } else {
+                context.startActivity(intent)
+            }
+        }.onFailure {
+            Toast.makeText(context, "Instala Immich para abrir la galería", Toast.LENGTH_SHORT).show()
+        }
     }
 
     fun start(remoteClient: RemoteScriptClient, pcIp: String): StartCommandResult {
