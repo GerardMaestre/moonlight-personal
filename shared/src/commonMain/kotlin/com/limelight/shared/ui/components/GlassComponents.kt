@@ -3,6 +3,7 @@ package com.limelight.shared.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -136,6 +137,7 @@ fun AetherisGlow(
 fun HomeHubTopBar(
     title: String = "Home Hub",
     onBack: (() -> Unit)? = null,
+    onProfileClick: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     TopAppBar(
@@ -161,7 +163,14 @@ fun HomeHubTopBar(
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(MoonlightColors.SurfaceVariant)
-                    .border(1.dp, Color.White.copy(alpha = 0.10f), CircleShape),
+                    .border(1.dp, Color.White.copy(alpha = 0.10f), CircleShape)
+                    .let { current ->
+                        if (onProfileClick != null) {
+                            current.clickable(onClick = onProfileClick)
+                        } else {
+                            current
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Default.Person, contentDescription = "Perfil", tint = MoonlightColors.OnSurfaceVariant, modifier = Modifier.size(22.dp))

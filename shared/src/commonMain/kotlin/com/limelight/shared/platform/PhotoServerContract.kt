@@ -36,6 +36,7 @@ class PhotoServerState {
     var galleryState: ImmichGalleryState by mutableStateOf(ImmichGalleryState.Idle)
     var timelineUiModel: TimelineUiModel by mutableStateOf(TimelineUiModel())
     var sessionState: SessionState by mutableStateOf(SessionState.Unauthenticated)
+    var isFullscreenViewerOpen: Boolean by mutableStateOf(false)
 
     // Global navigation and view states for Immich unified bottom bar
     var currentTab: String by mutableStateOf("fotos")

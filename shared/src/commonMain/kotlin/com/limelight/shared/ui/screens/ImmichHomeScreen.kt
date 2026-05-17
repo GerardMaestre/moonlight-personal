@@ -189,13 +189,14 @@ fun ImmichHomeScreen(
                                 text = "Para acceder a la galería multimedia nativa, introduce la dirección base y tu API Key en la pantalla de control del servidor.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MoonlightColors.OnSurfaceVariant,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                maxLines = 4
                             )
                             Spacer(Modifier.height(8.dp))
                             PrimaryGlassButton(
-                                text = "Volver a Configuración",
-                                icon = Icons.Default.ArrowBack,
-                                onClick = onBack,
+                                text = "Ir a Configuración",
+                                icon = Icons.Default.Settings,
+                                onClick = onOpenSettings,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -309,6 +310,17 @@ fun ImmichHomeScreen(
                                     .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
                             ) {
                                 Icon(if (isSearchActive) Icons.Default.Close else Icons.Default.Search, "Buscar", tint = MoonlightColors.OnSurface)
+                            }
+
+                            IconButton(
+                                onClick = onOpenSettings,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.06f))
+                                    .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
+                            ) {
+                                Icon(Icons.Default.Settings, "Ajustes", tint = MoonlightColors.OnSurface)
                             }
                         }
                     }
