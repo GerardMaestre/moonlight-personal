@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.limelight.shared.model.ComputerInfo
 import com.limelight.shared.model.ComputerStatus
+import com.limelight.shared.streaming.StreamSettingsSnapshot
 
 import com.limelight.shared.model.GameInfo
 
@@ -23,6 +24,7 @@ class DashboardState {
     
     var isAddPcDialogOpen by mutableStateOf(false)
     var lastActionMessage by mutableStateOf<String?>(null)
+    var streamSettings by mutableStateOf(StreamSettingsSnapshot())
 
     fun showMessage(message: String) {
         lastActionMessage = message
@@ -30,6 +32,10 @@ class DashboardState {
 
     fun clearMessage() {
         lastActionMessage = null
+    }
+
+    fun updateStreamSettings(next: StreamSettingsSnapshot) {
+        streamSettings = next
     }
 
 

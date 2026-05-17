@@ -62,14 +62,20 @@ class ImmichApiClient(
         val pageSize = 1000
         
         try {
-            do {
+            var keepLoading = true
+            while (keepLoading) {
                 val page = searchAssets(config, page = currentPage, pageSize = pageSize)
                 val items = page.items.map { it.toPhotoAsset(config) }
                 allPhotos.addAll(items)
-                
-                if (items.size < pageSize || currentPage >= 10) break // Limit to 10k assets for safety
-                currentPage++
-            } while (true)
+
+                val hasMorePages = items.size >= pageSize
+                val canLoadMore = currentPage < 10 // Limit to 10k assets for safety
+                if (hasMorePages && canLoadMore) {
+                    currentPage++
+                } else {
+                    keepLoading = false
+                }
+            }
             
             logger.debug(tag, "Mapeados ${allPhotos.size} assets en total")
         } catch (error: Throwable) {
@@ -108,6 +114,24 @@ class ImmichApiClient(
 
     suspend fun getAssets(config: ImmichConnectionConfig): JsonElement =
         get(config, "/api/assets")
+
+    suspend fun getPeopleNames(config: ImmichConnectionConfig): List<String> {
+        val response = get<JsonElement>(config, "/api/people")
+        return when (response) {
+            is JsonArray -> response.mapNotNull { entry ->
+                val item = entry as? JsonObject ?: return@mapNotNull null
+                item["name"]?.jsonPrimitive?.contentOrNull?.trim()?.takeIf { it.isNotBlank() }
+            }
+            is JsonObject -> {
+                val items = response["people"] as? JsonArray ?: JsonArray(emptyList())
+                items.mapNotNull { entry ->
+                    val item = entry as? JsonObject ?: return@mapNotNull null
+                    item["name"]?.jsonPrimitive?.contentOrNull?.trim()?.takeIf { it.isNotBlank() }
+                }
+            }
+            else -> emptyList()
+        }.distinct().sorted()
+    }
 
     suspend fun searchAssets(config: ImmichConnectionConfig, page: Int = 1, pageSize: Int = 60): ImmichAssetPage {
         val element = post<ImmichSearchAssetsRequest, JsonElement>(

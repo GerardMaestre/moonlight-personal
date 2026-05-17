@@ -3,6 +3,7 @@ package com.limelight.ui.premium
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.WindowInsets
 import com.limelight.di.UpSnapClientFactory
 import com.limelight.preferences.StreamSettings
 import com.limelight.shared.network.RemoteScriptClient
@@ -41,6 +43,7 @@ class PremiumDashboardActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         com.limelight.utils.UiHelper.setImmersiveMode(this)
 
         setContent {
@@ -59,14 +62,26 @@ class PremiumDashboardActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        containerColor = MaterialTheme.colorScheme.background,
+                        contentWindowInsets = WindowInsets(0, 0, 0, 0),
                         bottomBar = {
-                            com.limelight.shared.ui.components.BottomNavBar(
-                                currentScreen = controller.navigation.currentScreen,
-                                onNavigate = { screen -> controller.navigation.navigateRoot(screen) }
-                            )
+                            val hideBottomBar = controller.navigation.currentScreen == AppScreen.IMMICH_HOME ||
+                                controller.photoServerState.isFullscreenViewerOpen
+                            if (!hideBottomBar) {
+                                com.limelight.shared.ui.components.BottomNavBar(
+                                    currentScreen = controller.navigation.currentScreen,
+                                    onNavigate = { screen -> controller.navigation.navigateRoot(screen) }
+                                )
+                            }
                         }
                     ) { innerPadding ->
-                        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                        val screenModifier = if (controller.navigation.currentScreen == AppScreen.IMMICH_HOME) {
+                            Modifier.fillMaxSize()
+                        } else {
+                            Modifier.padding(innerPadding).fillMaxSize()
+                        }
+                        Box(modifier = screenModifier) {
                             when (controller.navigation.currentScreen) {
                                 AppScreen.MAIN_MENU -> {
                                     MainMenuScreen(

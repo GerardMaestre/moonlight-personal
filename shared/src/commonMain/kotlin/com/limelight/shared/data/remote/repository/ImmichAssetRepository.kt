@@ -85,12 +85,14 @@ class ImmichAssetRepository(
     fun streamTimeline(size: Int = 60): Flow<TimelinePage> = flow {
         var nextPage: Int? = 1
         var nextCursor: String? = null
-        do {
+        var hasMore = true
+        while (hasMore) {
             val page = getTimelinePage(nextPage, nextCursor, size)
             emit(page)
             nextPage = page.nextPage
             nextCursor = page.nextCursor
-        } while (nextPage != null || nextCursor != null)
+            hasMore = nextPage != null || nextCursor != null
+        }
     }.retryWhen { cause, attempt ->
         if (attempt >= 3) return@retryWhen false
         if (cause is DataError.Network) {
@@ -194,4 +196,3 @@ private fun Throwable.hasCauseNamed(simpleName: String): Boolean {
     }
     return false
 }
-

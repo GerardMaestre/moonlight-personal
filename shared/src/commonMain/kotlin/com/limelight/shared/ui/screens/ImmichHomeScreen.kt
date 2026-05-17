@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -80,6 +81,27 @@ fun ImmichHomeScreen(
                         )
                     }
                 }
+
+                Box(
+                    modifier = Modifier
+                        .padding(top = 48.dp, end = 16.dp)
+                        .align(Alignment.TopEnd)
+                ) {
+                    IconButton(
+                        onClick = onOpenSettings,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.5f))
+                            .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Ajustes",
+                            tint = Color.White
+                        )
+                    }
+                }
             } else {
                 // Warning if URL is empty or invalid
                 Column(
@@ -100,13 +122,14 @@ fun ImmichHomeScreen(
                                 "Para acceder a la galería, debes configurar una URL base válida en el panel de control del servidor.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MoonlightColors.OnSurfaceVariant,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                maxLines = 4
                             )
                             Spacer(Modifier.height(8.dp))
                             PrimaryGlassButton(
                                 text = "Ir a Configuración",
-                                icon = Icons.Default.ArrowBack,
-                                onClick = onBack,
+                                icon = Icons.Default.Settings,
+                                onClick = onOpenSettings,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
