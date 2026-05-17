@@ -103,3 +103,10 @@ data class ImmichApiError(
     @SerialName("error") val errorName: String? = null,
     val statusCode: Int? = null,
 )
+
+@Serializable
+data class ImmichPersonResponse(
+    val id: String,
+    val name: String = "",
+    val isHidden: Boolean = false,
+)

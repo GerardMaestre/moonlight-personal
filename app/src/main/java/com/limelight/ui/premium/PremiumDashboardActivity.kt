@@ -14,6 +14,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.navigationBarsPadding
 import com.limelight.di.UpSnapClientFactory
 import com.limelight.preferences.StreamSettings
 import com.limelight.shared.network.RemoteScriptClient
@@ -32,6 +35,13 @@ import com.limelight.shared.ui.screens.PowerControlState
 import com.limelight.shared.ui.theme.MoonlightTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.limelight.shared.network.immich.ImmichApiClient
 import kotlin.concurrent.thread
 
 @AndroidEntryPoint
@@ -58,15 +68,11 @@ class PremiumDashboardActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Scaffold(
-                        bottomBar = {
-                            com.limelight.shared.ui.components.BottomNavBar(
-                                currentScreen = controller.navigation.currentScreen,
-                                onNavigate = { screen -> controller.navigation.navigateRoot(screen) }
-                            )
-                        }
-                    ) { innerPadding ->
-                        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Scaffold(
+                            containerColor = Color.Transparent
+                        ) { innerPadding ->
+                            Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
                             when (controller.navigation.currentScreen) {
                                 AppScreen.MAIN_MENU -> {
                                     MainMenuScreen(
@@ -294,6 +300,57 @@ class PremiumDashboardActivity : ComponentActivity() {
                                         }
                                     }
 
+                                    val context = this@PremiumDashboardActivity
+                                    val coroutineScope = rememberCoroutineScope()
+                                    var onProgressCallback by remember { mutableStateOf<((Boolean) -> Unit)?>(null) }
+
+                                    val pickMedia = androidx.activity.compose.rememberLauncherForActivityResult(
+                                        contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia(),
+                                        onResult = { uri ->
+                                            if (uri != null) {
+                                                val callback = onProgressCallback
+                                                callback?.invoke(true)
+
+                                                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                                    try {
+                                                        val contentResolver = context.contentResolver
+                                                        var name = "upload_${System.currentTimeMillis()}.jpg"
+
+                                                        val cursor = contentResolver.query(uri, null, null, null, null)
+                                                        cursor?.use {
+                                                            if (it.moveToFirst()) {
+                                                                val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                                                                if (nameIndex != -1) {
+                                                                    name = it.getString(nameIndex)
+                                                                }
+                                                            }
+                                                        }
+
+                                                        val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
+                                                        val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+
+                                                        if (bytes != null) {
+                                                            val client = ImmichApiClient()
+                                                            val uploadSuccess = client.uploadAsset(
+                                                                config = controller.photoServerState.connectionConfig,
+                                                                fileName = name,
+                                                                fileBytes = bytes,
+                                                                mimeType = mimeType
+                                                            )
+                                                            android.util.Log.d("ImmichUpload", "Upload success: $uploadSuccess")
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        android.util.Log.e("ImmichUpload", "Failed to upload photo", e)
+                                                    } finally {
+                                                        withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                            callback?.invoke(false)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    )
+
                                     ImmichHomeScreen(
                                         state = controller.photoServerState,
                                         actions = object : PhotoServerActions {
@@ -315,16 +372,44 @@ class PremiumDashboardActivity : ComponentActivity() {
                                             }
                                         },
                                         onBack = { navigateBackOrHome() },
-                                        onOpenSettings = { controller.navigation.navigateTo(AppScreen.PHOTO_SERVER) }
+                                        onOpenSettings = { controller.navigation.navigateTo(AppScreen.PHOTO_SERVER) },
+                                        onPickAndUploadPhoto = { progressCallback ->
+                                            onProgressCallback = progressCallback
+                                            pickMedia.launch(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.Request(
+                                                androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                            ))
+                                        }
                                     )
                                 }
                             }
                         }
                     }
+
+                    // 🛸 Premium Glassmorphic FLOATING Bottom Navigation Capsule Overlay
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .navigationBarsPadding()
+                    ) {
+                        com.limelight.shared.ui.components.BottomNavBar(
+                            currentScreen = controller.navigation.currentScreen,
+                            onNavigate = { screen -> controller.navigation.navigateRoot(screen) },
+                            photoServerState = controller.photoServerState,
+                            onRefreshImmich = {
+                                val config = RemoteScriptConfig.getInstance(this@PremiumDashboardActivity)
+                                val pcIp = try { java.net.URL(config.serverUrl).host } catch (_: Exception) { "100.67.140.39" }
+                                thread {
+                                    val manager = AndroidPhotoServerManager(controller.photoServerState) { runOnUiThread(it) }
+                                    manager.refreshImmich()
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
     }
+}
 
     private fun postToUiIfActive(update: () -> Unit) {
         if (!isFinishing && !isDestroyed) {

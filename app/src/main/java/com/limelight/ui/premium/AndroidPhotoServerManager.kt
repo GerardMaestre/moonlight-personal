@@ -15,6 +15,8 @@ import com.limelight.shared.platform.StartCommandResult
 import com.limelight.shared.data.immich.ImmichGalleryState
 import kotlinx.coroutines.runBlocking
 
+import com.limelight.ui.premium.ImmichFlutterEngineWrapper
+
 /**
  * Manages the Immich photo server lifecycle via the StreamDeck API.
  */
@@ -32,39 +34,25 @@ class AndroidPhotoServerManager(
         private const val IMMICH_PACKAGE = "app.alextran.immich"
     }
 
+    fun isFlutterAvailable(): Boolean {
+        return try {
+            Class.forName("io.flutter.embedding.android.FlutterActivity")
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun openImmichGallery(context: Context, left: Int = 0, top: Int = 0, width: Int = 0, height: Int = 0) {
         runCatching {
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(IMMICH_PACKAGE)
-                ?: error("Immich no está instalada")
-
-            val intent = Intent(launchIntent).apply {
+            // Launch the integrated Flutter engine activity
+            val intent = ImmichFlutterEngineWrapper.getLaunchIntent(context).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                if (left > 0 || top > 0 || width > 0 || height > 0) {
-                    sourceBounds = android.graphics.Rect(left, top, left + width, top + height)
-                }
             }
-
-            if (context is Activity) {
-                val options = if (left > 0 || top > 0 || width > 0 || height > 0) {
-                    ActivityOptions.makeScaleUpAnimation(
-                        context.window.decorView,
-                        left,
-                        top,
-                        width,
-                        height
-                    )
-                } else {
-                    ActivityOptions.makeCustomAnimation(context, android.R.anim.fade_in, android.R.anim.fade_out)
-                }
-                context.startActivity(intent, options.toBundle())
-            } else {
-                context.startActivity(intent)
-            }
+            context.startActivity(intent)
         }.onFailure { e ->
-            android.util.Log.e("ImmichManager", "Fallo al abrir galería: ${e.message}", e)
-            Toast.makeText(context, "Instala Immich para abrir la galería", Toast.LENGTH_SHORT).show()
+            android.util.Log.e("ImmichManager", "Fallo al abrir galería integrada: ${e.message}", e)
+            Toast.makeText(context, "Error al abrir la galería integrada: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -186,19 +174,25 @@ class AndroidPhotoServerManager(
     fun refreshImmich() {
         android.util.Log.d("ImmichManager", "Refrescando galería. Config: URL=${state.connectionConfig.baseUrl}, KeyLength=${state.connectionConfig.apiKey.length}")
         updateState { state.updateGallery(ImmichGalleryState.Loading) }
-        runBlocking {
-            runCatching { ImmichApiClient().loadOverview(state.connectionConfig) }
-                .onSuccess { overview ->
-                    android.util.Log.d("ImmichManager", "Carga exitosa: ${overview.photos.size} fotos")
-                    updateState {
-                        state.updateGallery(ImmichGalleryState.Success(overview.summary, overview.photos))
-                        state.recentLogs = overview.photos.take(3).map { "${it.name} sincronizada desde Immich" }
-                    }
+        
+        // Spawn a background thread to make the network request so it NEVER blocks the main thread
+        kotlin.concurrent.thread {
+            runCatching {
+                kotlinx.coroutines.runBlocking {
+                    ImmichApiClient().loadOverview(state.connectionConfig)
                 }
-                .onFailure { error ->
-                    android.util.Log.e("ImmichManager", "Error cargando Immich: ${error.message}", error)
-                    updateState { state.updateGallery(ImmichGalleryState.Error(error.message ?: "No se pudo cargar Immich")) }
+            }
+            .onSuccess { overview ->
+                android.util.Log.d("ImmichManager", "Carga exitosa: ${overview.photos.size} fotos")
+                updateState {
+                    state.updateGallery(ImmichGalleryState.Success(overview.summary, overview.photos))
+                    state.recentLogs = overview.photos.take(3).map { "${it.name} sincronizada desde Immich" }
                 }
+            }
+            .onFailure { error ->
+                android.util.Log.e("ImmichManager", "Error cargando Immich: ${error.message}", error)
+                updateState { state.updateGallery(ImmichGalleryState.Error(error.message ?: "No se pudo cargar Immich")) }
+            }
         }
     }
 

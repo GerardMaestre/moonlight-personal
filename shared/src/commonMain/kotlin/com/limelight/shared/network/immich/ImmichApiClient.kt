@@ -5,6 +5,8 @@ import com.limelight.shared.data.immich.ImmichPhotoAsset
 import com.limelight.shared.data.immich.ImmichServerSummary
 import com.limelight.shared.data.session.AuthHeaderProvider
 import com.limelight.platform.Logger
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.network.sockets.ConnectTimeoutException
@@ -109,6 +111,78 @@ class ImmichApiClient(
     suspend fun getAssets(config: ImmichConnectionConfig): JsonElement =
         get(config, "/api/assets")
 
+    suspend fun updateAssetFavorite(config: ImmichConnectionConfig, assetId: String, isFavorite: Boolean): Boolean {
+        val response = httpClient.put(normalizedBaseUrl(config.baseUrl) + "/api/assets/$assetId") {
+            authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
+            contentType(ContentType.Application.Json)
+            setBody(buildJsonObject { put("isFavorite", isFavorite) })
+        }
+        return response.status.value in 200..299
+    }
+
+    suspend fun deleteAsset(config: ImmichConnectionConfig, assetId: String): Boolean {
+        val response = httpClient.delete(normalizedBaseUrl(config.baseUrl) + "/api/assets") {
+            authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
+            contentType(ContentType.Application.Json)
+            setBody(buildJsonObject {
+                put("ids", kotlinx.serialization.json.buildJsonArray {
+                    add(kotlinx.serialization.json.JsonPrimitive(assetId))
+                })
+            })
+        }
+        return response.status.value in 200..299
+    }
+
+    suspend fun uploadAsset(
+        config: ImmichConnectionConfig,
+        fileName: String,
+        fileBytes: ByteArray,
+        mimeType: String = "image/jpeg"
+    ): Boolean {
+        val deviceId = "moonlight-personal-mobile"
+        val deviceAssetId = "$fileName-${fileBytes.size}-${System.currentTimeMillis()}"
+        val nowStr = "2026-05-17T12:00:00Z"
+
+        val response = httpClient.post(normalizedBaseUrl(config.baseUrl) + "/api/assets") {
+            authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
+            setBody(MultiPartFormDataContent(
+                formData {
+                    append("deviceAssetId", deviceAssetId)
+                    append("deviceId", deviceId)
+                    append("fileCreatedAt", nowStr)
+                    append("fileModifiedAt", nowStr)
+                    append("isFavorite", "false")
+                    append("assetData", fileBytes, Headers.build {
+                        append(HttpHeaders.ContentType, mimeType)
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"assetData\"; filename=\"$fileName\"")
+                    })
+                }
+            ))
+        }
+        return response.status.value in 200..299
+    }
+
+    suspend fun getFavorites(config: ImmichConnectionConfig): List<ImmichPhotoAsset> {
+        val element = httpClient.get(normalizedBaseUrl(config.baseUrl) + "/api/assets?isFavorite=true") {
+            authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
+            accept(ContentType.Application.Json)
+        }.body<JsonArray>()
+        
+        return element.map { item ->
+            val assetResponse = ImmichJson.decodeFromJsonElement<ImmichAssetResponse>(item)
+            ImmichPhotoAsset(
+                id = assetResponse.id,
+                name = assetResponse.originalFileName ?: assetResponse.id,
+                thumbnailUrl = thumbnailUrl(config, assetResponse.id),
+                createdAt = assetResponse.localDateTime ?: assetResponse.fileCreatedAt,
+                location = listOfNotNull(assetResponse.exifInfo?.city, assetResponse.exifInfo?.country).joinToString(", ").ifBlank { null },
+                isFavorite = assetResponse.isFavorite,
+                isVideo = assetResponse.type.equals("VIDEO", ignoreCase = true) || (assetResponse.originalMimeType?.startsWith("video/") == true),
+                isAnimated = (assetResponse.originalMimeType?.lowercase() in setOf("image/gif", "image/webp", "image/apng")),
+            )
+        }
+    }
+
     suspend fun searchAssets(config: ImmichConnectionConfig, page: Int = 1, pageSize: Int = 60): ImmichAssetPage {
         val element = post<ImmichSearchAssetsRequest, JsonElement>(
             config = config,
@@ -125,6 +199,44 @@ class ImmichApiClient(
                 ImmichJson.decodeFromJsonElement<ImmichAssetPage>(element)
             }
             else -> ImmichAssetPage()
+        }
+    }
+
+    suspend fun getPeople(config: ImmichConnectionConfig): List<ImmichPersonResponse> {
+        val response = httpClient.get(normalizedBaseUrl(config.baseUrl) + "/api/people?withHidden=false") {
+            authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
+            accept(ContentType.Application.Json)
+        }.body<JsonArray>()
+        
+        return response.map { element ->
+            ImmichJson.decodeFromJsonElement<ImmichPersonResponse>(element)
+        }
+    }
+
+    suspend fun getPersonAssets(config: ImmichConnectionConfig, personId: String): List<ImmichPhotoAsset> {
+        val response = httpClient.get(normalizedBaseUrl(config.baseUrl) + "/api/people/$personId/assets") {
+            authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
+            accept(ContentType.Application.Json)
+        }.body<JsonArray>()
+        
+        return response.map { element ->
+            val assetResponse = ImmichJson.decodeFromJsonElement<ImmichAssetResponse>(element)
+            ImmichPhotoAsset(
+                id = assetResponse.id,
+                name = assetResponse.originalFileName ?: assetResponse.id,
+                thumbnailUrl = thumbnailUrl(config, assetResponse.id),
+                createdAt = assetResponse.localDateTime ?: assetResponse.fileCreatedAt,
+                location = listOfNotNull(assetResponse.exifInfo?.city, assetResponse.exifInfo?.country).joinToString(", ").ifBlank { null },
+                isFavorite = assetResponse.isFavorite,
+                isVideo = assetResponse.type.equals("VIDEO", ignoreCase = true) || (assetResponse.originalMimeType?.startsWith("video/") == true),
+                isAnimated = (assetResponse.originalMimeType?.lowercase() in setOf("image/gif", "image/webp", "image/apng")),
+                fileSizeInByte = assetResponse.exifInfo?.fileSizeInByte,
+                make = assetResponse.exifInfo?.make,
+                model = assetResponse.exifInfo?.model,
+                width = assetResponse.exifInfo?.exifImageWidth,
+                height = assetResponse.exifInfo?.exifImageHeight,
+                mimeType = assetResponse.originalMimeType,
+            )
         }
     }
 
@@ -145,6 +257,12 @@ class ImmichApiClient(
         isFavorite = isFavorite,
         isVideo = type.equals("VIDEO", ignoreCase = true) || (originalMimeType?.startsWith("video/") == true),
         isAnimated = (originalMimeType?.lowercase() in setOf("image/gif", "image/webp", "image/apng")),
+        fileSizeInByte = exifInfo?.fileSizeInByte,
+        make = exifInfo?.make,
+        model = exifInfo?.model,
+        width = exifInfo?.exifImageWidth,
+        height = exifInfo?.exifImageHeight,
+        mimeType = originalMimeType,
     )
 
     companion object {

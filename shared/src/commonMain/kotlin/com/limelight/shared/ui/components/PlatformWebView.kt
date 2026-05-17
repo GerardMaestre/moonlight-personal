@@ -9,5 +9,6 @@ expect fun PlatformWebView(
     modifier: Modifier = Modifier,
     onBackAvailable: (Boolean) -> Unit = {},
     backTrigger: Boolean = false,
-    onBackHandled: () -> Unit = {}
+    onBackHandled: () -> Unit = {},
+    onTokenAcquired: (String) -> Unit = {}
 )

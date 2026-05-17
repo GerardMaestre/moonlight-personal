@@ -67,4 +67,26 @@ class AuthenticatedImageRequestFactory(
             .diskCachePolicy(CachePolicy.ENABLED)
             .build()
     }
+
+    fun buildPeopleFaceRequest(
+        context: PlatformContext,
+        config: ImmichConnectionConfig,
+        personId: String
+    ): ImageRequest {
+        val headers = NetworkHeaders.Builder().apply {
+            authHeaderProvider.headersFor(config).forEach { (name, value) ->
+                set(name, value)
+            }
+        }.build()
+
+        val normalizedBaseUrl = config.baseUrl.trim().trimEnd('/')
+        val url = "$normalizedBaseUrl/api/people/$personId/thumbnail"
+
+        return ImageRequest.Builder(context)
+            .data(url)
+            .httpHeaders(headers)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .build()
+    }
 }

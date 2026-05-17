@@ -10,6 +10,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -55,19 +57,11 @@ private fun runDesktopUi() = application {
     ) {
         MoonlightTheme {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                Scaffold(
-                    bottomBar = {
-                        com.limelight.shared.ui.components.BottomNavBar(
-                            currentScreen = controller.navigation.currentScreen,
-                            onNavigate = { screen ->
-                                if (controller.navigation.currentScreen != screen) {
-                                    controller.navigation.navigateTo(screen)
-                                }
-                            }
-                        )
-                    }
-                ) { innerPadding ->
-                    Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Scaffold(
+                        containerColor = Color.Transparent
+                    ) { innerPadding ->
+                        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
                         when (controller.navigation.currentScreen) {
                             AppScreen.MAIN_MENU -> MainMenuScreen(
                                 onNavigate = { screen ->
@@ -177,13 +171,44 @@ private fun runDesktopUi() = application {
                                     }
                                 },
                                 onBack = { controller.navigation.goBack() },
-                                onOpenImmich = { controller.navigation.navigateTo(AppScreen.IMMICH_HOME) }
+                                onOpenImmich = { _, _, _, _ -> controller.navigation.navigateTo(AppScreen.IMMICH_HOME) }
                             )
                             AppScreen.IMMICH_HOME -> ImmichHomeScreen(
-                                onBack = { controller.navigation.goBack() }
+                                state = controller.photoServerState,
+                                actions = object : PhotoServerActions {
+                                    override suspend fun startPhotoServer() = photoServerManager.start()
+                                    override fun stopPhotoServer() = photoServerManager.stop()
+                                    override suspend fun restartPhotoServer() = photoServerManager.restart()
+                                    override suspend fun refreshImmich() {
+                                        com.limelight.shared.platform.ImmichPhotoServerActions(controller.photoServerState).refreshImmich()
+                                    }
+                                },
+                                onBack = { controller.navigation.goBack() },
+                                onOpenSettings = { controller.navigation.navigateTo(AppScreen.PHOTO_SERVER) }
                             )
                         }
                     }
+                }
+
+                // 🛸 Premium Glassmorphic FLOATING Bottom Navigation Capsule Overlay
+                Box(
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
+                    com.limelight.shared.ui.components.BottomNavBar(
+                        currentScreen = controller.navigation.currentScreen,
+                        onNavigate = { screen ->
+                            if (controller.navigation.currentScreen != screen) {
+                                controller.navigation.navigateTo(screen)
+                            }
+                        },
+                        photoServerState = controller.photoServerState,
+                        onRefreshImmich = {
+                            scope.launch(Dispatchers.IO) {
+                                com.limelight.shared.platform.ImmichPhotoServerActions(controller.photoServerState).refreshImmich()
+                            }
+                        }
+                    )
+                }
                 }
             }
         }

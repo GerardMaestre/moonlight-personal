@@ -37,6 +37,12 @@ class PhotoServerState {
     var timelineUiModel: TimelineUiModel by mutableStateOf(TimelineUiModel())
     var sessionState: SessionState by mutableStateOf(SessionState.Unauthenticated)
 
+    // Global navigation and view states for Immich unified bottom bar
+    var currentTab: String by mutableStateOf("fotos")
+    var gridColumnCount: Int by mutableStateOf(3)
+    var isBarExpanded: Boolean by mutableStateOf(false)
+    var activeDetailAssetId: String? by mutableStateOf(null)
+
     fun updateStatus(next: PhotoServerStatus) {
         status = next
         if (next is PhotoServerStatus.Error) {

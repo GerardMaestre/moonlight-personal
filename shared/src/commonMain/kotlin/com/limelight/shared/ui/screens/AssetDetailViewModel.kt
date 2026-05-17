@@ -12,8 +12,15 @@ class AssetDetailViewModel {
 
     fun load(assetId: String, timeline: List<ImmichPhotoAsset>, config: ImmichConnectionConfig) {
         val index = timeline.indexOfFirst { it.id == assetId }.coerceAtLeast(0)
-        state = AssetDetailState(assetId = assetId, orderedAssets = timeline, currentIndex = index, config = config)
+        state = AssetDetailState(assetId = assetId.ifBlank { null }, orderedAssets = timeline, currentIndex = index, config = config)
         prefetchAround()
+    }
+
+    fun setCurrentIndex(index: Int) {
+        if (index in state.orderedAssets.indices) {
+            state = state.copy(currentIndex = index, assetId = state.orderedAssets[index].id)
+            prefetchAround()
+        }
     }
 
     fun showMetadata(show: Boolean) { state = state.copy(showMetadata = show) }

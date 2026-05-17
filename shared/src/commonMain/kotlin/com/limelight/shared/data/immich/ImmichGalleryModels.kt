@@ -28,6 +28,12 @@ data class ImmichPhotoAsset(
     val isFavorite: Boolean = false,
     val isVideo: Boolean = false,
     val isAnimated: Boolean = false,
+    val fileSizeInByte: Long? = null,
+    val make: String? = null,
+    val model: String? = null,
+    val width: Double? = null,
+    val height: Double? = null,
+    val mimeType: String? = null,
 )
 
 sealed interface ImmichGalleryState {

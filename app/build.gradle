@@ -176,6 +176,12 @@ dependencies {
     
     // Shared KMP UI module
     implementation project(':shared')
+
+    // Flutter Add-to-App support: allow importing compiled .aar modules and engines from libs/
+    implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
+
+    // Compile-time dependency on standard Flutter embedding classes via the local :flutter-stubs module
+    compileOnly project(':flutter-stubs')
 }
 
 kapt {
