@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.NavigateBefore
+import androidx.compose.material.icons.filled.NavigateNext
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Refresh
@@ -26,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -34,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import coil3.compose.LocalPlatformContext
+import coil3.compose.SubcomposeAsyncImage
 import com.limelight.shared.platform.PhotoServerActions
 import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PhotoServerStatus
@@ -148,6 +153,9 @@ private fun FullscreenAssetViewer(
 ) {
     val initialPage = remember(selectedAssetId, assets) { assets.indexOfFirst { it.id == selectedAssetId }.coerceAtLeast(0) }
     val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { assets.size })
+    val scope = rememberCoroutineScope()
+    val context = LocalPlatformContext.current
+    val requestFactory = remember { AuthenticatedImageRequestFactory() }
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
@@ -162,11 +170,44 @@ private fun FullscreenAssetViewer(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    ThumbnailImage(asset.id, asset.name, config, cellSize = 1080.dp, modifier = Modifier.fillMaxSize(), cornerRadius = 0.dp, highQuality = true)
+                    SubcomposeAsyncImage(
+                        model = requestFactory.buildOriginalRequest(context, config, asset.id),
+                        contentDescription = asset.name,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize().background(Color.Black)
+                    )
                 }
             }
             IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopStart).padding(20.dp)) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Cerrar", tint = Color.White)
+            }
+            if (assets.size > 1) {
+                IconButton(
+                    onClick = {
+                        val previousPage = (pagerState.currentPage - 1).coerceAtLeast(0)
+                        if (previousPage != pagerState.currentPage) {
+                            scope.launch {
+                                pagerState.animateScrollToPage(previousPage)
+                            }
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.CenterStart).padding(12.dp)
+                ) {
+                    Icon(Icons.Default.NavigateBefore, contentDescription = "Anterior", tint = Color.White)
+                }
+                IconButton(
+                    onClick = {
+                        val nextPage = (pagerState.currentPage + 1).coerceAtMost(assets.lastIndex)
+                        if (nextPage != pagerState.currentPage) {
+                            scope.launch {
+                                pagerState.animateScrollToPage(nextPage)
+                            }
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(12.dp)
+                ) {
+                    Icon(Icons.Default.NavigateNext, contentDescription = "Siguiente", tint = Color.White)
+                }
             }
         }
     }
