@@ -58,23 +58,13 @@ fun PhotoServerScreen(
     onBack: () -> Unit,
     onOpenImmich: (left: Int, top: Int, width: Int, height: Int) -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-    val isOnline = state.status is PhotoServerStatus.Running
-    val starting = state.status == PhotoServerStatus.Starting
-    val statusColor = when (state.status) {
-        PhotoServerStatus.Stopped -> MoonlightColors.Outline
-        PhotoServerStatus.Starting -> MoonlightColors.Tertiary
-        is PhotoServerStatus.Running -> MoonlightColors.Tertiary
-        is PhotoServerStatus.Error -> MoonlightColors.Error
-    }
-
     var selectedAssetId by remember { mutableStateOf<String?>(null) }
     val timelineAssets = remember(state.timelineUiModel.sections) {
         state.timelineUiModel.sections.flatMap { section -> section.items.map { item -> item.asset } }
     }
 
     AetherisScreen(primaryGlowAlignment = Alignment.TopStart, secondaryGlowAlignment = Alignment.BottomEnd) {
-        Scaffold(topBar = { HomeHubTopBar(onBack = onBack) }, containerColor = Color.Transparent) { padding ->
+        Scaffold(topBar = { HomeHubTopBar(title = "Ajustes de galería") }, containerColor = Color.Transparent) { padding ->
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
