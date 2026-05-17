@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -47,6 +48,8 @@ import com.limelight.shared.platform.PhotoServerActions
 import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PhotoServerStatus
 import com.limelight.shared.platform.PreviewPhotoServerActions
+import com.limelight.shared.data.remote.repository.ImmichSearchRepository
+import com.limelight.shared.domain.media.SearchQuery
 import com.limelight.shared.ui.components.*
 import com.limelight.shared.ui.theme.MoonlightColors
 import kotlinx.coroutines.launch
@@ -68,10 +71,16 @@ fun PhotoServerScreen(
     onBack: () -> Unit,
     onOpenImmich: (left: Int, top: Int, width: Int, height: Int) -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
     var selectedAssetId by remember { mutableStateOf<String?>(null) }
     val timelineAssets = remember(state.timelineUiModel.sections) {
         state.timelineUiModel.sections.flatMap { section -> section.items.map { item -> item.asset } }
     }
+    var searchText by remember { mutableStateOf(TextFieldValue("")) }
+    var searchedAssets by remember { mutableStateOf<List<ImmichPhotoAsset>>(emptyList()) }
+    var searchError by remember { mutableStateOf<String?>(null) }
+    var isSearching by remember { mutableStateOf(false) }
+    val visibleAssets = if (searchedAssets.isEmpty()) timelineAssets else searchedAssets
 
     AetherisScreen(primaryGlowAlignment = Alignment.TopStart, secondaryGlowAlignment = Alignment.BottomEnd) {
         Scaffold(topBar = { HomeHubTopBar(title = "Ajustes de galería") }, containerColor = Color.Transparent) { padding ->
@@ -87,6 +96,59 @@ fun PhotoServerScreen(
                     Text("Servidor Multimedia", style = MaterialTheme.typography.headlineLarge.copy(fontSize = 42.sp), color = MoonlightColors.OnSurface, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(8.dp))
                     Text("Control centralizado para iniciar y conectar la galería multimedia nativa de Immich.", style = MaterialTheme.typography.bodyLarge, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                }
+
+                item {
+                    SearchCard(
+                        value = searchText,
+                        isSearching = isSearching,
+                        searchError = searchError,
+                        onValueChange = { updated ->
+                            searchText = updated
+                            if (updated.text.isBlank()) {
+                                searchedAssets = emptyList()
+                                searchError = null
+                            }
+                        },
+                        onSearch = {
+                            val query = searchText.text.trim()
+                            if (query.isBlank()) {
+                                searchedAssets = emptyList()
+                                searchError = null
+                                return@SearchCard
+                            }
+                            isSearching = true
+                            searchError = null
+                            scope.launch {
+                                val result = runCatching {
+                                    ImmichSearchRepository(state.connectionConfig).search(SearchQuery(text = query, size = 100))
+                                }
+                                result.onSuccess { response ->
+                                    searchedAssets = response.page.items.map { asset ->
+                                        ImmichPhotoAsset(
+                                            id = asset.id,
+                                            name = asset.fileName,
+                                            thumbnailUrl = "${state.connectionConfig.baseUrl.trimEnd('/')}/api/assets/${asset.id}/thumbnail",
+                                            createdAt = asset.createdAtIso,
+                                            location = listOfNotNull(asset.city, asset.country).joinToString(", ").ifBlank { null },
+                                            isFavorite = asset.isFavorite,
+                                            isVideo = asset.type == com.limelight.shared.domain.media.AssetType.VIDEO,
+                                            isAnimated = false
+                                        )
+                                    }
+                                }.onFailure { error ->
+                                    searchedAssets = emptyList()
+                                    searchError = error.message ?: "Error en búsqueda"
+                                }
+                                isSearching = false
+                            }
+                        },
+                        onClear = {
+                            searchText = TextFieldValue("")
+                            searchedAssets = emptyList()
+                            searchError = null
+                        }
+                    )
                 }
 
                 item {
@@ -114,9 +176,9 @@ fun PhotoServerScreen(
                         LogsCard(logs = state.recentLogs)
                     }
                 }
-                if (timelineAssets.isNotEmpty()) {
+                if (visibleAssets.isNotEmpty()) {
                     item {
-                        GalleryPreview(assets = timelineAssets, config = state.connectionConfig, onAssetClick = { selectedAssetId = it })
+                        GalleryPreview(assets = visibleAssets, config = state.connectionConfig, onAssetClick = { selectedAssetId = it })
                     }
                 }
 
@@ -126,7 +188,7 @@ fun PhotoServerScreen(
     }
     selectedAssetId?.let { selectedId ->
         FullscreenAssetViewer(
-            assets = timelineAssets,
+            assets = visibleAssets,
             selectedAssetId = selectedId,
             config = state.connectionConfig,
             onDismiss = { selectedAssetId = null }
@@ -136,6 +198,45 @@ fun PhotoServerScreen(
         state.isFullscreenViewerOpen = selectedAssetId != null
         onDispose {
             state.isFullscreenViewerOpen = false
+        }
+    }
+}
+
+@Composable
+private fun SearchCard(
+    value: TextFieldValue,
+    isSearching: Boolean,
+    searchError: String?,
+    onValueChange: (TextFieldValue) -> Unit,
+    onSearch: () -> Unit,
+    onClear: () -> Unit
+) {
+    GlassCard(contentPadding = PaddingValues(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Text("Búsqueda contextual", style = MaterialTheme.typography.titleMedium, color = MoonlightColors.OnSurface)
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text("Buscar en Immich (/api/search)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            PrimaryGlassButton(
+                text = if (isSearching) "Buscando..." else "Buscar",
+                icon = Icons.Default.Refresh,
+                onClick = onSearch,
+                modifier = Modifier.weight(1f),
+                enabled = !isSearching
+            )
+            OutlinedButton(onClick = onClear, modifier = Modifier.weight(1f).height(56.dp), enabled = !isSearching) {
+                Text("Limpiar")
+            }
+        }
+        if (searchError != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(searchError, color = MoonlightColors.Error, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }
