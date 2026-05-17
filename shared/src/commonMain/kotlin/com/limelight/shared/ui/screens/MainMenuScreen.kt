@@ -47,7 +47,8 @@ fun MainMenuScreen(onNavigate: (AppScreen) -> Unit) {
                     "Control centralizado para gaming, energía y multimedia.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MoonlightColors.OnSurfaceVariant,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    maxLines = 2
                 )
                 Spacer(Modifier.height(30.dp))
 
@@ -101,9 +102,9 @@ private fun MenuCard(
                     contentAlignment = Alignment.Center
                 ) { Icon(icon, contentDescription = title, tint = accent, modifier = Modifier.size(38.dp)) }
                 Spacer(Modifier.height(18.dp))
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MoonlightColors.OnSurface)
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MoonlightColors.OnSurface, maxLines = 1)
                 Spacer(Modifier.height(6.dp))
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center, maxLines = 2)
             }
         }
     }

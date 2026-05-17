@@ -30,6 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.limelight.shared.network.UpSnapUrlValidator
@@ -130,7 +131,9 @@ private fun WakeSection(
                     "Please configure your UpSnap credentials to enable remote power orchestration.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MoonlightColors.OnSurfaceVariant,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -156,7 +159,9 @@ private fun WakeSection(
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
         color = MoonlightColors.OnSurface,
-        letterSpacing = 1.sp
+        letterSpacing = 1.sp,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
     )
 
     Spacer(modifier = Modifier.height(8.dp))

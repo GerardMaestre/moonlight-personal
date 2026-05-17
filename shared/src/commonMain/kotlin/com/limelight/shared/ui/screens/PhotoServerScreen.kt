@@ -364,6 +364,7 @@ private fun FullscreenAssetViewer(
     val scope = rememberCoroutineScope()
     val context = LocalPlatformContext.current
     val requestFactory = remember { AuthenticatedImageRequestFactory() }
+    var isVideoPlaying by remember(pagerState.currentPage) { mutableStateOf(true) }
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
@@ -372,14 +373,19 @@ private fun FullscreenAssetViewer(
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                 val asset = assets[page]
                 if (asset.isVideo) {
-                    PlatformVideoPlayer(
-                        streamingUrl = "${config.baseUrl.trimEnd('/')}/api/assets/${asset.id}/original",
-                        authConfig = config,
-                        isPlaying = true,
-                        onDurationKnown = {},
-                        onPositionChanged = {},
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        PlatformVideoPlayer(
+                            streamingUrl = "${config.baseUrl.trimEnd('/')}/api/assets/${asset.id}/original",
+                            authConfig = config,
+                            isPlaying = isVideoPlaying,
+                            onDurationKnown = {},
+                            onPositionChanged = {},
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        FilledTonalButton(onClick = { isVideoPlaying = !isVideoPlaying }) {
+                            Text(if (isVideoPlaying) "Pausar" else "Reproducir")
+                        }
+                    }
                 } else {
                     SubcomposeAsyncImage(
                         model = requestFactory.buildOriginalRequest(context, config, asset.id),
