@@ -51,6 +51,7 @@ import com.limelight.shared.ui.theme.MoonlightColors
 import kotlinx.coroutines.launch
 
 import com.limelight.shared.data.immich.ImmichPhotoAsset
+import com.limelight.shared.data.immich.ImmichGalleryState
 import com.limelight.shared.network.immich.ImmichPerson
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,6 +80,11 @@ fun PhotoServerScreen(
 
     LaunchedEffect(isOnline) {
         if (isOnline) {
+            if (state.galleryState is ImmichGalleryState.Idle) {
+                scope.launch {
+                    actions.refreshImmich()
+                }
+            }
             isLoadingPeople = true
             val response = runCatching {
                 ImmichApiClient().getImmichPeople(state.connectionConfig)
@@ -545,7 +551,8 @@ private fun SearchCard(
     val requestFactory = remember { AuthenticatedImageRequestFactory() }
 
     GlassCard(contentPadding = PaddingValues(16.dp), modifier = Modifier.fillMaxWidth()) {
-        Text("Búsqueda contextual", style = MaterialTheme.typography.titleMedium, color = MoonlightColors.OnSurface)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text("Búsqueda contextual", style = MaterialTheme.typography.titleMedium, color = MoonlightColors.OnSurface)
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(
             value = value,
@@ -642,6 +649,7 @@ private fun SearchCard(
             Spacer(Modifier.height(8.dp))
             Text(searchError, color = MoonlightColors.Error, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
+        }
     }
 }
 
@@ -649,7 +657,8 @@ private fun SearchCard(
 private fun GalleryPreview(assets: List<ImmichPhotoAsset>, config: com.limelight.shared.data.immich.ImmichConnectionConfig, onAssetClick: (String) -> Unit) {
     var gridColumns by remember { mutableStateOf(3) }
     GlassCard(contentPadding = PaddingValues(16.dp), modifier = Modifier.fillMaxWidth()) {
-        Text("Vista rápida", style = MaterialTheme.typography.titleMedium, color = MoonlightColors.OnSurface)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text("Vista rápida", style = MaterialTheme.typography.titleMedium, color = MoonlightColors.OnSurface)
         Spacer(Modifier.height(12.dp))
         Text(
             text = "Pellizca para cambiar tamaño (${gridColumns} columnas)",
@@ -685,6 +694,7 @@ private fun GalleryPreview(assets: List<ImmichPhotoAsset>, config: com.limelight
                     ThumbnailImage(asset.id, asset.name, config, 160.dp, modifier = Modifier.fillMaxSize(), cornerRadius = 10.dp)
                 }
             }
+        }
         }
     }
 }
