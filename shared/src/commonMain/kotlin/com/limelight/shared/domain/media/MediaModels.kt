@@ -31,6 +31,7 @@ data class SearchQuery(
     val toDateIso: String? = null,
     val type: AssetType? = null,
     val person: String? = null,
+    val personId: String? = null,
     val objectLabel: String? = null,
     val page: Int = 1,
     val size: Int = 60,

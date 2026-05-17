@@ -236,6 +236,22 @@ class ImmichApiClient(
         }
     }
 
+    fun personThumbnailUrl(config: ImmichConnectionConfig, personId: String): String = URLBuilder(normalizedBaseUrl(config.baseUrl)).apply {
+        appendPathSegments("api", "people", personId, "thumbnail")
+    }.buildString()
+
+    suspend fun getImmichPeople(config: ImmichConnectionConfig): List<ImmichPerson> {
+        val peopleResponse = getPeople(config)
+        return peopleResponse.filter { it.name.trim().isNotBlank() }.map { response ->
+            ImmichPerson(
+                id = response.id,
+                name = response.name,
+                thumbnailUrl = personThumbnailUrl(config, response.id)
+            )
+        }.sortedBy { it.name }
+    }
+
+
     suspend fun getPersonAssets(config: ImmichConnectionConfig, personId: String): List<ImmichPhotoAsset> {
         val response = httpClient.get(normalizedBaseUrl(config.baseUrl) + "/api/people/$personId/assets") {
             authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }

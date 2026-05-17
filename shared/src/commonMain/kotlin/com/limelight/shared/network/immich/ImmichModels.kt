@@ -110,3 +110,11 @@ data class ImmichPersonResponse(
     val name: String = "",
     val isHidden: Boolean = false,
 )
+
+@Serializable
+data class ImmichPerson(
+    val id: String,
+    val name: String,
+    val thumbnailUrl: String,
+)
+
