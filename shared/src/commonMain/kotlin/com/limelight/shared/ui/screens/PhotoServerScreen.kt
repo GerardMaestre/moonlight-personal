@@ -3,6 +3,7 @@ package com.limelight.shared.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -140,10 +142,39 @@ fun PhotoServerScreen(
 
 @Composable
 private fun GalleryPreview(assets: List<ImmichPhotoAsset>, config: com.limelight.shared.data.immich.ImmichConnectionConfig, onAssetClick: (String) -> Unit) {
+    var gridColumns by remember { mutableStateOf(3) }
     GlassCard(contentPadding = PaddingValues(16.dp), modifier = Modifier.fillMaxWidth()) {
         Text("Vista rápida", style = MaterialTheme.typography.titleMedium, color = MoonlightColors.OnSurface)
         Spacer(Modifier.height(12.dp))
-        LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.height(320.dp), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Pellizca para cambiar tamaño (${gridColumns} columnas)",
+            style = MaterialTheme.typography.bodySmall,
+            color = MoonlightColors.OnSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(Modifier.height(8.dp))
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(gridColumns),
+            modifier = Modifier
+                .height(320.dp)
+                .pointerInput(gridColumns) {
+                    detectTransformGestures { _, _, zoom, _ ->
+                        val next = if (zoom > 1.04f) {
+                            (gridColumns - 1).coerceAtLeast(2)
+                        } else if (zoom < 0.96f) {
+                            (gridColumns + 1).coerceAtMost(6)
+                        } else {
+                            gridColumns
+                        }
+                        if (next != gridColumns) {
+                            gridColumns = next
+                        }
+                    }
+                },
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             items(items = assets.take(30), key = { it.id }) { asset ->
                 Box(modifier = Modifier.aspectRatio(1f).clip(RoundedCornerShape(10.dp)).clickable { onAssetClick(asset.id) }) {
                     ThumbnailImage(asset.id, asset.name, config, 160.dp, modifier = Modifier.fillMaxSize(), cornerRadius = 10.dp)
