@@ -395,8 +395,7 @@ class PremiumDashboardActivity : ComponentActivity() {
                     }
 
                     // 🛸 Premium Glassmorphic FLOATING Bottom Navigation Capsule Overlay
-                    val hideBottomBar = controller.navigation.currentScreen == AppScreen.IMMICH_HOME ||
-                        controller.photoServerState.isFullscreenViewerOpen
+                    val hideBottomBar = controller.photoServerState.isFullscreenViewerOpen
                     if (!hideBottomBar) {
                         Box(
                             modifier = Modifier
