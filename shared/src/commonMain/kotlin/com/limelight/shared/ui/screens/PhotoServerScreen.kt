@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil3.compose.LocalPlatformContext
 import coil3.compose.SubcomposeAsyncImage
 import com.limelight.shared.platform.PhotoServerActions
@@ -156,7 +158,10 @@ private fun FullscreenAssetViewer(
     val scope = rememberCoroutineScope()
     val context = LocalPlatformContext.current
     val requestFactory = remember { AuthenticatedImageRequestFactory() }
-    BasicAlertDialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
         Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                 val asset = assets[page]
@@ -219,7 +224,7 @@ private fun ConnectionCard(state: PhotoServerState, actions: PhotoServerActions,
     GlassCard(contentPadding = PaddingValues(22.dp), modifier = modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("Conexión Immich", style = MaterialTheme.typography.headlineMedium, color = MoonlightColors.OnSurface)
-            Text("Introduce la URL de tu instancia y una API Key con permisos de lectura.", style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant)
+            Text("Introduce la URL de tu instancia y una API Key con permisos de lectura.", style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
             OutlinedTextField(
                 value = state.connectionConfig.baseUrl,
                 onValueChange = { actions.onUpdateConnection(it, state.connectionConfig.apiKey) },
@@ -275,10 +280,10 @@ private fun ControlCard(
             Spacer(Modifier.height(12.dp))
             Text(if (isOnline) "En Línea" else "Desconectado", style = MaterialTheme.typography.headlineMedium, color = MoonlightColors.OnSurface)
             Spacer(Modifier.height(8.dp))
-            Text(state.healthMessage, style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center)
+            Text(state.healthMessage, style = MaterialTheme.typography.bodyMedium, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
             state.lastError?.let {
                 Spacer(Modifier.height(10.dp))
-                Text(it, color = MoonlightColors.Error, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+                Text(it, color = MoonlightColors.Error, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.height(22.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {

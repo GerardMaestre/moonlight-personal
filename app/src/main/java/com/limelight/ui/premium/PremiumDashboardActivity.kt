@@ -15,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.WindowInsets
 import com.limelight.di.UpSnapClientFactory
 import com.limelight.preferences.StreamSettings
 import com.limelight.shared.network.RemoteScriptClient
@@ -63,6 +64,7 @@ class PremiumDashboardActivity : ComponentActivity() {
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         containerColor = MaterialTheme.colorScheme.background,
+                        contentWindowInsets = WindowInsets(0, 0, 0, 0),
                         bottomBar = {
                             if (controller.navigation.currentScreen != AppScreen.IMMICH_HOME) {
                                 com.limelight.shared.ui.components.BottomNavBar(
