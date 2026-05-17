@@ -2,7 +2,11 @@ package com.limelight.shared.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,8 +29,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import com.limelight.shared.platform.PhotoServerActions
 import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PhotoServerStatus
@@ -41,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import com.limelight.shared.data.immich.ImmichPhotoAsset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +68,11 @@ fun PhotoServerScreen(
         is PhotoServerStatus.Error -> MoonlightColors.Error
     }
 
+    var selectedAssetId by remember { mutableStateOf<String?>(null) }
+    val timelineAssets = remember(state.timelineUiModel.sections) {
+        state.timelineUiModel.sections.flatMap { section -> section.items.map { item -> item.asset } }
+    }
+
     AetherisScreen(primaryGlowAlignment = Alignment.TopStart, secondaryGlowAlignment = Alignment.BottomEnd) {
         Scaffold(topBar = { HomeHubTopBar(onBack = onBack) }, containerColor = Color.Transparent) { padding ->
             LazyColumn(
@@ -71,9 +84,9 @@ fun PhotoServerScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 item {
-                    Text("Servidor Multimedia", style = MaterialTheme.typography.headlineLarge.copy(fontSize = 42.sp), color = MoonlightColors.OnSurface, textAlign = TextAlign.Center)
+                    Text("Servidor Multimedia", style = MaterialTheme.typography.headlineLarge.copy(fontSize = 42.sp), color = MoonlightColors.OnSurface, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(8.dp))
-                    Text("Control centralizado para iniciar y conectar la galería multimedia nativa de Immich.", style = MaterialTheme.typography.bodyLarge, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center)
+                    Text("Control centralizado para iniciar y conectar la galería multimedia nativa de Immich.", style = MaterialTheme.typography.bodyLarge, color = MoonlightColors.OnSurfaceVariant, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 }
 
                 item {
@@ -101,8 +114,69 @@ fun PhotoServerScreen(
                         LogsCard(logs = state.recentLogs)
                     }
                 }
+                if (timelineAssets.isNotEmpty()) {
+                    item {
+                        GalleryPreview(assets = timelineAssets, config = state.connectionConfig, onAssetClick = { selectedAssetId = it })
+                    }
+                }
 
                 item { Spacer(Modifier.height(56.dp)) }
+            }
+        }
+    }
+    selectedAssetId?.let { selectedId ->
+        FullscreenAssetViewer(
+            assets = timelineAssets,
+            selectedAssetId = selectedId,
+            config = state.connectionConfig,
+            onDismiss = { selectedAssetId = null }
+        )
+    }
+}
+
+@Composable
+private fun GalleryPreview(assets: List<ImmichPhotoAsset>, config: com.limelight.shared.data.immich.ImmichConnectionConfig, onAssetClick: (String) -> Unit) {
+    GlassCard(contentPadding = PaddingValues(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Text("Vista rápida", style = MaterialTheme.typography.titleMedium, color = MoonlightColors.OnSurface)
+        Spacer(Modifier.height(12.dp))
+        LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.height(320.dp), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(items = assets.take(30), key = { it.id }) { asset ->
+                Box(modifier = Modifier.aspectRatio(1f).clip(RoundedCornerShape(10.dp)).clickable { onAssetClick(asset.id) }) {
+                    ThumbnailImage(asset.id, asset.name, config, 160.dp, modifier = Modifier.fillMaxSize(), cornerRadius = 10.dp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FullscreenAssetViewer(
+    assets: List<ImmichPhotoAsset>,
+    selectedAssetId: String,
+    config: com.limelight.shared.data.immich.ImmichConnectionConfig,
+    onDismiss: () -> Unit
+) {
+    val initialPage = remember(selectedAssetId, assets) { assets.indexOfFirst { it.id == selectedAssetId }.coerceAtLeast(0) }
+    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { assets.size })
+    BasicAlertDialog(onDismissRequest = onDismiss) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                val asset = assets[page]
+                if (asset.isVideo) {
+                    PlatformVideoPlayer(
+                        streamingUrl = "${config.baseUrl.trimEnd('/')}/api/assets/${asset.id}/original",
+                        authConfig = config,
+                        isPlaying = true,
+                        onDurationKnown = {},
+                        onPositionChanged = {},
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    ThumbnailImage(asset.id, asset.name, config, cellSize = 1080.dp, modifier = Modifier.fillMaxSize(), cornerRadius = 0.dp, highQuality = true)
+                }
+            }
+            IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopStart).padding(20.dp)) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Cerrar", tint = Color.White)
             }
         }
     }

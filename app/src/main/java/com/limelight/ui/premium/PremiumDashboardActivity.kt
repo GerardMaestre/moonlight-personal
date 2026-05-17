@@ -3,6 +3,7 @@ package com.limelight.ui.premium
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
@@ -41,6 +42,7 @@ class PremiumDashboardActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         com.limelight.utils.UiHelper.setImmersiveMode(this)
 
         setContent {
@@ -59,14 +61,23 @@ class PremiumDashboardActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        containerColor = MaterialTheme.colorScheme.background,
                         bottomBar = {
-                            com.limelight.shared.ui.components.BottomNavBar(
-                                currentScreen = controller.navigation.currentScreen,
-                                onNavigate = { screen -> controller.navigation.navigateRoot(screen) }
-                            )
+                            if (controller.navigation.currentScreen != AppScreen.IMMICH_HOME) {
+                                com.limelight.shared.ui.components.BottomNavBar(
+                                    currentScreen = controller.navigation.currentScreen,
+                                    onNavigate = { screen -> controller.navigation.navigateRoot(screen) }
+                                )
+                            }
                         }
                     ) { innerPadding ->
-                        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                        val screenModifier = if (controller.navigation.currentScreen == AppScreen.IMMICH_HOME) {
+                            Modifier.fillMaxSize()
+                        } else {
+                            Modifier.padding(innerPadding).fillMaxSize()
+                        }
+                        Box(modifier = screenModifier) {
                             when (controller.navigation.currentScreen) {
                                 AppScreen.MAIN_MENU -> {
                                     MainMenuScreen(
