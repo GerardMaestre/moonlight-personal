@@ -5,10 +5,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -50,6 +52,7 @@ import com.limelight.shared.platform.PhotoServerStatus
 import com.limelight.shared.platform.PreviewPhotoServerActions
 import com.limelight.shared.data.remote.repository.ImmichSearchRepository
 import com.limelight.shared.domain.media.SearchQuery
+import com.limelight.shared.network.immich.ImmichApiClient
 import com.limelight.shared.ui.components.*
 import com.limelight.shared.ui.theme.MoonlightColors
 import kotlinx.coroutines.launch
@@ -81,6 +84,8 @@ fun PhotoServerScreen(
     var searchedAssets by remember { mutableStateOf<List<ImmichPhotoAsset>>(emptyList()) }
     var searchError by remember { mutableStateOf<String?>(null) }
     var isSearching by remember { mutableStateOf(false) }
+    var peopleSuggestions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isLoadingPeople by remember { mutableStateOf(false) }
     val visibleAssets = if (searchedAssets.isEmpty()) timelineAssets else searchedAssets
 
     AetherisScreen(primaryGlowAlignment = Alignment.TopStart, secondaryGlowAlignment = Alignment.BottomEnd) {
@@ -158,6 +163,24 @@ fun PhotoServerScreen(
                             personText = TextFieldValue("")
                             searchedAssets = emptyList()
                             searchError = null
+                        },
+                        people = peopleSuggestions,
+                        isLoadingPeople = isLoadingPeople,
+                        onLoadPeople = {
+                            isLoadingPeople = true
+                            scope.launch {
+                                val response = runCatching {
+                                    ImmichApiClient().getPeopleNames(state.connectionConfig)
+                                }
+                                response.onSuccess { peopleSuggestions = it }
+                                response.onFailure { error ->
+                                    searchError = error.message ?: "No se pudieron cargar las caras"
+                                }
+                                isLoadingPeople = false
+                            }
+                        },
+                        onPersonQuickSelect = { selected ->
+                            personText = TextFieldValue(selected)
                         }
                     )
                 }
@@ -222,7 +245,11 @@ private fun SearchCard(
     onValueChange: (TextFieldValue) -> Unit,
     onPersonChange: (TextFieldValue) -> Unit,
     onSearch: () -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    people: List<String>,
+    isLoadingPeople: Boolean,
+    onLoadPeople: () -> Unit,
+    onPersonQuickSelect: (String) -> Unit
 ) {
     GlassCard(contentPadding = PaddingValues(16.dp), modifier = Modifier.fillMaxWidth()) {
         Text("Búsqueda contextual", style = MaterialTheme.typography.titleMedium, color = MoonlightColors.OnSurface)
@@ -242,6 +269,25 @@ private fun SearchCard(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = onLoadPeople,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            enabled = !isLoadingPeople
+        ) {
+            Text(if (isLoadingPeople) "Cargando caras..." else "Cargar personas detectadas")
+        }
+        if (people.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                items(people.take(12)) { person ->
+                    SuggestionChip(
+                        onClick = { onPersonQuickSelect(person) },
+                        label = { Text(person, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    )
+                }
+            }
+        }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             PrimaryGlassButton(

@@ -115,6 +115,24 @@ class ImmichApiClient(
     suspend fun getAssets(config: ImmichConnectionConfig): JsonElement =
         get(config, "/api/assets")
 
+    suspend fun getPeopleNames(config: ImmichConnectionConfig): List<String> {
+        val response = get<JsonElement>(config, "/api/people")
+        return when (response) {
+            is JsonArray -> response.mapNotNull { entry ->
+                val item = entry as? JsonObject ?: return@mapNotNull null
+                item["name"]?.jsonPrimitive?.contentOrNull?.trim()?.takeIf { it.isNotBlank() }
+            }
+            is JsonObject -> {
+                val items = response["people"] as? JsonArray ?: JsonArray(emptyList())
+                items.mapNotNull { entry ->
+                    val item = entry as? JsonObject ?: return@mapNotNull null
+                    item["name"]?.jsonPrimitive?.contentOrNull?.trim()?.takeIf { it.isNotBlank() }
+                }
+            }
+            else -> emptyList()
+        }.distinct().sorted()
+    }
+
     suspend fun searchAssets(config: ImmichConnectionConfig, page: Int = 1, pageSize: Int = 60): ImmichAssetPage {
         val element = post<ImmichSearchAssetsRequest, JsonElement>(
             config = config,
