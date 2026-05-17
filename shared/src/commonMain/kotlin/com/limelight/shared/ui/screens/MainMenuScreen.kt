@@ -56,13 +56,13 @@ fun MainMenuScreen(onNavigate: (AppScreen) -> Unit) {
                         Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.fillMaxWidth()) {
                             MenuCard("Moonlight", "Gaming Nexus", Icons.Default.Games, MoonlightColors.Primary, { onNavigate(AppScreen.MOONLIGHT) }, Modifier.weight(1f))
                             MenuCard("Mi PC", "Core Power", Icons.Default.Computer, MoonlightColors.Tertiary, { onNavigate(AppScreen.POWER_CONTROL) }, Modifier.weight(1f))
-                            MenuCard("Multimedia", "Aetheris Media", Icons.Default.PhotoAlbum, MoonlightColors.Secondary, { onNavigate(AppScreen.PHOTO_SERVER) }, Modifier.weight(1f))
+                            MenuCard("Multimedia", "Aetheris Media", Icons.Default.PhotoAlbum, MoonlightColors.Secondary, { onNavigate(AppScreen.IMMICH_HOME) }, Modifier.weight(1f))
                         }
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(18.dp), modifier = Modifier.fillMaxWidth()) {
                             MenuCard("Moonlight", "Streaming de juegos", Icons.Default.Games, MoonlightColors.Primary, { onNavigate(AppScreen.MOONLIGHT) })
                             MenuCard("Mi PC", "Control de energía", Icons.Default.Computer, MoonlightColors.Tertiary, { onNavigate(AppScreen.POWER_CONTROL) })
-                            MenuCard("Multimedia", "Servidor de fotos Immich", Icons.Default.PhotoAlbum, MoonlightColors.Secondary, { onNavigate(AppScreen.PHOTO_SERVER) })
+                            MenuCard("Multimedia", "Servidor de fotos Immich", Icons.Default.PhotoAlbum, MoonlightColors.Secondary, { onNavigate(AppScreen.IMMICH_HOME) })
                         }
                     }
                 }

@@ -42,7 +42,7 @@ fun BottomNavBar(
             NavBarItem(Icons.Default.Home, currentScreen == AppScreen.MAIN_MENU) { onNavigate(AppScreen.MAIN_MENU) }
             NavBarItem(Icons.Default.SportsEsports, currentScreen == AppScreen.MOONLIGHT || currentScreen == AppScreen.GAME_LIST) { onNavigate(AppScreen.MOONLIGHT) }
             NavBarItem(Icons.Default.PowerSettingsNew, currentScreen == AppScreen.POWER_CONTROL) { onNavigate(AppScreen.POWER_CONTROL) }
-            NavBarItem(Icons.Default.PhotoAlbum, currentScreen == AppScreen.PHOTO_SERVER) { onNavigate(AppScreen.PHOTO_SERVER) }
+            NavBarItem(Icons.Default.PhotoAlbum, currentScreen == AppScreen.IMMICH_HOME || currentScreen == AppScreen.PHOTO_SERVER) { onNavigate(AppScreen.IMMICH_HOME) }
         }
     }
 }

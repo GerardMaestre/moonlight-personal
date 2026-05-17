@@ -20,15 +20,15 @@ actual fun platformImmichHttpClient(json: Json): HttpClient = HttpClient(OkHttp)
         json(json)
     }
     install(HttpTimeout) {
-        requestTimeoutMillis = 30_000
-        connectTimeoutMillis = 15_000
-        socketTimeoutMillis = 30_000
+        requestTimeoutMillis = 60_000
+        connectTimeoutMillis = 30_000
+        socketTimeoutMillis = 60_000
     }
     engine {
         config {
-            connectTimeout(15, TimeUnit.SECONDS)
-            readTimeout(30, TimeUnit.SECONDS)
-            writeTimeout(30, TimeUnit.SECONDS)
+            connectTimeout(30, TimeUnit.SECONDS)
+            readTimeout(60, TimeUnit.SECONDS)
+            writeTimeout(60, TimeUnit.SECONDS)
         }
     }
     defaultRequest {

@@ -47,7 +47,7 @@ class ImmichApiClient(
 
     suspend fun ping(config: ImmichConnectionConfig): ImmichPingResponse = get(config, "/api/server/ping")
 
-    suspend fun loadOverview(config: ImmichConnectionConfig, pageSize: Int = 60): ImmichOverview {
+    suspend fun loadOverview(config: ImmichConnectionConfig): ImmichOverview {
         require(config.baseUrl.isNotBlank()) { "Configura la URL de Immich antes de conectar." }
         require(config.hasCredentials) { "Configura una API Key o Bearer token de Immich." }
 
@@ -57,33 +57,40 @@ class ImmichApiClient(
         val user = runCatching { getCurrentUser(config) }.getOrNull()
         val stats = runCatching { searchStatistics(config) }.getOrDefault(ImmichAssetStatisticsResponse())
         
-        val photos = try {
-            val assets = searchAssets(config, pageSize = pageSize).items
-            logger.debug(tag, "Mapeados ${assets.size} assets")
-            assets.map { it.toPhotoAsset(config) }
+        val allPhotos = mutableListOf<ImmichPhotoAsset>()
+        var currentPage = 1
+        val pageSize = 1000
+        
+        try {
+            do {
+                val page = searchAssets(config, page = currentPage, pageSize = pageSize)
+                val items = page.items.map { it.toPhotoAsset(config) }
+                allPhotos.addAll(items)
+                
+                if (items.size < pageSize || currentPage >= 10) break // Limit to 10k assets for safety
+                currentPage++
+            } while (true)
+            
+            logger.debug(tag, "Mapeados ${allPhotos.size} assets en total")
         } catch (error: Throwable) {
             val mapped = mapImmichConnectionError(error)
             logger.error(tag, "loadOverview failed while requesting assets: ${mapped.message}", error)
             throw mapped
         }
 
-        val total = when {
-            stats.total > 0 -> stats.total
-            photos.size > 0 -> photos.size
-            else -> 0
-        }
+        val total = if (allPhotos.size > stats.total) allPhotos.size else stats.total
 
         return ImmichOverview(
             summary = ImmichServerSummary(
                 version = version,
-                images = stats.images.takeIf { it > 0 } ?: photos.size,
-                videos = stats.videos,
+                images = stats.images.takeIf { it > 0 } ?: allPhotos.count { !it.isVideo },
+                videos = stats.videos.takeIf { it > 0 } ?: allPhotos.count { it.isVideo },
                 totalAssets = total,
                 quotaUsageBytes = user?.quotaUsageInBytes,
                 quotaSizeBytes = user?.quotaSizeInBytes,
                 userName = user?.name ?: user?.email,
             ),
-            photos = photos
+            photos = allPhotos
         )
     }
 

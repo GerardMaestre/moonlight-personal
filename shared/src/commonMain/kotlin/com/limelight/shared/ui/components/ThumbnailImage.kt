@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -28,9 +29,22 @@ import com.limelight.shared.data.immich.ImmichConnectionConfig
 import com.limelight.shared.ui.theme.MoonlightColors
 
 @Composable
-fun ThumbnailImage(assetId: String, contentDescription: String?, config: ImmichConnectionConfig, cellSize: Dp, modifier: Modifier = Modifier, cornerRadius: Dp = 24.dp) {
+fun ThumbnailImage(
+    assetId: String,
+    contentDescription: String?,
+    config: ImmichConnectionConfig,
+    cellSize: Dp,
+    modifier: Modifier = Modifier,
+    cornerRadius: Dp = 24.dp,
+    highQuality: Boolean = false
+) {
     val context = LocalPlatformContext.current
-    val request = AuthenticatedImageRequestFactory().buildThumbnailRequest(context, config, assetId, (cellSize.value * 2).toInt())
+    val factory = remember { AuthenticatedImageRequestFactory() }
+    val request = if (highQuality) {
+        factory.buildOriginalRequest(context, config, assetId)
+    } else {
+        factory.buildThumbnailRequest(context, config, assetId, (cellSize.value * 2).toInt())
+    }
     val transition = rememberInfiniteTransition(label = "thumbShimmer")
     val shimmerAlpha by transition.animateFloat(0.35f, 0.75f, infiniteRepeatable(animation = tween(900), repeatMode = RepeatMode.Reverse), label = "thumbShimmerAlpha")
 

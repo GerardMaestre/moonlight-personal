@@ -26,6 +26,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.retryWhen
 
+data class UploadProgress(val sentBytes: Long, val totalBytes: Long, val remoteId: String? = null) {
+    val fraction: Float get() = if (totalBytes <= 0L) 0f else sentBytes.toFloat() / totalBytes.toFloat()
+}
+
 class ImmichAssetRepository(
     private val config: ImmichConnectionConfig,
     private val httpClient: HttpClient = ImmichApiClient.defaultHttpClient(),
@@ -65,22 +69,18 @@ class ImmichAssetRepository(
 
 
 
-data class UploadProgress(val sentBytes: Long, val totalBytes: Long, val remoteId: String? = null) {
-    val fraction: Float get() = if (totalBytes <= 0L) 0f else sentBytes.toFloat() / totalBytes.toFloat()
-}
-
-fun uploadAssetMultipartFlow(fileName: String, bytes: ByteArray, mimeType: String, maxRetries: Int = 3): Flow<UploadProgress> = flow {
-    emit(UploadProgress(0, bytes.size.toLong()))
-    val remoteId = uploadAssetMultipart(fileName, bytes, mimeType)
-    emit(UploadProgress(bytes.size.toLong(), bytes.size.toLong(), remoteId))
-}.retryWhen { cause, attempt ->
-    if (attempt >= maxRetries) return@retryWhen false
-    if (cause is DataError.Network) {
-        val backoff = 500L * (1L shl attempt.toInt())
-        delay(backoff)
-        true
-    } else false
-}
+    fun uploadAssetMultipartFlow(fileName: String, bytes: ByteArray, mimeType: String, maxRetries: Int = 3): Flow<UploadProgress> = flow {
+        emit(UploadProgress(0, bytes.size.toLong()))
+        val remoteId = uploadAssetMultipart(fileName, bytes, mimeType)
+        emit(UploadProgress(bytes.size.toLong(), bytes.size.toLong(), remoteId))
+    }.retryWhen { cause, attempt ->
+        if (attempt >= maxRetries) return@retryWhen false
+        if (cause is DataError.Network) {
+            val backoff = 500L * (1L shl attempt.toInt())
+            delay(backoff)
+            true
+        } else false
+    }
 
     fun streamTimeline(size: Int = 60): Flow<TimelinePage> = flow {
         var nextPage: Int? = 1

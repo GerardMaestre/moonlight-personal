@@ -275,8 +275,45 @@ class PremiumDashboardActivity : ComponentActivity() {
                                     )
                                 }
                                 AppScreen.IMMICH_HOME -> {
+                                    val config = remember { RemoteScriptConfig.getInstance(this@PremiumDashboardActivity) }
+                                    val remoteClient = remember(config.serverUrl, config.token) {
+                                        RemoteScriptClient(config.serverUrl, config.token)
+                                    }
+                                    val photoManager = remember {
+                                        AndroidPhotoServerManager(controller.photoServerState) { update ->
+                                            postToUiIfActive(update)
+                                        }
+                                    }
+                                    val pcIp = remember(config.serverUrl) {
+                                        try {
+                                            java.net.URL(config.serverUrl).host
+                                        } catch (_: Exception) {
+                                            "100.67.140.39"
+                                        }
+                                    }
+
                                     ImmichHomeScreen(
-                                        onBack = { navigateBackOrHome() }
+                                        state = controller.photoServerState,
+                                        actions = object : PhotoServerActions {
+                                            override fun onUpdateConnection(baseUrl: String, apiKey: String) {
+                                                controller.photoServerState.updateConnection(baseUrl, apiKey)
+                                                val immichConfig = ImmichConfig.getInstance(this@PremiumDashboardActivity)
+                                                immichConfig.baseUrl = baseUrl
+                                                immichConfig.apiKey = apiKey
+                                            }
+                                            override suspend fun startPhotoServer(): StartCommandResult {
+                                                thread { photoManager.start(remoteClient, pcIp) }
+                                                return StartCommandResult.Success
+                                            }
+                                            override fun stopPhotoServer() {
+                                                photoManager.stop(remoteClient)
+                                            }
+                                            override suspend fun refreshImmich() {
+                                                thread { photoManager.refreshImmich() }
+                                            }
+                                        },
+                                        onBack = { navigateBackOrHome() },
+                                        onOpenSettings = { controller.navigation.navigateTo(AppScreen.PHOTO_SERVER) }
                                     )
                                 }
                             }

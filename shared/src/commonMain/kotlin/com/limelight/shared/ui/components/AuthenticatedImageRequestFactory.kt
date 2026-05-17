@@ -12,9 +12,14 @@ import com.limelight.shared.data.session.AuthHeaderProvider
 class AuthenticatedImageRequestFactory(
     private val authHeaderProvider: AuthHeaderProvider = AuthHeaderProvider(),
 ) {
-    fun buildThumbnailUrl(baseUrl: String, assetId: String): String {
+    fun buildThumbnailUrl(baseUrl: String, assetId: String, size: String = "thumbnail"): String {
         val normalizedBaseUrl = baseUrl.trim().trimEnd('/')
-        return "$normalizedBaseUrl/api/assets/$assetId/thumbnail?size=thumbnail"
+        return "$normalizedBaseUrl/api/assets/$assetId/thumbnail?size=$size"
+    }
+
+    fun buildOriginalUrl(baseUrl: String, assetId: String): String {
+        val normalizedBaseUrl = baseUrl.trim().trimEnd('/')
+        return "$normalizedBaseUrl/api/assets/$assetId/original"
     }
 
     fun buildThumbnailRequest(
@@ -22,6 +27,7 @@ class AuthenticatedImageRequestFactory(
         config: ImmichConnectionConfig,
         assetId: String,
         targetSizePx: Int,
+        highQuality: Boolean = false
     ): ImageRequest {
         val headers = NetworkHeaders.Builder().apply {
             authHeaderProvider.headersFor(config).forEach { (name, value) ->
@@ -29,11 +35,34 @@ class AuthenticatedImageRequestFactory(
             }
         }.build()
 
-        val safeSize = targetSizePx.coerceIn(96, 1024)
+        val url = if (highQuality) {
+            buildThumbnailUrl(config.baseUrl, assetId, size = "preview")
+        } else {
+            buildThumbnailUrl(config.baseUrl, assetId, size = "thumbnail")
+        }
+
         return ImageRequest.Builder(context)
-            .data(buildThumbnailUrl(config.baseUrl, assetId))
+            .data(url)
             .httpHeaders(headers)
-            .size(Size(safeSize, safeSize))
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .build()
+    }
+
+    fun buildOriginalRequest(
+        context: PlatformContext,
+        config: ImmichConnectionConfig,
+        assetId: String,
+    ): ImageRequest {
+        val headers = NetworkHeaders.Builder().apply {
+            authHeaderProvider.headersFor(config).forEach { (name, value) ->
+                set(name, value)
+            }
+        }.build()
+
+        return ImageRequest.Builder(context)
+            .data(buildOriginalUrl(config.baseUrl, assetId))
+            .httpHeaders(headers)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
             .build()

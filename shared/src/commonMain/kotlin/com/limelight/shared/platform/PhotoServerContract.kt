@@ -12,6 +12,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.coroutines.delay
 
 sealed interface PhotoServerStatus {
     data object Stopped : PhotoServerStatus
@@ -124,8 +125,15 @@ class ImmichPhotoServerActions(
     override suspend fun startPhotoServer(): StartCommandResult {
         state.sessionState = SessionState.Authenticating
         state.updateStatus(PhotoServerStatus.Starting)
-        state.healthMessage = "Conectando con Immich real..."
-        val health = ImmichHealthChecker.check(state.connectionConfig, client)
+        state.healthMessage = "Esperando a Immich (comprobando disponibilidad)..."
+        
+        val health = ImmichHealthChecker.waitForReady(
+            config = state.connectionConfig,
+            maxWaitSeconds = 45, // Wait up to 45s for the server to wake up
+            client = client,
+            onProgress = { state.healthMessage = it }
+        )
+        
         return if (health.isHealthy) {
             val url = state.connectionConfig.baseUrl.trim().trimEnd('/')
             state.healthMessage = health.message
@@ -149,17 +157,29 @@ class ImmichPhotoServerActions(
     }
 
     override suspend fun refreshImmich() {
-        state.updateGallery(ImmichGalleryState.Loading)
-        runCatching { client.loadOverview(state.connectionConfig) }
-            .onSuccess { overview ->
+        var retries = 3
+        var success = false
+        
+        while (retries > 0 && !success) {
+            state.updateGallery(ImmichGalleryState.Loading)
+            val result = runCatching { client.loadOverview(state.connectionConfig) }
+            
+            result.onSuccess { overview ->
                 state.updateGallery(ImmichGalleryState.Success(overview.summary, overview.photos))
                 state.recentLogs = overview.photos.take(3).map { "${it.name} sincronizada desde Immich" }
+                success = true
+            }.onFailure { error ->
+                retries--
+                if (retries == 0) {
+                    val message = error.message ?: "No se pudo cargar la galería de Immich"
+                    state.updateGallery(ImmichGalleryState.Error(message))
+                    state.healthMessage = message
+                } else {
+                    state.healthMessage = "Error de conexión, reintentando ($retries)..."
+                    kotlinx.coroutines.delay(2000)
+                }
             }
-            .onFailure { error ->
-                val message = error.message ?: "No se pudo cargar la galería de Immich"
-                state.updateGallery(ImmichGalleryState.Error(message))
-                state.healthMessage = message
-            }
+        }
     }
 }
 
