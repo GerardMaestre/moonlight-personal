@@ -1223,6 +1223,7 @@ fun ImmichHomeScreen(
         }
     }
 }
+}
 
 @Composable
 private fun PersonFaceImage(

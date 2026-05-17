@@ -14,7 +14,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.limelight.shared.platform.PlatformActions
 import com.limelight.shared.platform.PreviewPlatformActions
-import com.limelight.shared.streaming.CodecPreference
+import com.limelight.streaming.CodecPreference
 import com.limelight.shared.streaming.StreamSettingsSnapshot
 import com.limelight.shared.ui.components.*
 import com.limelight.shared.ui.theme.MoonlightColors

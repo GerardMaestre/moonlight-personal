@@ -226,6 +226,21 @@ fun PhotoServerScreen(
             }
         }
     }
+
+    selectedAssetId?.let { selectedId ->
+        FullscreenAssetViewer(
+            assets = visibleAssets,
+            selectedAssetId = selectedId,
+            config = state.connectionConfig,
+            onDismiss = { selectedAssetId = null }
+        )
+    }
+    DisposableEffect(selectedAssetId) {
+        state.isFullscreenViewerOpen = selectedAssetId != null
+        onDispose {
+            state.isFullscreenViewerOpen = false
+        }
+    }
 }
 
 @Composable
@@ -441,20 +456,6 @@ private fun ControlCard(
             }
         }
     }
-    selectedAssetId?.let { selectedId ->
-        FullscreenAssetViewer(
-            assets = visibleAssets,
-            selectedAssetId = selectedId,
-            config = state.connectionConfig,
-            onDismiss = { selectedAssetId = null }
-        )
-    }
-    DisposableEffect(selectedAssetId) {
-        state.isFullscreenViewerOpen = selectedAssetId != null
-        onDispose {
-            state.isFullscreenViewerOpen = false
-        }
-    }
 }
 
 @Composable
@@ -573,6 +574,7 @@ private fun GalleryPreview(assets: List<ImmichPhotoAsset>, config: com.limelight
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun FullscreenAssetViewer(
     assets: List<ImmichPhotoAsset>,
@@ -588,7 +590,7 @@ private fun FullscreenAssetViewer(
     var isVideoPlaying by remember(pagerState.currentPage) { mutableStateOf(true) }
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->

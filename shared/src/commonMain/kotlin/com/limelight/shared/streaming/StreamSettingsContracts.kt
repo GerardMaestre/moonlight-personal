@@ -1,5 +1,7 @@
 package com.limelight.shared.streaming
 
+import com.limelight.streaming.CodecPreference
+
 data class StreamSettingsSnapshot(
     val bitrateKbps: Int = 20000,
     val resolution: String = "1920x1080",
