@@ -51,6 +51,7 @@ import com.limelight.shared.ui.theme.MoonlightColors
 import kotlinx.coroutines.launch
 
 import com.limelight.shared.data.immich.ImmichPhotoAsset
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoServerScreen(
@@ -648,9 +649,9 @@ private fun FullscreenAssetViewer(
                 ) {
                     Icon(Icons.Default.NavigateNext, contentDescription = "Siguiente", tint = Color.White)
                 }
-            }
         }
     }
+}
 }
 
 @Composable
@@ -687,6 +688,7 @@ private fun ConnectionCard(state: PhotoServerState, actions: PhotoServerActions,
 }
 
 @Composable
+
 
 private fun LogsCard(logs: List<String>, modifier: Modifier = Modifier) {
     GlassCard(contentPadding = PaddingValues(22.dp), modifier = modifier.fillMaxWidth()) {

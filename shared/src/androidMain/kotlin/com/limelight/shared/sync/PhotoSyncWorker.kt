@@ -61,19 +61,3 @@ class PhotoSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
 
     companion object { const val UNIQUE_WORK_NAME = "photo_sync_worker" }
 }
-
-class InMemoryPhotoUploadQueueRepository : PhotoUploadQueueRepository {
-    private val byLocalId = ConcurrentHashMap<String, PhotoUploadTask>()
-    private val byHash = ConcurrentHashMap<String, String>()
-    override suspend fun enqueueIfMissing(task: PhotoUploadTask): Boolean {
-        if (byLocalId.containsKey(task.localId)) return false
-        if (byHash.containsKey(task.hash)) return false
-        byLocalId[task.localId] = task
-        byHash[task.hash] = task.localId
-        return true
-    }
-    override suspend fun nextBatch(limit: Int): List<PhotoUploadTask> = byLocalId.values.take(limit)
-    override suspend fun markUploaded(localId: String, remoteId: String) { byLocalId.remove(localId)?.also { byHash.remove(it.hash) } }
-    override suspend fun markFailed(localId: String, reason: String) = Unit
-    override suspend fun cancel(localId: String) { byLocalId.remove(localId)?.also { byHash.remove(it.hash) } }
-}

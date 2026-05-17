@@ -384,7 +384,7 @@ class PremiumDashboardActivity : ComponentActivity() {
                                         onOpenSettings = { controller.navigation.navigateTo(AppScreen.PHOTO_SERVER) },
                                         onPickAndUploadPhoto = { progressCallback ->
                                             onProgressCallback = progressCallback
-                                            pickMedia.launch(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.Request(
+                                            pickMedia.launch(androidx.activity.result.PickVisualMediaRequest(
                                                 androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
                                             ))
                                         }

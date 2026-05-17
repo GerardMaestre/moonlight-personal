@@ -188,7 +188,6 @@ class ImmichApiClient(
             )
         }
     }
-
     suspend fun getPeopleNames(config: ImmichConnectionConfig): List<String> {
         val response = get<JsonElement>(config, "/api/people")
         return when (response) {
