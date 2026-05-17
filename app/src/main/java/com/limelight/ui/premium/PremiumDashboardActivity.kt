@@ -271,7 +271,9 @@ class PremiumDashboardActivity : ComponentActivity() {
                                             }
                                         },
                                         onBack = { navigateBackOrHome() },
-                                        onOpenImmich = { photoManager.openImmichGallery(this@PremiumDashboardActivity) }
+                                        onOpenImmich = { left, top, width, height ->
+                                            controller.navigation.navigateTo(AppScreen.IMMICH_HOME)
+                                        }
                                     )
                                 }
                                 AppScreen.IMMICH_HOME -> {

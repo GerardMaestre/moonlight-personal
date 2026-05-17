@@ -41,6 +41,10 @@
         android:name="android.hardware.type.pc"
         android:required="false"/>
 
+    <queries>
+        <package android:name="app.alextran.immich" />
+    </queries>
+
     <application
         android:name=".MoonlightApplication"
         android:allowBackup="true"

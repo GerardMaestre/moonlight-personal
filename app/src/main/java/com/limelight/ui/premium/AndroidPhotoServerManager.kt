@@ -32,7 +32,7 @@ class AndroidPhotoServerManager(
         private const val IMMICH_PACKAGE = "app.alextran.immich"
     }
 
-    fun openImmichGallery(context: Context) {
+    fun openImmichGallery(context: Context, left: Int = 0, top: Int = 0, width: Int = 0, height: Int = 0) {
         runCatching {
             val launchIntent = context.packageManager.getLaunchIntentForPackage(IMMICH_PACKAGE)
                 ?: error("Immich no está instalada")
@@ -41,20 +41,29 @@ class AndroidPhotoServerManager(
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                if (left > 0 || top > 0 || width > 0 || height > 0) {
+                    sourceBounds = android.graphics.Rect(left, top, left + width, top + height)
+                }
             }
 
             if (context is Activity) {
-                val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    ActivityOptions.makeCustomAnimation(context, android.R.anim.slide_in_left, android.R.anim.fade_out)
+                val options = if (left > 0 || top > 0 || width > 0 || height > 0) {
+                    ActivityOptions.makeScaleUpAnimation(
+                        context.window.decorView,
+                        left,
+                        top,
+                        width,
+                        height
+                    )
                 } else {
-                    ActivityOptions.makeCustomAnimation(context, android.R.anim.slide_in_left, android.R.anim.fade_out)
+                    ActivityOptions.makeCustomAnimation(context, android.R.anim.fade_in, android.R.anim.fade_out)
                 }
                 context.startActivity(intent, options.toBundle())
-                context.overridePendingTransition(android.R.anim.slide_in_left, android.R.anim.fade_out)
             } else {
                 context.startActivity(intent)
             }
-        }.onFailure {
+        }.onFailure { e ->
+            android.util.Log.e("ImmichManager", "Fallo al abrir galería: ${e.message}", e)
             Toast.makeText(context, "Instala Immich para abrir la galería", Toast.LENGTH_SHORT).show()
         }
     }
