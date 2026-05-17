@@ -55,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.DisposableEffect
 import com.limelight.shared.data.immich.ImmichPhotoAsset
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -128,6 +129,12 @@ fun PhotoServerScreen(
             config = state.connectionConfig,
             onDismiss = { selectedAssetId = null }
         )
+    }
+    DisposableEffect(selectedAssetId) {
+        state.isFullscreenViewerOpen = selectedAssetId != null
+        onDispose {
+            state.isFullscreenViewerOpen = false
+        }
     }
 }
 

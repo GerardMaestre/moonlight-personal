@@ -25,7 +25,10 @@ fun DashboardScreen(
     AetherisScreen {
         Scaffold(
             topBar = {
-                HomeHubTopBar(onBack = { actions.onNavigateBack() }) {
+                HomeHubTopBar(
+                    onBack = { actions.onNavigateBack() },
+                    onProfileClick = { actions.onOpenSettings() }
+                ) {
                     IconButton(onClick = { state.isAddPcDialogOpen = true }) {
                         Icon(Icons.Default.Add, contentDescription = "Añadir PC", tint = MoonlightColors.OnSurface)
                     }

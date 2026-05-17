@@ -66,7 +66,9 @@ class PremiumDashboardActivity : ComponentActivity() {
                         containerColor = MaterialTheme.colorScheme.background,
                         contentWindowInsets = WindowInsets(0, 0, 0, 0),
                         bottomBar = {
-                            if (controller.navigation.currentScreen != AppScreen.IMMICH_HOME) {
+                            val hideBottomBar = controller.navigation.currentScreen == AppScreen.IMMICH_HOME ||
+                                controller.photoServerState.isFullscreenViewerOpen
+                            if (!hideBottomBar) {
                                 com.limelight.shared.ui.components.BottomNavBar(
                                     currentScreen = controller.navigation.currentScreen,
                                     onNavigate = { screen -> controller.navigation.navigateRoot(screen) }
