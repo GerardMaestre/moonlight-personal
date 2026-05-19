@@ -29,13 +29,17 @@ import com.limelight.shared.platform.PlatformActions
 import com.limelight.shared.ui.screens.*
 import com.limelight.shared.ui.theme.MoonlightTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import com.limelight.nvstream.http.toPemString
 import com.limelight.nvstream.http.toX509Certificate
+import com.limelight.shared.security.PairingStorage
 
 private fun isVirtualMachineOrRemote(): Boolean {
     val os = System.getProperty("os.name").lowercase()
@@ -175,8 +179,7 @@ private fun runDesktopUi() = application {
                                             controller.openComputer(computerId, emptyList())
                                             scope.launch(Dispatchers.IO) {
                                                 try {
-                                                    val storage = com.limelight.platform.StorageManager()
-                                                     val certPem = storage.getString("server_cert_$computerId")
+                                                     val certPem = PairingStorage.loadServerCertPem(computerId)
                                                      val savedCert = certPem?.toX509Certificate()
                                                      if (savedCert != null) {
                                                          val httpConn = com.limelight.nvstream.http.NvHTTP(
@@ -239,8 +242,7 @@ private fun runDesktopUi() = application {
                                                          if (pairState == com.limelight.nvstream.http.PairingManager.PairState.PAIRED) {
                                                              val pairedCert = pairingManager.getPairedCert()
                                                              if (pairedCert != null) {
-                                                                 val storage = com.limelight.platform.StorageManager()
-                                                                 storage.putString("server_cert_$computerId", pairedCert.toPemString())
+                                                                 PairingStorage.storeServerCertPem(computerId, pairedCert.toPemString())
                                                              }
                                                              controller.onManualPairResult(computerId, true)
                                                              controller.dashboardState.showMessage("¡Emparejamiento completado con éxito! 🎉")
@@ -258,7 +260,7 @@ private fun runDesktopUi() = application {
 
                                         override fun onWakeOnLan(macAddress: String) {
                                             controller.onWakeOnLanDispatched(macAddress)
-                                            scope.launch(Dispatchers.IO) { com.limelight.shared.network.StandardWolSender.sendMagicPacket(macAddress) }
+                                            scope.launch(Dispatchers.IO) { com.limelight.wol.WolSender.send(macAddress) }
                                         }
                                         override fun onNavigateBack() = controller.navigation.goBack()
                                     }
@@ -401,15 +403,20 @@ private fun runDesktopUi() = application {
     }
 }
 
-private fun runHeadlessServerMode() {
+private fun runHeadlessServerMode() = runBlocking {
     val state = PhotoServerState()
     val manager = DesktopPhotoServerManager(state)
     manager.start()
     if (System.getProperty("os.name").contains("Windows", ignoreCase = true)) {
         manager.registerWindowsStartupTask()
     }
-    while (!Thread.currentThread().isInterrupted) {
-        Thread.sleep(60_000)
+    createHeadlessKeepAliveFlow().collect {}
+}
+
+private fun createHeadlessKeepAliveFlow() = flow {
+    while (true) {
+        delay(60_000)
+        emit(Unit)
     }
 }
 

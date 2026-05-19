@@ -12,7 +12,6 @@ import android.widget.Toast;
 
 import com.limelight.R;
 import com.limelight.nvstream.http.ComputerDetails;
-import com.limelight.shared.network.StandardWolSender;
 import com.limelight.utils.UiHelper;
 
 import java.io.IOException;

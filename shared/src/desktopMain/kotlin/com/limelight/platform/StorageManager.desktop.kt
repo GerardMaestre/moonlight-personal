@@ -14,4 +14,9 @@ actual class StorageManager {
         val value = prefs.get(key, null)
         return if (value.isNullOrBlank()) null else value
     }
+
+    actual fun remove(key: String) {
+        prefs.remove(key)
+        runCatching { prefs.flush() }
+    }
 }

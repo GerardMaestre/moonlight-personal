@@ -19,6 +19,8 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 
+import android.util.Base64;
+import com.limelight.shared.security.PairingStorage;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -127,9 +129,11 @@ public class ComputerDatabaseManager {
         try {
             if (details.serverCert != null) {
                 values.put(SERVER_CERT_COLUMN_NAME, details.serverCert.getEncoded());
+                PairingStorage.INSTANCE.storeServerCertPem(details.uuid, certToPem(details.serverCert));
             }
             else {
                 values.put(SERVER_CERT_COLUMN_NAME, (byte[])null);
+                PairingStorage.INSTANCE.removeServerCert(details.uuid);
             }
         } catch (CertificateEncodingException e) {
             values.put(SERVER_CERT_COLUMN_NAME, (byte[])null);
@@ -169,6 +173,12 @@ public class ComputerDatabaseManager {
             if (derCertData != null) {
                 details.serverCert = (X509Certificate) CertificateFactory.getInstance("X.509")
                         .generateCertificate(new ByteArrayInputStream(derCertData));
+            } else {
+                String pem = PairingStorage.INSTANCE.loadServerCertPem(details.uuid);
+                if (pem != null) {
+                    details.serverCert = (X509Certificate) CertificateFactory.getInstance("X.509")
+                            .generateCertificate(new ByteArrayInputStream(pemToDerBytes(pem)));
+                }
             }
         } catch (CertificateException e) {
             e.printStackTrace();
@@ -188,6 +198,29 @@ public class ComputerDatabaseManager {
             }
             return computerList;
         }
+    }
+
+    private static String certToPem(X509Certificate cert) {
+        String base64 = Base64.encodeToString(cert.getEncoded(), Base64.NO_WRAP);
+        return "-----BEGIN CERTIFICATE-----\n" + chunkBase64(base64) + "\n-----END CERTIFICATE-----";
+    }
+
+    private static byte[] pemToDerBytes(String pem) {
+        String clean = pem.replaceAll("-----BEGIN CERTIFICATE-----", "")
+                .replaceAll("-----END CERTIFICATE-----", "")
+                .replaceAll("\\s", "");
+        return Base64.decode(clean, Base64.DEFAULT);
+    }
+
+    private static String chunkBase64(String base64) {
+        StringBuilder sb = new StringBuilder();
+        int index = 0;
+        while (index < base64.length()) {
+            int end = Math.min(index + 64, base64.length());
+            sb.append(base64, index, end).append('\n');
+            index = end;
+        }
+        return sb.toString().trim();
     }
 
     /**

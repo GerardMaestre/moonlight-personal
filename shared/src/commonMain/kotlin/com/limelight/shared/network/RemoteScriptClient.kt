@@ -1,9 +1,16 @@
 package com.limelight.shared.network
 
+import com.limelight.shared.network.defaultNetworkHttpClient
+import io.ktor.client.request.*
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.net.HttpURLConnection
-import java.net.URL
 
 @Serializable
 private data class ScriptRequest(val carpeta: String, val archivo: String)
@@ -18,54 +25,47 @@ class RemoteScriptClient(private val baseUrl: String, private val token: String)
     }
 
     fun runScript(folder: String, file: String): Boolean {
-        return try {
-            val endpoint = "$baseUrl/api/run-script"
-            log("Calling $endpoint with folder=$folder, file=$file")
-            
-            val url = URL(endpoint)
-            val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.doOutput = true
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.setRequestProperty("Authorization", "Bearer $token")
-            conn.connectTimeout = 10000
-            conn.readTimeout = 30000  // Scripts can take time to respond
-
-            val body = json.encodeToString(ScriptRequest.serializer(), ScriptRequest(folder, file))
-            log("Sending body: $body")
-            conn.outputStream.bufferedWriter().use { it.write(body) }
-
+        return runBlocking(Dispatchers.IO) {
             try {
-                val code = conn.responseCode
-                val responseBody = try {
-                    if (code == 200) {
-                        conn.inputStream.bufferedReader().readText()
-                    } else {
-                        conn.errorStream?.bufferedReader()?.readText() ?: "No response body"
-                    }
-                } catch (e: Exception) {
-                    "Could not read response"
-                }
-
-                log("Response: $code - $responseBody")
-                code == 200
-            } finally {
-                conn.disconnect()
+                runScriptInternal(folder, file)
+            } catch (e: Exception) {
+                log("Error: ${e.javaClass.simpleName}: ${e.message}")
+                false
             }
-        } catch (e: java.net.SocketTimeoutException) {
-            log("TIMEOUT connecting to StreamDeck server at $baseUrl")
-            false
-        } catch (e: java.net.ConnectException) {
-            log("CONNECTION REFUSED at $baseUrl - is StreamDeck running?")
-            false
-        } catch (e: Exception) {
-            log("Error: ${e.javaClass.simpleName}: ${e.message}")
-            false
         }
     }
-    
+
+    private suspend fun runScriptInternal(folder: String, file: String): Boolean {
+        val endpoint = normalizeBaseUrl(baseUrl) + "/api/run-script"
+        log("Calling $endpoint with folder=$folder, file=$file")
+
+        return defaultNetworkHttpClient(json).use { client ->
+            val response = client.post(endpoint) {
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                header(HttpHeaders.Accept, ContentType.Application.Json.toString())
+                header(HttpHeaders.Authorization, "Bearer $token")
+                setBody(ScriptRequest(folder, file))
+            }
+
+            val responseBody = try {
+                response.bodyAsText()
+            } catch (e: Exception) {
+                "Could not read response"
+            }
+
+            log("Response: ${response.status.value} - $responseBody")
+            response.status == HttpStatusCode.OK
+        }
+    }
+
+    private fun normalizeBaseUrl(baseUrl: String): String {
+        return baseUrl.trim().let {
+            val normalized = if (!it.startsWith("http")) "http://$it" else it
+            normalized.trimEnd('/')
+        }
+    }
+
     private fun log(msg: String) {
-        // Use both println and Android Log for maximum visibility
         println("[$TAG] $msg")
         try {
             val logClass = Class.forName("android.util.Log")

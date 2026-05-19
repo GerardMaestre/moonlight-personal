@@ -1,10 +1,6 @@
 package com.limelight.ui.premium
 
-import android.app.Activity
-import android.app.ActivityOptions
 import android.content.Context
-import android.content.Intent
-import android.os.Build
 import android.widget.Toast
 import com.limelight.shared.network.ImmichHealthChecker
 import com.limelight.shared.network.immich.ImmichApiClient
@@ -14,8 +10,6 @@ import com.limelight.shared.platform.PhotoServerStatus
 import com.limelight.shared.platform.StartCommandResult
 import com.limelight.shared.data.immich.ImmichGalleryState
 import kotlinx.coroutines.runBlocking
-
-import com.limelight.ui.premium.ImmichFlutterEngineWrapper
 
 /**
  * Manages the Immich photo server lifecycle via the StreamDeck API.
@@ -32,28 +26,6 @@ class AndroidPhotoServerManager(
         private const val STOP_SCRIPT = "cerrar_fotos.bat"
         private const val MAX_STARTUP_WAIT_SECONDS = 200 // Docker Engine can take up to 3 minutes
         private const val IMMICH_PACKAGE = "app.alextran.immich"
-    }
-
-    fun isFlutterAvailable(): Boolean {
-        return try {
-            Class.forName("io.flutter.embedding.android.FlutterActivity")
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    fun openImmichGallery(context: Context, left: Int = 0, top: Int = 0, width: Int = 0, height: Int = 0) {
-        runCatching {
-            // Launch the integrated Flutter engine activity
-            val intent = ImmichFlutterEngineWrapper.getLaunchIntent(context).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-        }.onFailure { e ->
-            android.util.Log.e("ImmichManager", "Fallo al abrir galería integrada: ${e.message}", e)
-            Toast.makeText(context, "Error al abrir la galería integrada: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
     }
 
     fun start(remoteClient: RemoteScriptClient, pcIp: String): StartCommandResult {

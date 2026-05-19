@@ -2,7 +2,6 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-kapt'
 apply plugin: 'org.jetbrains.kotlin.plugin.compose'
-apply plugin: 'com.google.dagger.hilt.android'
 
 android {
     ndkVersion "27.0.12077973"
@@ -170,18 +169,13 @@ dependencies {
     implementation 'androidx.compose.material:material-icons-extended'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3'
     implementation 'androidx.work:work-runtime-ktx:2.9.1'
-    implementation 'com.google.dagger:hilt-android:2.52'
-    kapt 'com.google.dagger:hilt-android-compiler:2.52'
-    implementation 'androidx.hilt:hilt-navigation-compose:1.2.0'
+    implementation 'io.insert-koin:koin-android:3.3.3'
     
     // Shared KMP UI module
     implementation project(':shared')
 
-    // Flutter Add-to-App support: allow importing compiled .aar modules and engines from libs/
+    // Native Compose app only; Flutter Add-to-App support removed.
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
-
-    // Compile-time dependency on standard Flutter embedding classes via the local :flutter-stubs module
-    compileOnly project(':flutter-stubs')
 }
 
 kapt {

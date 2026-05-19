@@ -26,9 +26,12 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
+            api("io.insert-koin:koin-core:3.3.3")
             api("io.ktor:ktor-client-core:2.3.12")
+            api("io.ktor:ktor-network:2.3.12")
             implementation("io.ktor:ktor-client-content-negotiation:2.3.12")
             implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
+            implementation("io.ktor:ktor-network:2.3.12")
             implementation("io.coil-kt.coil3:coil-compose:3.0.4")
             implementation("io.coil-kt.coil3:coil-network-ktor2:3.0.4")
         }
@@ -42,7 +45,6 @@ kotlin {
             implementation("io.ktor:ktor-client-okhttp:2.3.12")
             implementation("androidx.work:work-runtime-ktx:2.9.1")
             implementation("androidx.activity:activity-compose:1.9.0")
-            compileOnly(project(":flutter-stubs"))
         }
 
         val desktopMain by getting {
@@ -50,6 +52,7 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(compose.uiTooling)
                 implementation("io.ktor:ktor-client-cio:2.3.12")
+                implementation("org.jmdns:jmdns:3.5.9")
             }
         }
     }

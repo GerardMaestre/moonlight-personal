@@ -1,5 +1,7 @@
 package com.limelight.shared.network
 
+import com.limelight.wol.WolSender
+
 /**
  * Unified wake service that can use UpSnap first and optionally fallback to UDP WoL.
  */
@@ -16,7 +18,7 @@ object WakeService {
         broadcastIp: String = "255.255.255.255",
         port: Int = 9,
         udpWake: (mac: String, ip: String, p: Int) -> Result<Unit> = { mac, ip, p ->
-            StandardWolSender.sendMagicPacket(mac, ip, p)
+            runCatching { WolSender.sendBlocking(mac, ip, p) }
         },
     ): WakeOutcome {
         if (upSnapClient != null && !deviceId.isNullOrBlank()) {
@@ -43,6 +45,8 @@ object WakeService {
 
     @JvmStatic
     fun wakeUdp(macAddress: String, broadcastIp: String = "255.255.255.255", port: Int = 9): Boolean {
-        return StandardWolSender.sendMagicPacket(macAddress, broadcastIp, port).isSuccess
+        return runCatching {
+            WolSender.sendBlocking(macAddress, broadcastIp, port)
+        }.isSuccess
     }
 }

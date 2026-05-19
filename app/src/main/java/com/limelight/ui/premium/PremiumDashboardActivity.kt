@@ -35,8 +35,7 @@ import com.limelight.shared.ui.screens.PhotoServerScreen
 import com.limelight.shared.ui.screens.PowerControlScreen
 import com.limelight.shared.ui.screens.PowerControlState
 import com.limelight.shared.ui.theme.MoonlightTheme
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
+import org.koin.android.ext.android.inject
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -46,9 +45,8 @@ import kotlinx.coroutines.withContext
 import com.limelight.shared.network.immich.ImmichApiClient
 import kotlin.concurrent.thread
 
-@AndroidEntryPoint
 class PremiumDashboardActivity : ComponentActivity() {
-    @Inject lateinit var upSnapClientFactory: UpSnapClientFactory
+    private val upSnapClientFactory: UpSnapClientFactory by inject()
     private val viewModel: PremiumDashboardViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {

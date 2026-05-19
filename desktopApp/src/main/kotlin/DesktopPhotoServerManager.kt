@@ -2,6 +2,7 @@ import com.limelight.shared.platform.PhotoServerState
 import com.limelight.shared.platform.PhotoServerStatus
 import com.limelight.shared.platform.StartCommandResult
 import com.sun.net.httpserver.HttpServer
+import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -86,9 +87,9 @@ class DesktopPhotoServerManager(private val state: PhotoServerState) {
         state.updateStatus(PhotoServerStatus.Stopped)
     }
 
-    fun restart(): StartCommandResult {
+    suspend fun restart(): StartCommandResult {
         stop()
-        Thread.sleep(2000)
+        delay(2000)
         return start()
     }
 

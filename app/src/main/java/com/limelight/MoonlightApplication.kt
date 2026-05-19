@@ -1,20 +1,21 @@
 package com.limelight
 
 import android.app.Application
-import com.limelight.ui.premium.ImmichFlutterEngineWrapper
-import dagger.hilt.android.HiltAndroidApp
+import android.content.Context
+import com.limelight.di.networkModule
+import com.limelight.platform.StorageManager
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.startKoin
 
-@HiltAndroidApp
 class MoonlightApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Safely pre-warm a global FlutterEngine if the Flutter SDK is packaged/present
-        runCatching {
-            Class.forName("io.flutter.embedding.engine.FlutterEngine")
-            ImmichFlutterEngineWrapper.preWarm(this)
-        }.onFailure {
-            android.util.Log.i("MoonlightApp", "Flutter SDK no presente en runtime. Se omitirá el precalentamiento.")
+        StorageManager.initialize(this)
+
+        startKoin {
+            androidContext(this@MoonlightApplication)
+            modules(networkModule)
         }
     }
 }

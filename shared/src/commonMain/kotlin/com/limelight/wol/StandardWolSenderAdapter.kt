@@ -1,9 +1,7 @@
 package com.limelight.wol
 
-import com.limelight.shared.network.StandardWolSender
-
-class StandardWolSenderAdapter : WolSender {
-    override suspend fun send(mac: String, broadcastAddress: String, port: Int) {
-        StandardWolSender.sendMagicPacket(mac, broadcastAddress, port).getOrThrow()
+class StandardWolSenderAdapter {
+    suspend fun send(mac: String, broadcastAddress: String, port: Int) {
+        WolSender.send(mac, broadcastAddress, port)
     }
 }

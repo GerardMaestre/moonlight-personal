@@ -5,8 +5,7 @@ import androidx.compose.ui.Modifier
 
 /**
  * A platform-agnostic Jetpack Compose component that embeds the Immich multimedia gallery.
- * - On Android: If the Flutter SDK AAR is present, it embeds the native [FlutterView] directly
- *   into the Compose layout without any activity transitions. Otherwise, it falls back to the fully-embedded webview.
+ * - On Android: It embeds the HTML5 gallery directly into the Compose hierarchy.
  * - On Desktop: It embeds the Web-based platform gallery directly.
  */
 @Composable
