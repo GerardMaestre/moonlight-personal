@@ -105,16 +105,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".PcView"
-            android:exported="true"
-            android:resizeableActivity="true"
-            android:enableOnBackInvokedCallback="true"
-            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection">
-
-            <meta-data android:name="WindowManagerPreference:FreeformWindowSize" android:value="system-default" />
-            <meta-data android:name="WindowManagerPreference:FreeformWindowOrientation" android:value="landscape" />
-        </activity>
         <!-- Small hack to support launcher shortcuts without relaunching over and over again when the back button is pressed -->
         <activity
             android:name=".ShortcutTrampoline"
@@ -123,14 +113,6 @@
             android:resizeableActivity="true"
             android:enableOnBackInvokedCallback="true"
             android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection">
-            <meta-data android:name="WindowManagerPreference:FreeformWindowSize" android:value="system-default" />
-            <meta-data android:name="WindowManagerPreference:FreeformWindowOrientation" android:value="landscape" />
-        </activity>
-        <activity
-            android:name=".AppView"
-            android:resizeableActivity="true"
-            android:enableOnBackInvokedCallback="true"
-            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection">
             <meta-data android:name="WindowManagerPreference:FreeformWindowSize" android:value="system-default" />
             <meta-data android:name="WindowManagerPreference:FreeformWindowOrientation" android:value="landscape" />
         </activity>

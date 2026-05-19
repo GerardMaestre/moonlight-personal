@@ -31,6 +31,9 @@ import java.util.List;
 import java.util.UUID;
 
 public class ShortcutTrampoline extends Activity {
+    public final static String NAME_EXTRA = "Name";
+    public final static String UUID_EXTRA = "UUID";
+
     private String uuidString;
     private NvApp app;
     private ArrayList<Intent> intentStack = new ArrayList<>();
@@ -161,28 +164,23 @@ public class ShortcutTrampoline extends Activity {
                                                     });
                                                 }
                                             } else {
-                                                // Close this activity
+                                                // cierra esta actividad
                                                 finish();
 
-                                                // Add the PC view at the back (and clear the task)
+                                                // añade el dashboard premium en la pila
                                                 Intent i;
-                                                i = new Intent(ShortcutTrampoline.this, PcView.class);
+                                                i = new Intent(ShortcutTrampoline.this, com.limelight.ui.premium.PremiumDashboardActivity.class);
                                                 i.setAction(Intent.ACTION_MAIN);
                                                 i.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
                                                 intentStack.add(i);
 
-                                                // Take this intent's data and create an intent to start the app view
-                                                i = new Intent(getIntent());
-                                                i.setClass(ShortcutTrampoline.this, AppView.class);
-                                                intentStack.add(i);
-
-                                                // If a game is running, we'll make the stream the top level activity
+                                                // si hay un juego en ejecucion, inicia el stream
                                                 if (details.runningGameId != 0) {
                                                     intentStack.add(ServerHelper.createStartIntent(ShortcutTrampoline.this,
                                                             new NvApp(null, details.runningGameId, false), details, managerBinder));
                                                 }
 
-                                                // Now start the activities
+                                                // inicia las actividades de la pila
                                                 startActivities(intentStack.toArray(new Intent[]{}));
                                             }
                                             
@@ -277,21 +275,19 @@ public class ShortcutTrampoline extends Activity {
         ComputerDatabaseManager dbManager = new ComputerDatabaseManager(this);
         ComputerDetails _computer = null;
 
-        // PC arguments, both are optional, but at least one must be provided
-        uuidString = getIntent().getStringExtra(AppView.UUID_EXTRA);
-        String nameString = getIntent().getStringExtra(AppView.NAME_EXTRA);
+        // argumentos del pc, ambos opcionales pero al menos uno debe proveerse
+        uuidString = getIntent().getStringExtra(UUID_EXTRA);
+        String nameString = getIntent().getStringExtra(NAME_EXTRA);
 
-        // App arguments, both are optional, but one must be provided in order to start an app
+        // argumentos de la app, opcionales pero se requieren para iniciar una app
         String appIdString = getIntent().getStringExtra(Game.EXTRA_APP_ID);
         String appNameString = getIntent().getStringExtra(Game.EXTRA_APP_NAME);
 
         if (!validateInput(uuidString, appIdString, nameString)) {
-            // Invalid input, so just return
             return;
         }
 
         if (uuidString == null || uuidString.isEmpty()) {
-            // Use nameString to find the corresponding UUID
             _computer = dbManager.getComputerByName(nameString);
 
             if (_computer == null) {
@@ -304,8 +300,8 @@ public class ShortcutTrampoline extends Activity {
 
             uuidString = _computer.uuid;
 
-            // Set the AppView UUID intent, since it wasn't provided
-            setIntent(new Intent(getIntent()).putExtra(AppView.UUID_EXTRA, uuidString));
+            // guarda el intent del uuid del pc
+            setIntent(new Intent(getIntent()).putExtra(UUID_EXTRA, uuidString));
         }
 
         if (appIdString != null && !appIdString.isEmpty()) {

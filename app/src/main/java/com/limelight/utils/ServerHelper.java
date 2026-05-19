@@ -5,10 +5,9 @@ import android.content.Intent;
 import android.os.Looper;
 import android.widget.Toast;
 
-import com.limelight.AppView;
+import com.limelight.ShortcutTrampoline;
 import com.limelight.Game;
 import com.limelight.R;
-import com.limelight.ShortcutTrampoline;
 import com.limelight.binding.PlatformBinding;
 import com.limelight.computers.ComputerManagerService;
 import com.limelight.nvstream.http.ComputerDetails;
@@ -62,16 +61,16 @@ public class ServerHelper {
 
     public static Intent createPcShortcutIntent(Activity parent, ComputerDetails computer) {
         Intent i = new Intent(parent, ShortcutTrampoline.class);
-        i.putExtra(AppView.NAME_EXTRA, computer.name);
-        i.putExtra(AppView.UUID_EXTRA, computer.uuid);
+        i.putExtra(ShortcutTrampoline.NAME_EXTRA, computer.name);
+        i.putExtra(ShortcutTrampoline.UUID_EXTRA, computer.uuid);
         i.setAction(Intent.ACTION_DEFAULT);
         return i;
     }
 
     public static Intent createAppShortcutIntent(Activity parent, ComputerDetails computer, NvApp app) {
         Intent i = new Intent(parent, ShortcutTrampoline.class);
-        i.putExtra(AppView.NAME_EXTRA, computer.name);
-        i.putExtra(AppView.UUID_EXTRA, computer.uuid);
+        i.putExtra(ShortcutTrampoline.NAME_EXTRA, computer.name);
+        i.putExtra(ShortcutTrampoline.UUID_EXTRA, computer.uuid);
         i.putExtra(Game.EXTRA_APP_NAME, app.getAppName());
         i.putExtra(Game.EXTRA_APP_ID, ""+app.getAppId());
         i.putExtra(Game.EXTRA_APP_HDR, app.isHdrSupported());
