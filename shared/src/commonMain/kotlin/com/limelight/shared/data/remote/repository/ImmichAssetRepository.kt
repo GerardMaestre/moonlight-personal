@@ -19,6 +19,8 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import kotlinx.serialization.json.*
+import kotlinx.datetime.Clock
+
 import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.writeFully
 import kotlinx.coroutines.delay
@@ -52,12 +54,23 @@ class ImmichAssetRepository(
         parameters.append("size", "thumbnail")
     }.buildString()
 
-    suspend fun uploadAssetMultipart(fileName: String, bytes: ByteArray, mimeType: String): String {
+    suspend fun uploadAssetMultipart(fileName: String, bytes: ByteArray, mimeType: String, createdAt: String? = null): String {
+        val deviceId = "moonlight-personal-mobile"
+        val cleanFileName = fileName.replace(Regex("[^a-zA-Z0-9.]"), "_")
+        val deviceAssetId = "$cleanFileName-${bytes.size}-${Clock.System.now().toEpochMilliseconds()}"
+        val nowStr = Clock.System.now().toString()
+        val uploadCreatedAt = createdAt ?: nowStr
+
         val response = httpClient.post(normalizedBaseUrl(config.baseUrl) + "/api/assets") {
             authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
             setBody(MultiPartFormDataContent(formData {
+                append("deviceAssetId", deviceAssetId)
+                append("deviceId", deviceId)
+                append("fileCreatedAt", uploadCreatedAt)
+                append("fileModifiedAt", uploadCreatedAt)
+                append("isFavorite", "false")
                 append("assetData", buildPacket { writeFully(bytes) }, headers = Headers.build {
-                    append(HttpHeaders.ContentDisposition, "filename=\"$fileName\"")
+                    append(HttpHeaders.ContentDisposition, "form-data; name=\"assetData\"; filename=\"$cleanFileName\"")
                     append(HttpHeaders.ContentType, mimeType)
                 })
             }))
@@ -69,9 +82,9 @@ class ImmichAssetRepository(
 
 
 
-    fun uploadAssetMultipartFlow(fileName: String, bytes: ByteArray, mimeType: String, maxRetries: Int = 3): Flow<UploadProgress> = flow {
+    fun uploadAssetMultipartFlow(fileName: String, bytes: ByteArray, mimeType: String, createdAt: String? = null, maxRetries: Int = 3): Flow<UploadProgress> = flow {
         emit(UploadProgress(0, bytes.size.toLong()))
-        val remoteId = uploadAssetMultipart(fileName, bytes, mimeType)
+        val remoteId = uploadAssetMultipart(fileName, bytes, mimeType, createdAt = createdAt)
         emit(UploadProgress(bytes.size.toLong(), bytes.size.toLong(), remoteId))
     }.retryWhen { cause, attempt ->
         if (attempt >= maxRetries) return@retryWhen false

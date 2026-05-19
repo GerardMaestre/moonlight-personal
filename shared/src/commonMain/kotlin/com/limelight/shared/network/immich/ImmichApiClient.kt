@@ -17,6 +17,8 @@ import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.serialization.json.*
+import kotlinx.datetime.Clock
+
 
 internal val ImmichJson = Json {
     ignoreUnknownKeys = true
@@ -143,11 +145,14 @@ class ImmichApiClient(
         config: ImmichConnectionConfig,
         fileName: String,
         fileBytes: ByteArray,
-        mimeType: String = "image/jpeg"
+        mimeType: String = "image/jpeg",
+        createdAt: String? = null
     ): Boolean {
         val deviceId = "moonlight-personal-mobile"
-        val deviceAssetId = "$fileName-${fileBytes.size}-${System.currentTimeMillis()}"
-        val nowStr = "2026-05-17T12:00:00Z"
+        val cleanFileName = fileName.replace(Regex("[^a-zA-Z0-9.]"), "_")
+        val deviceAssetId = "$cleanFileName-${fileBytes.size}-${Clock.System.now().toEpochMilliseconds()}"
+        val nowStr = Clock.System.now().toString()
+        val uploadCreatedAt = createdAt ?: nowStr
 
         val response = httpClient.post(normalizedBaseUrl(config.baseUrl) + "/api/assets") {
             authHeaderProvider.headersFor(config).forEach { (name, value) -> header(name, value) }
@@ -155,12 +160,12 @@ class ImmichApiClient(
                 formData {
                     append("deviceAssetId", deviceAssetId)
                     append("deviceId", deviceId)
-                    append("fileCreatedAt", nowStr)
-                    append("fileModifiedAt", nowStr)
+                    append("fileCreatedAt", uploadCreatedAt)
+                    append("fileModifiedAt", uploadCreatedAt)
                     append("isFavorite", "false")
                     append("assetData", fileBytes, Headers.build {
                         append(HttpHeaders.ContentType, mimeType)
-                        append(HttpHeaders.ContentDisposition, "form-data; name=\"assetData\"; filename=\"$fileName\"")
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"assetData\"; filename=\"$cleanFileName\"")
                     })
                 }
             ))

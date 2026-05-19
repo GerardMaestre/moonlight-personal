@@ -35,8 +35,13 @@ class ImmichBackgroundUploadCoordinator(
             attempt++
             val result = runCatching {
                 val bytes = bytesResolver(task.localUri)
+                val createdAtStr = try {
+                    kotlinx.datetime.Instant.fromEpochMilliseconds(task.createdAt).toString()
+                } catch (e: Exception) {
+                    null
+                }
                 assetRepository
-                    .uploadAssetMultipartFlow(task.fileName, bytes, task.mimeType, maxRetries = 0)
+                    .uploadAssetMultipartFlow(task.fileName, bytes, task.mimeType, createdAt = createdAtStr, maxRetries = 0)
                     .collectLatest { progress ->
                         val value = progress.fraction.coerceIn(0f, 1f)
                         syncStateFlow.update(SyncState.Uploading(task.localId, value))

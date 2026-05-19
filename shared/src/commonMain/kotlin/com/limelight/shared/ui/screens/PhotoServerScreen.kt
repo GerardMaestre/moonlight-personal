@@ -3,7 +3,11 @@ package com.limelight.shared.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -22,9 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -390,6 +396,7 @@ private fun ControlCard(
 @Composable
 private fun GalleryPreview(assets: List<ImmichPhotoAsset>, config: com.limelight.shared.data.immich.ImmichConnectionConfig, onAssetClick: (String) -> Unit) {
     var gridColumns by remember { mutableStateOf(3) }
+    var pinchScaleAccum by remember { mutableStateOf(1f) }
     GlassCard(contentPadding = PaddingValues(16.dp), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Text("Vista rápida", style = MaterialTheme.typography.titleMedium, color = MoonlightColors.OnSurface)
@@ -408,15 +415,16 @@ private fun GalleryPreview(assets: List<ImmichPhotoAsset>, config: com.limelight
                 .height(320.dp)
                 .pointerInput(gridColumns) {
                     detectTransformGestures { _, _, zoom, _ ->
-                        val next = if (zoom > 1.04f) {
-                            (gridColumns - 1).coerceAtLeast(2)
-                        } else if (zoom < 0.96f) {
-                            (gridColumns + 1).coerceAtMost(6)
-                        } else {
-                            gridColumns
-                        }
-                        if (next != gridColumns) {
-                            gridColumns = next
+                        pinchScaleAccum *= zoom
+                        when {
+                            pinchScaleAccum > 1.16f -> {
+                                gridColumns = (gridColumns - 1).coerceAtLeast(2)
+                                pinchScaleAccum = 1f
+                            }
+                            pinchScaleAccum < 0.84f -> {
+                                gridColumns = (gridColumns + 1).coerceAtMost(6)
+                                pinchScaleAccum = 1f
+                            }
                         }
                     }
                 },
@@ -451,18 +459,51 @@ private fun FullscreenAssetViewer(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+        var scale by remember { mutableStateOf(1f) }
+        var offset by remember { mutableStateOf(Offset.Zero) }
+        val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+            scale = (scale * zoomChange).coerceIn(1f, 5f)
+            offset = if (scale > 1f) offset + panChange else Offset.Zero
+        }
+
+        LaunchedEffect(pagerState.currentPage) {
+            scale = 1f
+            offset = Offset.Zero
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            scale = if (scale > 1f) 1f else 2.5f
+                            offset = Offset.Zero
+                        }
+                    )
+                }
+                .transformable(state = transformState)
+        ) {
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = scale <= 1f) { page ->
                 val asset = assets[page]
                 if (asset.isVideo) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         PlatformVideoPlayer(
-                            streamingUrl = "${config.baseUrl.trimEnd('/')}/api/assets/${asset.id}/original",
+                            streamingUrl = requestFactory.buildVideoPlaybackUrl(config.baseUrl, asset.id),
                             authConfig = config,
                             isPlaying = isVideoPlaying,
                             onDurationKnown = {},
                             onPositionChanged = {},
-                            modifier = Modifier.fillMaxSize()
+                            seekPosition = -1L,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer(
+                                    scaleX = scale,
+                                    scaleY = scale,
+                                    translationX = offset.x,
+                                    translationY = offset.y
+                                )
                         )
                         FilledTonalButton(onClick = { isVideoPlaying = !isVideoPlaying }) {
                             Text(if (isVideoPlaying) "Pausar" else "Reproducir")
@@ -473,7 +514,15 @@ private fun FullscreenAssetViewer(
                         model = requestFactory.buildOriginalRequest(context, config, asset.id),
                         contentDescription = asset.name,
                         contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize().background(Color.Black)
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black)
+                            .graphicsLayer(
+                                scaleX = scale,
+                                scaleY = scale,
+                                translationX = offset.x,
+                                translationY = offset.y
+                            )
                     )
                 }
             }
@@ -507,9 +556,9 @@ private fun FullscreenAssetViewer(
                 ) {
                     Icon(Icons.Default.NavigateNext, contentDescription = "Siguiente", tint = Color.White)
                 }
+            }
         }
     }
-}
 }
 
 @Composable

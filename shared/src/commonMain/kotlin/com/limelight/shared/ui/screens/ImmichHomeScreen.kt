@@ -4,9 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -24,14 +22,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,12 +61,12 @@ fun ImmichHomeScreen(
     actions: PhotoServerActions,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
-    onPickAndUploadPhoto: ((onProgress: (Boolean) -> Unit) -> Unit)? = null
+    onPickAndUploadPhoto: ((onProgress: (String?) -> Unit) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     val detailViewModel = remember { AssetDetailViewModel() }
     val detailState = detailViewModel.state
-    var isUploading by remember { mutableStateOf(false) }
+    var uploadProgress by remember { mutableStateOf<String?>(null) }
 
     val baseUrl = state.connectionConfig.baseUrl.trim()
     val isValidUrl = baseUrl.startsWith("http://") || baseUrl.startsWith("https://")
@@ -82,6 +80,61 @@ fun ImmichHomeScreen(
     var currentTab by state::currentTab
     var gridColumnCount by state::gridColumnCount
     var isBarExpanded by state::isBarExpanded
+
+    // Pinch-to-zoom gesture state for changing grid column count
+    var accumulatedZoom by remember { mutableStateOf(1f) }
+    val pinchModifier = Modifier
+        .pointerInput(gridColumnCount) {
+            awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    val pressedChanges = event.changes.filter { it.pressed }
+                    
+                    if (pressedChanges.size >= 2) {
+                        val first = pressedChanges[0]
+                        val second = pressedChanges[1]
+                        
+                        val prevPos = first.previousPosition
+                        val currentPos = first.position
+                        val prevPos2 = second.previousPosition
+                        val currentPos2 = second.position
+                        
+                        val dxPrev = prevPos.x - prevPos2.x
+                        val dyPrev = prevPos.y - prevPos2.y
+                        val prevDistance = kotlin.math.sqrt(dxPrev * dxPrev + dyPrev * dyPrev)
+                        
+                        val dxCurr = currentPos.x - currentPos2.x
+                        val dyCurr = currentPos.y - currentPos2.y
+                        val currentDistance = kotlin.math.sqrt(dxCurr * dxCurr + dyCurr * dyCurr)
+                        
+                        if (prevDistance > 0f && currentDistance > 0f) {
+                            val zoomFactor = currentDistance / prevDistance
+                            if (kotlin.math.abs(zoomFactor - 1f) > 0.001f) {
+                                accumulatedZoom *= zoomFactor
+                                
+                                event.changes.forEach { it.consume() }
+                                
+                                if (accumulatedZoom > 1.08f) {
+                                    val next = (gridColumnCount - 1).coerceAtLeast(2)
+                                    if (next != gridColumnCount) {
+                                        gridColumnCount = next
+                                    }
+                                    accumulatedZoom = 1f
+                                } else if (accumulatedZoom < 0.92f) {
+                                    val next = (gridColumnCount + 1).coerceAtMost(6)
+                                    if (next != gridColumnCount) {
+                                        gridColumnCount = next
+                                    }
+                                    accumulatedZoom = 1f
+                                }
+                            }
+                        }
+                    } else {
+                        accumulatedZoom = 1f
+                    }
+                }
+            }
+        }
 
     // Search and filtering states
     var isSearchActive by remember { mutableStateOf(false) }
@@ -302,13 +355,8 @@ fun ImmichHomeScreen(
                             if (onPickAndUploadPhoto != null) {
                                 IconButton(
                                     onClick = {
-                                        onPickAndUploadPhoto { loading ->
-                                            isUploading = loading
-                                            if (!loading) {
-                                                scope.launch {
-                                                    actions.refreshImmich()
-                                                }
-                                            }
+                                        onPickAndUploadPhoto { progressText ->
+                                            uploadProgress = progressText
                                         }
                                     },
                                     modifier = Modifier
@@ -498,7 +546,9 @@ fun ImmichHomeScreen(
                                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
                                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                                             verticalArrangement = Arrangement.spacedBy(6.dp),
-                                            modifier = Modifier.fillMaxSize()
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .then(pinchModifier)
                                         ) {
                                             item(span = { GridItemSpan(maxLineSpan) }) {
                                                 Row(
@@ -564,7 +614,9 @@ fun ImmichHomeScreen(
                                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
                                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                                             verticalArrangement = Arrangement.spacedBy(6.dp),
-                                            modifier = Modifier.fillMaxSize()
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .then(pinchModifier)
                                         ) {
                                             items(filteredAlbumPhotos, key = { it.id }) { item ->
                                                 PhotoGridItem(item = item, config = state.connectionConfig) {
@@ -637,7 +689,9 @@ fun ImmichHomeScreen(
                                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
                                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                                         verticalArrangement = Arrangement.spacedBy(6.dp),
-                                        modifier = Modifier.fillMaxSize()
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .then(pinchModifier)
                                     ) {
                                         items(filteredFavorites, key = { it.id }) { item ->
                                             PhotoGridItem(item = item, config = state.connectionConfig) {
@@ -807,6 +861,7 @@ fun ImmichHomeScreen(
                             initialPage = detailState.currentIndex,
                             pageCount = { detailState.orderedAssets.size }
                         )
+                        var activePageScale by remember { mutableStateOf(1f) }
 
                         // Synchronize state when scrolling pages
                         LaunchedEffect(pagerState.currentPage) {
@@ -865,13 +920,20 @@ fun ImmichHomeScreen(
                                 HorizontalPager(
                                     state = pagerState,
                                     modifier = Modifier.fillMaxSize(),
-                                    pageSpacing = 12.dp
+                                    pageSpacing = 12.dp,
+                                    userScrollEnabled = activePageScale <= 1f
                                 ) { pageIndex ->
                                     val asset = detailState.orderedAssets.getOrNull(pageIndex)
                                     if (asset != null) {
                                         // Pinch-to-zoom & Pan gesture state
                                         var scale by remember { mutableStateOf(1f) }
                                         var offset by remember { mutableStateOf(Offset.Zero) }
+                                         // Custom video seek and timeline progress tracking states
+                                         var videoDuration by remember(asset.id) { mutableStateOf(0L) }
+                                         var videoPosition by remember(asset.id) { mutableStateOf(0L) }
+                                         var isScrubbing by remember { mutableStateOf(false) }
+                                         var scrubPosition by remember { mutableStateOf(0L) }
+                                         var seekTarget by remember(asset.id) { mutableStateOf(-1L) }
 
                                         // Reset zoom of inactive pages
                                         LaunchedEffect(pagerState.currentPage) {
@@ -901,24 +963,129 @@ fun ImmichHomeScreen(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             if (asset.isVideo) {
-                                                val streamUrl = AuthenticatedImageRequestFactory().buildOriginalUrl(state.connectionConfig.baseUrl, asset.id)
-                                                PlatformVideoPlayer(
-                                                    streamingUrl = streamUrl,
-                                                    authConfig = state.connectionConfig,
-                                                    isPlaying = detailState.isPlaying && pageIndex == pagerState.currentPage,
-                                                    onDurationKnown = {},
-                                                    onPositionChanged = {},
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .aspectRatio(16f / 9f)
-                                                        .graphicsLayer(
-                                                            scaleX = scale,
-                                                            scaleY = scale,
-                                                            translationX = offset.x,
-                                                            translationY = offset.y
-                                                        )
-                                                )
-                                            } else {
+                                                 val streamUrl = AuthenticatedImageRequestFactory().buildVideoPlaybackUrl(state.connectionConfig.baseUrl, asset.id)
+                                                 Box(modifier = Modifier.fillMaxSize()) {
+                                                     PlatformVideoPlayer(
+                                                         streamingUrl = streamUrl,
+                                                         authConfig = state.connectionConfig,
+                                                         isPlaying = detailState.isPlaying && pageIndex == pagerState.currentPage,
+                                                         onDurationKnown = { videoDuration = it },
+                                                         onPositionChanged = { if (!isScrubbing) videoPosition = it },
+                                                         seekPosition = seekTarget,
+                                                         modifier = Modifier
+                                                             .fillMaxSize()
+                                                             .graphicsLayer(
+                                                                 scaleX = scale,
+                                                                 scaleY = scale,
+                                                                 translationX = offset.x,
+                                                                 translationY = offset.y
+                                                             )
+                                                     )
+                                                     if (pageIndex == pagerState.currentPage) {
+                                                         Box(
+                                                             modifier = Modifier
+                                                                 .align(Alignment.BottomCenter)
+                                                                 .padding(bottom = 120.dp, start = 20.dp, end = 20.dp)
+                                                         ) {
+                                                             GlassCard(
+                                                                 modifier = Modifier.fillMaxWidth(),
+                                                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
+                                                             ) {
+                                                                 Column(
+                                                                     modifier = Modifier.fillMaxWidth(),
+                                                                     verticalArrangement = Arrangement.spacedBy(8.dp),
+                                                                     horizontalAlignment = Alignment.CenterHorizontally
+                                                                 ) {
+                                                                     Row(
+                                                                         modifier = Modifier.fillMaxWidth(),
+                                                                         verticalAlignment = Alignment.CenterVertically,
+                                                                         horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                                     ) {
+                                                                         val currentPosToDisplay = if (isScrubbing) scrubPosition else videoPosition
+                                                                         Text(
+                                                                             text = formatVideoTime(currentPosToDisplay),
+                                                                             style = MaterialTheme.typography.labelSmall,
+                                                                             color = Color.White
+                                                                         )
+                                                                         Slider(
+                                                                             value = if (isScrubbing) scrubPosition.toFloat() else videoPosition.toFloat(),
+                                                                             onValueChange = {
+                                                                                 isScrubbing = true
+                                                                                 scrubPosition = it.toLong()
+                                                                             },
+                                                                             onValueChangeFinished = {
+                                                                                 seekTarget = scrubPosition
+                                                                                 videoPosition = scrubPosition
+                                                                                 isScrubbing = false
+                                                                             },
+                                                                             valueRange = 0f..(if (videoDuration > 0L) videoDuration.toFloat() else 100f),
+                                                                             colors = SliderDefaults.colors(
+                                                                                 thumbColor = MoonlightColors.Tertiary,
+                                                                                 activeTrackColor = MoonlightColors.Tertiary,
+                                                                                 inactiveTrackColor = Color.White.copy(alpha = 0.24f)
+                                                                             ),
+                                                                             modifier = Modifier.weight(1f)
+                                                                         )
+                                                                         Text(
+                                                                             text = formatVideoTime(videoDuration),
+                                                                             style = MaterialTheme.typography.labelSmall,
+                                                                             color = Color.White.copy(alpha = 0.6f)
+                                                                         )
+                                                                     }
+                                                                     Row(
+                                                                         horizontalArrangement = Arrangement.spacedBy(28.dp),
+                                                                         verticalAlignment = Alignment.CenterVertically
+                                                                     ) {
+                                                                         IconButton(
+                                                                             onClick = {
+                                                                                 val target = (videoPosition - 10000).coerceAtLeast(0L)
+                                                                                 seekTarget = target
+                                                                                 videoPosition = target
+                                                                             }
+                                                                         ) {
+                                                                             Icon(
+                                                                                 imageVector = Icons.Default.FastRewind,
+                                                                                 contentDescription = "Retroceder 10s",
+                                                                                 tint = Color.White,
+                                                                                 modifier = Modifier.size(28.dp)
+                                                                             )
+                                                                         }
+                                                                         IconButton(
+                                                                             onClick = { detailViewModel.playPause() },
+                                                                             modifier = Modifier
+                                                                                 .size(54.dp)
+                                                                                 .clip(CircleShape)
+                                                                                 .background(MoonlightColors.Tertiary.copy(alpha = 0.16f))
+                                                                                 .border(1.dp, MoonlightColors.Tertiary.copy(alpha = 0.4f), CircleShape)
+                                                                         ) {
+                                                                             Icon(
+                                                                                 imageVector = if (detailState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                                                                 contentDescription = if (detailState.isPlaying) "Pausar" else "Reproducir",
+                                                                                 tint = MoonlightColors.Tertiary,
+                                                                                 modifier = Modifier.size(32.dp)
+                                                                             )
+                                                                         }
+                                                                         IconButton(
+                                                                             onClick = {
+                                                                                 val target = (videoPosition + 10000).coerceAtMost(videoDuration)
+                                                                                 seekTarget = target
+                                                                                 videoPosition = target
+                                                                             }
+                                                                         ) {
+                                                                             Icon(
+                                                                                 imageVector = Icons.Default.FastForward,
+                                                                                 contentDescription = "Adelantar 10s",
+                                                                                 tint = Color.White,
+                                                                                 modifier = Modifier.size(28.dp)
+                                                                             )
+                                                                         }
+                                                                     }
+                                                                 }
+                                                             }
+                                                         }
+                                                     }
+                                                 }
+                                             } else {
                                                 // Animated coil loader with dynamic color adjustment filters applied!
                                                 Box(
                                                     modifier = Modifier
@@ -1336,38 +1503,33 @@ fun ImmichHomeScreen(
                 }
             }
 
-            if (isUploading) {
+            if (uploadProgress != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.7f))
-                        .clickable(enabled = false) {}, // Block clicks behind
-                    contentAlignment = Alignment.Center
+                        .padding(bottom = 90.dp),
+                    contentAlignment = Alignment.BottomCenter
                 ) {
                     GlassCard(
-                        contentPadding = PaddingValues(32.dp),
-                        modifier = Modifier.width(280.dp)
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        modifier = Modifier
+                            .wrapContentWidth()
+                            .padding(horizontal = 32.dp)
+                            .shadow(24.dp, shape = RoundedCornerShape(99.dp))
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(18.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             CircularProgressIndicator(
                                 color = MoonlightColors.Tertiary,
-                                strokeWidth = 3.dp,
-                                modifier = Modifier.size(48.dp)
+                                strokeWidth = 2.5.dp,
+                                modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "Subiendo fotos...",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White,
-                                textAlign = TextAlign.Center
-                            )
-                            Text(
-                                text = "Sincronizando con tu servidor multimedia de Immich. Espera un momento.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MoonlightColors.OnSurfaceVariant,
-                                textAlign = TextAlign.Center
+                                text = uploadProgress!!,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = Color.White
                             )
                         }
                     }
@@ -1752,4 +1914,17 @@ private fun formatAssetDate(dateString: String?): String {
         else -> null
     } ?: return isoDate
     return "$day de $monthName, $year"
+}
+
+
+private fun formatVideoTime(millis: Long): String {
+    val totalSeconds = millis / 1000
+    val seconds = totalSeconds % 60
+    val minutes = (totalSeconds / 60) % 60
+    val hours = totalSeconds / 3600
+    return if (hours > 0) {
+        "$hours:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+    } else {
+        "$minutes:${seconds.toString().padStart(2, '0')}"
+    }
 }

@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Hub
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -143,7 +143,7 @@ fun HomeHubTopBar(
     TopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Hub, contentDescription = null, tint = MoonlightColors.PrimaryFixedDim, modifier = Modifier.size(30.dp))
+                Icon(Icons.Default.Visibility, contentDescription = null, tint = MoonlightColors.PrimaryFixedDim, modifier = Modifier.size(30.dp))
                 Spacer(Modifier.width(12.dp))
                 Text(title, color = MoonlightColors.OnSurface, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             }

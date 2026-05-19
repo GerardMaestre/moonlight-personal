@@ -311,115 +311,144 @@ class PremiumDashboardActivity : ComponentActivity() {
 
                                     val context = this@PremiumDashboardActivity
                                     val coroutineScope = rememberCoroutineScope()
-                                    var onProgressCallback by remember { mutableStateOf<((Boolean) -> Unit)?>(null) }
+                                    var onProgressCallback by remember { mutableStateOf<((String?) -> Unit)?>(null) }
 
                                     val pickMedia = androidx.activity.compose.rememberLauncherForActivityResult(
-                                        contract = androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia(100),
-                                        onResult = { uris ->
-                                            if (!uris.isNullOrEmpty()) {
-                                                val callback = onProgressCallback
-                                                callback?.invoke(true)
+                                         contract = androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia(100),
+                                         onResult = { uris ->
+                                             if (!uris.isNullOrEmpty()) {
+                                                 val callback = onProgressCallback
+                                                 callback?.invoke("Preparando subida...")
 
-                                                // 1. Read all assets immediately to prevent temporary URI permission revocation!
-                                                val assetsToUpload = mutableListOf<Triple<String, ByteArray, String>>()
-                                                try {
-                                                    val contentResolver = context.contentResolver
-                                                    uris.forEach { uri ->
-                                                        try {
-                                                            var name = "upload_${System.currentTimeMillis()}.jpg"
-                                                            val cursor = contentResolver.query(uri, null, null, null, null)
-                                                            cursor?.use {
-                                                                if (it.moveToFirst()) {
-                                                                    val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                                                                    if (nameIndex != -1) {
-                                                                        name = it.getString(nameIndex)
-                                                                    }
-                                                                }
-                                                            }
-                                                            val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
-                                                            val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                                                            if (bytes != null) {
-                                                                assetsToUpload.add(Triple(name, bytes, mimeType))
-                                                            }
-                                                        } catch (e: Exception) {
-                                                            android.util.Log.e("ImmichUpload", "Error reading uri: $uri", e)
-                                                        }
-                                                    }
-                                                } catch (e: Exception) {
-                                                    android.util.Log.e("ImmichUpload", "Error resolving selected uris", e)
-                                                }
-
-                                                if (assetsToUpload.isEmpty()) {
-                                                    callback?.invoke(false)
-                                                    android.widget.Toast.makeText(
-                                                        context,
-                                                        "No se pudieron leer las fotos seleccionadas",
-                                                        android.widget.Toast.LENGTH_LONG
-                                                    ).show()
-                                                    return@rememberLauncherForActivityResult
-                                                }
-
-                                                // 2. Perform actual network upload in background safely!
-                                                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                                    var uploadedCount = 0
-                                                    var failedCount = 0
-                                                    try {
-                                                        val client = ImmichApiClient()
-
-                                                        withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                            android.widget.Toast.makeText(
-                                                                context,
-                                                                "Subiendo ${assetsToUpload.size} fotos...",
-                                                                android.widget.Toast.LENGTH_SHORT
-                                                            ).show()
-                                                        }
-
-                                                        assetsToUpload.forEach { (name, bytes, mimeType) ->
-                                                            try {
-                                                                val uploadSuccess = client.uploadAsset(
-                                                                    config = controller.photoServerState.connectionConfig,
-                                                                    fileName = name,
-                                                                    fileBytes = bytes,
-                                                                    mimeType = mimeType
-                                                                )
-                                                                if (uploadSuccess) {
-                                                                    uploadedCount++
-                                                                } else {
-                                                                    failedCount++
-                                                                }
-                                                                android.util.Log.d("ImmichUpload", "Upload success: $uploadSuccess for $name")
-                                                            } catch (e: Exception) {
-                                                                failedCount++
-                                                                android.util.Log.e("ImmichUpload", "Failed to upload photo: $name", e)
-                                                            }
-                                                        }
-
-                                                        withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                            if (failedCount > 0) {
-                                                                android.widget.Toast.makeText(
-                                                                    context,
-                                                                    "Subidas $uploadedCount fotos ($failedCount fallidas)",
-                                                                    android.widget.Toast.LENGTH_LONG
-                                                                ).show()
-                                                            } else {
-                                                                android.widget.Toast.makeText(
-                                                                    context,
-                                                                    "¡Se han subido las $uploadedCount fotos con éxito!",
-                                                                    android.widget.Toast.LENGTH_LONG
-                                                                ).show()
-                                                            }
-                                                        }
-                                                    } catch (e: Exception) {
-                                                        android.util.Log.e("ImmichUpload", "Failed to upload photo batch", e)
-                                                    } finally {
-                                                        withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                            callback?.invoke(false)
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    )
+                                                 // Perform sequential stream reading and network upload in background safely to prevent OOM memory issues!
+                                                 coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                                     var uploadedCount = 0
+                                                     var failedCount = 0
+                                                     val totalCount = uris.size
+                                                     
+                                                     withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                         callback?.invoke("Subiendo 0 de $totalCount fotos...")
+                                                         android.widget.Toast.makeText(
+                                                             context,
+                                                             "Preparando la subida de $totalCount fotos...",
+                                                             android.widget.Toast.LENGTH_SHORT
+                                                         ).show()
+                                                     }
+                                                     
+                                                     try {
+                                                         val client = ImmichApiClient()
+                                                         val contentResolver = context.contentResolver
+                                                         
+                                                         uris.forEachIndexed { index, uri ->
+                                                             // Update the floating capsule text immediately on main thread for real-time progress!
+                                                             withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                                 callback?.invoke("Subiendo ${index + 1} de $totalCount fotos...")
+                                                             }
+                                                             
+                                                             var name = "upload_${System.currentTimeMillis()}.jpg"
+                                                             var dateTaken: Long = 0L
+                                                             var mimeType = "image/jpeg"
+                                                             
+                                                             try {
+                                                                 // 1. Read metadata (name, date_taken) in a highly lightweight way
+                                                                 val cursor = contentResolver.query(uri, null, null, null, null)
+                                                                 cursor?.use { c ->
+                                                                     if (c.moveToFirst()) {
+                                                                         val nameIndex = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                                                                         if (nameIndex != -1) {
+                                                                             name = c.getString(nameIndex)
+                                                                         }
+                                                                         
+                                                                         val dateTakenIndex = c.getColumnIndex("datetaken")
+                                                                         if (dateTakenIndex != -1) {
+                                                                             dateTaken = c.getLong(dateTakenIndex)
+                                                                         }
+                                                                         if (dateTaken <= 0L) {
+                                                                             val dateModifiedIndex = c.getColumnIndex("date_modified")
+                                                                             if (dateModifiedIndex != -1) {
+                                                                                 dateTaken = c.getLong(dateModifiedIndex) * 1000L
+                                                                             }
+                                                                         }
+                                                                     }
+                                                                 }
+                                                                 mimeType = contentResolver.getType(uri) ?: "image/jpeg"
+                                                             } catch (e: Exception) {
+                                                                 android.util.Log.e("ImmichUpload", "Error reading metadata for URI: $uri", e)
+                                                             }
+                                                             
+                                                             // 2. Format epoch millis to ISO-8601 for Immich using standard Java API
+                                                             val createdAtStr = if (dateTaken > 0L) {
+                                                                 try {
+                                                                     java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
+                                                                         timeZone = java.util.TimeZone.getTimeZone("UTC")
+                                                                     }.format(java.util.Date(dateTaken))
+                                                                 } catch (e: Exception) {
+                                                                     null
+                                                                 }
+                                                             } else null
+                                                             
+                                                             // 3. Read bytes of ONLY the current photo into memory
+                                                             var bytes: ByteArray? = null
+                                                             try {
+                                                                 bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                                                             } catch (e: Exception) {
+                                                                 android.util.Log.e("ImmichUpload", "Error reading stream for URI: $uri", e)
+                                                             }
+                                                             
+                                                             // 4. Upload photo if bytes are present, and immediately null out reference to free memory!
+                                                             if (bytes != null) {
+                                                                 try {
+                                                                     val uploadSuccess = client.uploadAsset(
+                                                                         config = controller.photoServerState.connectionConfig,
+                                                                         fileName = name,
+                                                                         fileBytes = bytes,
+                                                                         mimeType = mimeType,
+                                                                         createdAt = createdAtStr
+                                                                     )
+                                                                     if (uploadSuccess) {
+                                                                         uploadedCount++
+                                                                         // Refresh dynamically after each upload so photos pop up in gallery one-by-one!
+                                                                         photoManager.refreshImmich()
+                                                                     } else {
+                                                                         failedCount++
+                                                                     }
+                                                                     android.util.Log.d("ImmichUpload", "Upload success: $uploadSuccess for $name with date $createdAtStr (${index + 1}/$totalCount)")
+                                                                 } catch (e: Exception) {
+                                                                     failedCount++
+                                                                     android.util.Log.e("ImmichUpload", "Failed to upload photo: $name", e)
+                                                                 } finally {
+                                                                     // Crucial OOM Prevention: Discard byte array immediately so Garbage Collector cleans it up!
+                                                                     bytes = null
+                                                                 }
+                                                             } else {
+                                                                 failedCount++
+                                                             }
+                                                         }
+                                                     } catch (e: Exception) {
+                                                         android.util.Log.e("ImmichUpload", "Error in sequential upload loop", e)
+                                                     } finally {
+                                                         withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                             if (failedCount > 0) {
+                                                                 android.widget.Toast.makeText(
+                                                                     context,
+                                                                     "Subidas $uploadedCount fotos ($failedCount fallidas)",
+                                                                     android.widget.Toast.LENGTH_LONG
+                                                                 ).show()
+                                                             } else {
+                                                                 android.widget.Toast.makeText(
+                                                                     context,
+                                                                     "Â¡Se han subido las $uploadedCount fotos con Ã©xito y metadatos preservados!",
+                                                                     android.widget.Toast.LENGTH_LONG
+                                                                 ).show()
+                                                             }
+                                                             // Reset progress capsule to null to hide it!
+                                                             callback?.invoke(null)
+                                                         }
+                                                     }
+                                                 }
+                                             }
+                                         }
+                                     )
 
                                     ImmichHomeScreen(
                                         state = controller.photoServerState,

@@ -16,6 +16,7 @@ actual fun PlatformVideoPlayer(
     isPlaying: Boolean,
     onDurationKnown: (Long) -> Unit,
     onPositionChanged: (Long) -> Unit,
+    seekPosition: Long,
     modifier: Modifier
 ) {
     AndroidView(
@@ -41,16 +42,35 @@ actual fun PlatformVideoPlayer(
                     println("Error setting video URI: ${e.message}")
                 }
                 
+                val progressRunnable = object : Runnable {
+                    override fun run() {
+                        try {
+                            if (this@apply.isPlaying) {
+                                onPositionChanged(this@apply.currentPosition.toLong())
+                            }
+                        } catch (e: Exception) {}
+                        postDelayed(this, 250)
+                    }
+                }
+                
                 setOnPreparedListener { mp ->
                     onDurationKnown(mp.duration.toLong())
                     mp.isLooping = true
                     if (isPlaying) start()
+                    post(progressRunnable)
                 }
                 
                 setOnErrorListener { _, what, extra ->
                     println("VideoView error: what=$what, extra=$extra")
                     true // Prevents showing the error dialog which can crash apps
                 }
+                
+                addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
+                    override fun onViewAttachedToWindow(v: android.view.View) {}
+                    override fun onViewDetachedFromWindow(v: android.view.View) {
+                        removeCallbacks(progressRunnable)
+                    }
+                })
             }
         },
         update = { view ->
@@ -59,6 +79,13 @@ actual fun PlatformVideoPlayer(
                     if (!view.isPlaying) view.start()
                 } else {
                     if (view.isPlaying) view.pause()
+                }
+                
+                if (seekPosition >= 0L) {
+                    val currentPos = view.currentPosition.toLong()
+                    if (Math.abs(currentPos - seekPosition) > 1000) {
+                        view.seekTo(seekPosition.toInt())
+                    }
                 }
             } catch (e: Exception) {
                 // Ignore update errors

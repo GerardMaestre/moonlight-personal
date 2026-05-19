@@ -88,39 +88,9 @@ fun BottomNavBar(
                         }
                     }
 
-                    // Interactive Column count chips selector
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Columnas:",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.weight(1f)
-                        )
-                        listOf(2, 3, 4, 5).forEach { cols ->
-                            val isSelected = photoServerState.gridColumnCount == cols
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSelected) MoonlightColors.Tertiary else Color.White.copy(alpha = 0.05f))
-                                    .clickable { photoServerState.gridColumnCount = cols }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Text(
-                                    text = "$cols Col",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = if (isSelected) Color.Black else Color.White
-                                )
-                            }
-                        }
-                    }
 
-                    Spacer(Modifier.height(2.dp))
 
-                    // Quick action utility buttons (Refresh & Exit Home)
+                    // Quick action utility button (Refresh)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -135,28 +105,11 @@ fun BottomNavBar(
                                 contentColor = Color.White
                             ),
                             shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.weight(1f).height(44.dp)
+                            modifier = Modifier.fillMaxWidth().height(44.dp)
                         ) {
                             Icon(Icons.Default.Sync, null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("Sincronizar", style = MaterialTheme.typography.labelSmall)
-                        }
-
-                        Button(
-                            onClick = {
-                                photoServerState.isBarExpanded = false
-                                onNavigate(AppScreen.PHOTO_SERVER)
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MoonlightColors.Tertiary.copy(alpha = 0.2f),
-                                contentColor = MoonlightColors.Tertiary
-                            ),
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.weight(1f).height(44.dp)
-                        ) {
-                            Icon(Icons.Default.Home, null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Volver a Casa", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }

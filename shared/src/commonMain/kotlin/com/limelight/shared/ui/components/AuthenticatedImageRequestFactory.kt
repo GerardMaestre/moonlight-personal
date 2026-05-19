@@ -22,6 +22,11 @@ class AuthenticatedImageRequestFactory(
         return "$normalizedBaseUrl/api/assets/$assetId/original"
     }
 
+    fun buildVideoPlaybackUrl(baseUrl: String, assetId: String): String {
+        val normalizedBaseUrl = baseUrl.trim().trimEnd('/')
+        return "$normalizedBaseUrl/api/assets/$assetId/video/playback"
+    }
+
     fun buildThumbnailRequest(
         context: PlatformContext,
         config: ImmichConnectionConfig,

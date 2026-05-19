@@ -44,7 +44,7 @@ class PhotoSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
                 val mime = c.getString(3) ?: "image/jpeg"
                 val localUri = "$uri/$id"
                 val hash = sha256("$id:$modified:$name")
-                queue.enqueueIfMissing(PhotoUploadTask(localId = id.toString(), fileName = name, mimeType = mime, localUri = localUri, hash = hash, createdAt = modified))
+                queue.enqueueIfMissing(PhotoUploadTask(localId = id.toString(), fileName = name, mimeType = mime, localUri = localUri, hash = hash, createdAt = modified * 1000L))
                 if (modified > maxTimestamp || (modified == maxTimestamp && id > maxId)) {
                     maxTimestamp = modified
                     maxId = id

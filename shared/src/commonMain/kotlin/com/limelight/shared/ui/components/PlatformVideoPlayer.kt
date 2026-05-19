@@ -11,5 +11,6 @@ expect fun PlatformVideoPlayer(
     isPlaying: Boolean,
     onDurationKnown: (Long) -> Unit,
     onPositionChanged: (Long) -> Unit,
+    seekPosition: Long = -1L,
     modifier: Modifier = Modifier,
 )
