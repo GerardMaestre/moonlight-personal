@@ -88,6 +88,26 @@ fun ImmichHomeScreen(
             awaitPointerEventScope {
                 while (true) {
                     val event = awaitPointerEvent(PointerEventPass.Initial)
+                    
+                    // Handle mouse wheel scroll with Control key
+                    if (event.type == PointerEventType.Scroll) {
+                        val isCtrlPressed = event.keyboardModifiers.isCtrlPressed
+                        if (isCtrlPressed) {
+                            val scrollAmount = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                            if (scrollAmount < 0f) {
+                                val next = (gridColumnCount - 1).coerceAtLeast(2)
+                                if (next != gridColumnCount) {
+                                    gridColumnCount = next
+                                }
+                            } else if (scrollAmount > 0f) {
+                                val next = (gridColumnCount + 1).coerceAtMost(6)
+                                if (next != gridColumnCount) {
+                                    gridColumnCount = next
+                                }
+                            }
+                        }
+                    }
+
                     val pressedChanges = event.changes.filter { it.pressed }
                     
                     if (pressedChanges.size >= 2) {
@@ -768,7 +788,7 @@ fun ImmichHomeScreen(
                                                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
                                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                                 verticalArrangement = Arrangement.spacedBy(6.dp),
-                                                modifier = Modifier.fillMaxSize()
+                                                modifier = Modifier.fillMaxSize().then(pinchModifier)
                                             ) {
                                                 // 👥 Face / People Engine recognized circular scrolling Row
                                                 if (peopleList.isNotEmpty()) {

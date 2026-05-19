@@ -64,3 +64,34 @@ jobs:
     - name: Clean up keystore
       if: always()
       run: rm -f release.keystore
+
+  release-desktop:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: recursive
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v5
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Build Desktop Installers (EXE & MSI)
+      run: .\gradlew.bat :desktopApp:packageDistributionForCurrentOS
+
+    - name: Upload to GitHub Release
+      uses: softprops/action-gh-release@v3
+      with:
+        files: |
+          desktopApp/build/compose/binaries/main/exe/*.exe
+          desktopApp/build/compose/binaries/main/msi/*.msi
+        draft: false
+        prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

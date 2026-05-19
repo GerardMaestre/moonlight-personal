@@ -1,11 +1,17 @@
 package com.limelight.platform
 
+import java.util.prefs.Preferences
+
 actual class StorageManager {
-    private val data = mutableMapOf<String, String>()
+    private val prefs = Preferences.userNodeForPackage(StorageManager::class.java)
 
     actual fun putString(key: String, value: String) {
-        data[key] = value
+        prefs.put(key, value)
+        runCatching { prefs.flush() }
     }
 
-    actual fun getString(key: String): String? = data[key]
+    actual fun getString(key: String): String? {
+        val value = prefs.get(key, null)
+        return if (value.isNullOrBlank()) null else value
+    }
 }

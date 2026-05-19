@@ -27,12 +27,19 @@ sealed interface StartCommandResult {
 }
 
 class PhotoServerState {
+    private val storage = com.limelight.platform.StorageManager()
+
     var status: PhotoServerStatus by mutableStateOf(PhotoServerStatus.Stopped)
     var lastError: String? by mutableStateOf(null)
     var lastCommandResult: StartCommandResult? by mutableStateOf(null)
     var healthMessage: String by mutableStateOf("Sin comprobaciones")
     var recentLogs: List<String> by mutableStateOf(emptyList())
-    var connectionConfig: ImmichConnectionConfig by mutableStateOf(ImmichConnectionConfig())
+    var connectionConfig: ImmichConnectionConfig by mutableStateOf(
+        ImmichConnectionConfig(
+            baseUrl = storage.getString("immich.session.server_url").orEmpty(),
+            apiKey = storage.getString("immich.session.api_key").orEmpty()
+        )
+    )
     var galleryState: ImmichGalleryState by mutableStateOf(ImmichGalleryState.Idle)
     var timelineUiModel: TimelineUiModel by mutableStateOf(TimelineUiModel())
     var sessionState: SessionState by mutableStateOf(SessionState.Unauthenticated)
@@ -52,6 +59,8 @@ class PhotoServerState {
 
     fun updateConnection(baseUrl: String, apiKey: String, bearerToken: String = connectionConfig.bearerToken) {
         connectionConfig = ImmichConnectionConfig(baseUrl = baseUrl, apiKey = apiKey, bearerToken = bearerToken)
+        storage.putString("immich.session.server_url", baseUrl)
+        storage.putString("immich.session.api_key", apiKey)
     }
 
     fun updateGallery(next: ImmichGalleryState) {
